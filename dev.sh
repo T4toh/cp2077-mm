@@ -13,7 +13,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # StrawberryShake incluye herramientas net9 que necesitan rollforward a net10
 export DOTNET_ROLL_FORWARD=LatestMajor
+
+# Asegurar que dotnet tools globales esten en PATH
+export PATH="$HOME/.dotnet/tools:$PATH"
 APP_PROJECT="$SCRIPT_DIR/src/NexusMods.App/NexusMods.App.csproj"
+APP_DIR="$SCRIPT_DIR/src/NexusMods.App"
 REDENGINE_TESTS="$SCRIPT_DIR/tests/Games/NexusMods.Games.RedEngine.Tests"
 
 echo -e "${BLUE}NexusMods.App - Herramientas de Desarrollo${NC}"
@@ -31,6 +35,7 @@ show_menu() {
     echo "  7) Limpiar proyecto"
     echo "  8) Restaurar dependencias"
     echo "  9) Todo (limpiar + restaurar + compilar + tests)"
+    echo " 10) Generar AppImage"
     echo "  0) Salir"
     echo ""
     read -p "Opcion: " option
@@ -101,6 +106,54 @@ run_all() {
     echo -e "${GREEN}Pipeline completado${NC}"
 }
 
+ensure_appimagetool() {
+    if command -v appimagetool &> /dev/null || command -v appimagetool-x86_64.AppImage &> /dev/null; then
+        return 0
+    fi
+    local tool_path="$SCRIPT_DIR/.tools/appimagetool-x86_64.AppImage"
+    if [[ -x "$tool_path" ]]; then
+        export PATH="$SCRIPT_DIR/.tools:$PATH"
+        return 0
+    fi
+    echo -e "${YELLOW}Descargando appimagetool...${NC}"
+    mkdir -p "$SCRIPT_DIR/.tools"
+    curl -fSL -o "$tool_path" \
+        "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+    if [[ $? -ne 0 ]]; then
+        echo -e "${RED}No se pudo descargar appimagetool${NC}"
+        return 1
+    fi
+    chmod +x "$tool_path"
+    export PATH="$SCRIPT_DIR/.tools:$PATH"
+    return 0
+}
+
+build_appimage() {
+    if ! command -v pupnet &> /dev/null; then
+        echo -e "${RED}PupNet no esta instalado. Instalar con:${NC}"
+        echo "  dotnet tool install --global KuiperZone.PupNet"
+        return
+    fi
+    if ! command -v fusermount &> /dev/null && ! test -f /usr/lib/libfuse.so.2; then
+        echo -e "${RED}FUSE no esta instalado. Instalar con:${NC}"
+        echo "  sudo pacman -S fuse2"
+        return
+    fi
+    if ! ensure_appimagetool; then
+        return
+    fi
+    echo -e "${GREEN}Generando AppImage...${NC}"
+    pushd "$APP_DIR" > /dev/null
+    pupnet -y -k AppImage -p DefineConstants=INSTALLATION_METHOD_APPIMAGE
+    local exit_code=$?
+    popd > /dev/null
+    if [[ $exit_code -eq 0 ]]; then
+        echo -e "${GREEN}AppImage generado en: $APP_DIR/Deploy/OUT/${NC}"
+    else
+        echo -e "${RED}Fallo la generacion del AppImage${NC}"
+    fi
+}
+
 # Loop principal
 while true; do
     show_menu
@@ -115,6 +168,7 @@ while true; do
         7) clean_project ;;
         8) restore_deps ;;
         9) run_all ;;
+        10) build_appimage ;;
         0)
             echo -e "${BLUE}Hasta luego!${NC}"
             exit 0

@@ -42,3 +42,6 @@ coverage.json
 
 # python virtual environment
 .venv
+
+# dev.sh local tools (appimagetool)
+.tools/
