@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-NexusMods.App is a cross-platform (Windows, Linux, macOS) mod manager for PC games, built with C#/.NET 9 and Avalonia UI. It manages mod installation, load orders, file conflicts, and synchronization with game directories.
+Fork de NexusMods.App enfocado exclusivamente en **Cyberpunk 2077** vía **Steam en Linux**. Construido con C#/.NET 9 y Avalonia UI. Gestiona instalación de mods, orden de carga, conflictos de archivos y sincronización con el directorio del juego.
+
+El repositorio upstream fue discontinuado. Este fork eliminó soporte para otros juegos (Stardew Valley, BG3, Skyrim/Fallout, M&B Bannerlord), tiendas (GOG, Epic Games Store, Xbox) y plataformas (Windows, macOS).
 
 ## Build & Run Commands
 
@@ -15,9 +17,9 @@ dotnet run --project src/NexusMods.App/NexusMods.App.csproj  # Run the app
 dotnet test                            # Run all tests
 dotnet test --filter "RequiresNetworking!=True&FlakeyTest!=True"  # Skip network/flakey tests (CI default)
 dotnet test --filter "FullyQualifiedName~SomeTestClass.SomeMethod"  # Run a single test
-dotnet test tests/NexusMods.DataModel.Tests  # Run one test project
+dotnet test tests/Games/NexusMods.Games.RedEngine.Tests  # Run RedEngine (CP2077) tests
 
-dotnet build -p:UseSystemExtractor=true  # Linux: use system 7z for extraction
+dotnet build -p:UseSystemExtractor=true  # Use system 7z for extraction
 ```
 
 Test traits used for filtering: `RequiresNetworking`, `FlakeyTest`, `RequiresApiKey`.
@@ -26,32 +28,40 @@ Test traits used for filtering: `RequiresNetworking`, `FlakeyTest`, `RequiresApi
 
 ### Solution Structure
 
-The solution (`NexusMods.App.sln`) has ~63 projects in `src/` and ~34 in `tests/`, organized into layers:
+The solution (`NexusMods.App.sln`) is organized into layers:
 
 - **`NexusMods.App`** — Entry point (WinExe). Wires up DI, starts Avalonia UI or CLI.
 - **`NexusMods.App.UI`** — Avalonia views and ViewModels (MVVM with ReactiveUI/R3).
 - **`NexusMods.App.Cli`** — CLI commands using `[Verb]`/`[Option]`/`[Injected]` attributes.
-- **`NexusMods.Backend`** — Core services: OS interop, file extraction, IPC.
+- **`NexusMods.Backend`** — Core services: Linux interop, file extraction, Steam game locator.
 - **`NexusMods.DataModel`** — MnemonicDB-based persistence, synchronizer service, loadout manager.
 - **`NexusMods.Library`** — Mod library management (add/remove/install from library).
 - **`NexusMods.Collections`** — Nexus Mods collection download and installation.
 - **`NexusMods.Sdk`** — Shared utilities and settings infrastructure.
-- **`NexusMods.Abstractions.*`** (~20 projects) — Interfaces and contracts for all subsystems.
-- **`NexusMods.Games.*`** — Game-specific implementations (one project per game).
-- **`NexusMods.Networking.*`** — HTTP downloads, Nexus API, Steam/GOG/Epic store integration.
+- **`NexusMods.Abstractions.*`** — Interfaces and contracts for all subsystems.
+- **`NexusMods.Games.RedEngine`** — Cyberpunk 2077 implementation (the only supported game).
+- **`NexusMods.Games.FileHashes`** — File hash database for game version detection (Steam only).
+- **`NexusMods.Networking.Steam`** — Steam store integration (the only supported store).
+- **`NexusMods.Networking.NexusWebApi`** — Nexus Mods API integration.
+- **`NexusMods.Networking.HttpDownloader`** — HTTP download infrastructure.
+
+### Supported Game & Store
+
+- **Game:** Cyberpunk 2077 (`NexusMods.Games.RedEngine`) — Steam App ID `1091500`
+- **Store:** Steam on Linux only. Game locator: `SteamLocator`.
+- **OS Interop:** `LinuxInterop` only (no Windows/macOS).
 
 ### Dependency Injection Pattern
 
 Every subsystem registers services through static extension methods in its own `Services.cs`:
 
 ```csharp
-public static IServiceCollection AddStardewValley(this IServiceCollection services)
+public static IServiceCollection AddRedEngineGames(this IServiceCollection services)
 {
     return services
-        .AddGame<StardewValley>()
-        .AddSingleton<SMAPIInstaller>()
-        .AddSMAPILoadoutItemModel()
-        .AddSettings<StardewValleySettings>();
+        .AddGame<Cyberpunk2077Game>()
+        .AddRedModSortOrderVarietyModel()
+        .AddRedModLoadoutGroupModel();
 }
 ```
 
@@ -82,7 +92,7 @@ Key concepts:
 
 Games implement `IGame` and `IGameData<T>` and register via `AddGame<T>()`. Each game provides:
 - `GameId`, `DisplayName`, `NexusModsGameId`
-- `StoreIdentifiers` (Steam, GOG, Xbox, Epic app IDs)
+- `StoreIdentifiers` (only `SteamAppIds` in this fork)
 - `LibraryItemInstallers` — ordered chain of installers to try
 - `DiagnosticEmitters` — health checks and warnings
 - `Synchronizer` — game-specific `ILoadoutSynchronizer`
@@ -132,3 +142,12 @@ Defined in `NexusMods.App.Cli` using attributes:
 - UTF-8, LF line endings, 4-space indentation (see `.editorconfig`)
 - Centralized NuGet versions in `Directory.Packages.props`
 - Global analyzer rules in `.globalconfig`: un-awaited tasks are errors (`CS4014`), missing switch cases are errors (`CS8509`)
+
+## What Was Removed (vs upstream)
+
+- **Games:** StardewValley, StardewValley.SMAPI, Larian (BG3), CreationEngine (Skyrim/Fallout), MountAndBlade2Bannerlord
+- **Stores:** Networking.GOG, Networking.EpicGameStore, Abstractions.GOG, Abstractions.EpicGameStore
+- **Locators:** GOGLocator, EGSLocator, XboxLocator, HeroicGOGLocator, WinePrefixWrappingLocator
+- **OS interop:** WindowsInterop, MacOSInterop (only LinuxInterop remains)
+- **CI:** `build-windows-pupnet.yaml`, `signing-test.yaml`, Windows jobs in `release.yaml`
+- **FileHashes:** GOG/EGS model definitions, attributes, and data import logic (only Steam remains)
