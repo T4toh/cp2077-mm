@@ -22,9 +22,7 @@ using NexusMods.Games.FOMOD;
 using NexusMods.Games.FOMOD.UI;
 using NexusMods.Games.Generic;
 using NexusMods.Library;
-using NexusMods.Networking.EpicGameStore;
 using NexusMods.Networking.GitHub;
-using NexusMods.Networking.GOG;
 using NexusMods.Networking.HttpDownloader;
 using NexusMods.Networking.NexusWebApi;
 using NexusMods.Networking.Steam;
@@ -61,7 +59,6 @@ public static class Services
         if (startupMode.RunAsMain)
         {
             services
-                .AddEpicGameStore()
                 .AddSingleton<TimeProvider>(_ => TimeProvider.System)
                 .AddDataModel()
                 .AddLibrary()
@@ -105,7 +102,6 @@ public static class Services
                 .AddCleanupVerbs()
                 .AddStatusVerbs()
                 .AddSteamCli()
-                .AddGOG()
                 .AddFileHashes()
                 .AddGitHubApi();
 
@@ -138,10 +134,6 @@ public static class Services
     private static IServiceCollection AddSupportedGames(this IServiceCollection services)
     {
         Games.RedEngine.Services.AddRedEngineGames(services);
-        Games.StardewValley.Services.AddStardewValley(services);
-        Games.Larian.BaldursGate3.Services.AddBaldursGate3(services);
-        Games.CreationEngine.Services.AddCreationEngine(services);
-        Games.MountAndBlade2Bannerlord.Services.AddMountAndBlade2Bannerlord(services);
         return services;
     }
 }

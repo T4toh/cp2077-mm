@@ -17,7 +17,8 @@ using NexusMods.Collections;
 using NexusMods.CrossPlatform;
 using NexusMods.FileExtractor;
 using NexusMods.Games.FileHashes;
-using NexusMods.Games.StardewValley;
+using NexusMods.Games.RedEngine;
+using NexusMods.Games.RedEngine.Cyberpunk2077;
 using NexusMods.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB;
@@ -79,7 +80,7 @@ public abstract class ALegacyDatabaseTest
             .AddFileSystem()
             .AddDataModel()
             .AddLibraryModels()
-            .AddStardewValley()
+            .AddRedEngineGames()
             .AddLoadoutAbstractions()
             .AddFileExtractors()
             .AddNexusModsCollections()
@@ -89,7 +90,7 @@ public abstract class ALegacyDatabaseTest
             })
             .AddSingleton<ITestOutputHelperAccessor>(_ => new Accessor { Output = _helper })
             .AddSingleton(mock)
-            .AddUniversalGameLocator<StardewValley>(Version.Parse("1.5.6"), stores: [GameStore.Steam, GameStore.GOG])
+            .AddUniversalGameLocator<Cyberpunk2077Game>(Version.Parse("2.21"), stores: [GameStore.Steam])
             .Validate();
     }
 

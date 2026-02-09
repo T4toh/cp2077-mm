@@ -3,10 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Cli;
-using NexusMods.Abstractions.EpicGameStore.Values;
 using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.GOG.DTOs;
-using NexusMods.Abstractions.GOG.Values;
 using NexusMods.Sdk.Hashes;
 using NexusMods.Abstractions.Steam.DTOs;
 using NexusMods.Abstractions.Steam.Values;
@@ -16,15 +13,12 @@ using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.MnemonicDB;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Storage;
-using NexusMods.Networking.EpicGameStore.DTOs.EgData;
 using NexusMods.Paths;
 using NexusMods.Paths.Utilities;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.ProxyConsole;
 using YamlDotNet.Serialization;
-using Build = NexusMods.Networking.EpicGameStore.DTOs.EgData.Build;
-using BuildId = NexusMods.Abstractions.GOG.Values.BuildId;
 using Manifest = NexusMods.Abstractions.Steam.DTOs.Manifest;
 using OperatingSystem = NexusMods.Abstractions.Games.FileHashes.Values.OperatingSystem;
 
@@ -71,9 +65,7 @@ public class BuildHashesDb : IAsyncDisposable
         try
         {
             await AddHashes(path);
-            await AddGogData(path);
             await AddSteamData(path);
-            await AddEpicGameStoreData(path);
             await AddVersions(path);
         }
         catch (Exception ex)
@@ -156,29 +148,8 @@ public class BuildHashesDb : IAsyncDisposable
                 Name = definition.Name,
                 OperatingSystem = os,
                 GameId = gameObject.NexusModsGameId.Value,
-                GOG = definition.GOG ?? [],
                 Steam = definition.Steam ?? [],
-                EpicBuildIds = definition.Epic ?? [],
             };
-
-            var productIds = gameObject.StoreIdentifiers.GOGProductIds.Select(id => ProductId.From((ulong)id));
-
-            // ?? is needed here because the parser 
-            foreach (var id in definition.GOG ?? [])
-            {
-                try
-                {
-                    var build = GogBuild
-                        .FindByVersionName(referenceDb, id)
-                        .Where(g => g.OperatingSystem == os)
-                        .Single(g => productIds.Contains(g.ProductId));
-                    tx.Add(versionDef, VersionDefinition.GogBuildsIds, build.Id);
-                }
-                catch (InvalidOperationException _)
-                {
-                    await _renderer.TextLine("Failed to find GOG build for {0} {1} {2}", gameName, osName, id);
-                }
-            }
 
             foreach (var id in definition.Steam ?? [])
             {
@@ -195,20 +166,6 @@ public class BuildHashesDb : IAsyncDisposable
                 }
             }
             
-            foreach (var id in definition.Epic ?? [])
-            {
-                try
-                {
-                    var manifest = EpicGameStoreBuild
-                        .FindByManifestHash(referenceDb, ManifestHash.FromUnsanitized(id))
-                        .Single();
-                    tx.Add(versionDef, VersionDefinition.EpicGameStoreBuilds, manifest.Id);
-                }
-                catch (InvalidOperationException _)
-                {
-                    await _renderer.TextLine("Failed to find Epic manifest for {0} {1} {2}", gameName, osName, id);
-                }
-            }
         }
 
         await tx.Commit();
@@ -293,107 +250,6 @@ public class BuildHashesDb : IAsyncDisposable
         await _renderer.TextLine("Imported {0} manifests with {1} paths", manifestCount, pathCounts);
     }
 
-    private async Task AddGogData(AbsolutePath path)
-    {
-        using var tx = _connection.BeginTransaction();
-        await _renderer.TextLine("Importing GOG data");
-        
-        var foundHashesPath = path / "json" / "stores" / "gog" / "found_hashes";
-        
-        var buildDetails = await LoadAllFromFolder<BuildDetails>(path / "json" / "stores" / "gog" / "build_details");
-        var foundHashes = await LoadAllFromFolder<Dictionary<string, Hash>>(path / "json" / "stores" / "gog" / "found_hashes");
-        var builds = await LoadAllFromFolder<NexusMods.Abstractions.GOG.DTOs.Build>(path / "json" / "stores" / "gog" / "builds");
-
-        var refDb = _connection.Db;
-        var pathCount = 0;
-        var buildCount = 0;
-        
-        Dictionary<string, EntityId> manifestEntities = new();
-        Dictionary<string, List<EntityId>> pathEntities = new(); 
-        
-        // First we insert all the manifests, we do this by using the manifestId from the filename
-        // and inserting all the hash/path pairs
-        foreach (var (manifestId, files) in foundHashes)
-        {
-            List<EntityId> pathIds = new();
-            foreach (var (relPath, hash) in files)
-            {
-                var refDbRelation = HashRelation.FindByXxHash3(refDb, hash).FirstOrDefault();
-                if (!refDbRelation.IsValid())
-                {
-                    throw new Exception("Hash not found in the reference database for path " + relPath + " and hash " + hash);
-                }
-
-                var relationId = EnsureHashPathRelation(tx, refDb, relPath, hash);
-                pathIds.Add(relationId);
-                pathCount++;
-            }
-            pathEntities[manifestId] = pathIds;
-
-            var manifestEnt = new GogManifest.New(tx)
-            {
-                ManifestId = manifestId,
-                FilesIds = pathIds,
-            };
-            manifestEntities[manifestId] = manifestEnt.Id;
-        }
-        
-        foreach (var (buildId, build) in builds)
-        {
-            try
-            {
-                var buildDetail = buildDetails[buildId];
-                var primaryDepot = buildDetail.Depots.First();
-                var primaryHashPaths = pathEntities[primaryDepot.Manifest];
-
-                var depotIds = new List<EntityId>();
-
-                foreach (var depot in buildDetail.Depots)
-                {
-                    var depotEnt = new GogDepot.New(tx)
-                    {
-                        ProductId = depot.ProductId,
-                        Size = depot.Size,
-                        CompressedSize = depot.CompressedSize,
-                        ManifestId = manifestEntities[depot.Manifest],
-                        Languages = depot.Languages,
-                    };
-                    depotIds.Add(depotEnt.Id);
-                }
-                
-                var os = build.OS switch
-                {
-                    "windows" => OperatingSystem.Windows,
-                    "osx" => OperatingSystem.MacOS,
-                    "linux" => OperatingSystem.Linux,
-                    _ => throw new Exception("Unknown OS"),
-                };
-
-                _ = new GogBuild.New(tx)
-                {
-                    BuildId = BuildId.From(ulong.Parse(buildId)),
-                    ProductId = build.ProductId,
-                    ManifestId = primaryDepot.Manifest,
-                    OperatingSystem = os,
-                    VersionName = build.VersionName,
-                    Public = build.Public,
-                    FilesIds = primaryHashPaths,
-                    DepotsIds = depotIds,
-                };
-            }
-            catch (Exception ex)
-            {
-                await _renderer.Error(ex, "Failed to import {0}: {1}", build.BuildId, ex.Message);
-            }
-            buildCount++;
-        }
-
-        var result = await tx.Commit();
-        RemapHashPaths(result);
-        
-        await _renderer.TextLine("Imported {0} builds with {1} paths", buildCount, pathCount);
-    }
-
     private async Task<Dictionary<string, T>> LoadAllFromFolder<T>(AbsolutePath folder)
     {
         var dict = new Dictionary<string, T>();
@@ -412,76 +268,6 @@ public class BuildHashesDb : IAsyncDisposable
         }
 
         return dict;
-    }
-
-    private async Task AddEpicGameStoreData(AbsolutePath path)
-    {
-        using var tx = _connection.BeginTransaction();
-        await _renderer.TextLine("Importing GOG data");
-
-        var buildsPath = path / "json" / "stores" / "egs" / "builds";
-
-        var metadata = new Dictionary<string, Build>();
-        var files = new Dictionary<string, BuildFile[]>();
-
-        foreach (var itemFolder in buildsPath.EnumerateDirectories())
-        {
-            var itemId = itemFolder.GetFileNameWithoutExtension();
-
-            foreach (var file in itemFolder.EnumerateFiles(KnownExtensions.Json))
-            {
-                await using var fs = file.Read();
-                if (file.FileName.EndsWith("_metadata.json"))
-                {
-                    metadata[itemId] = (await JsonSerializer.DeserializeAsync<Build>(fs, _jsonOptions))!;
-                }
-                if (file.FileName.EndsWith("_files.json"))
-                {
-                    files[itemId] = (await JsonSerializer.DeserializeAsync<BuildFile[]>(fs, _jsonOptions))!;
-                }
-            }
-        }
-
-        var buildCount = 0;
-        foreach (var (id, build) in metadata)
-        {
-            try
-            {
-                var buildFiles = files[id];
-                
-                var pathIds = new List<EntityId>();
-
-                foreach (var file in buildFiles)
-                {
-                    var relativePath = RelativePath.FromUnsanitizedInput(file.FileName);
-                    var relation = EnsureHashPathRelation(tx, _connection.Db, relativePath, Sha1Value.FromHex(file.FileHash));
-                    pathIds.Add(relation);
-                }
-
-                _ = new EpicGameStoreBuild.New(tx)
-                {
-                    BuildId = NexusMods.Abstractions.EpicGameStore.Values.BuildId.FromUnsanitized(build.Id),
-                    ManifestHash = ManifestHash.FromUnsanitized(build.ManifestHash),
-                    ItemId = ItemId.FromUnsanitized(id),
-                    AppName = build.AppName,
-                    BuildVersion = build.BuildVersion,
-                    LabelName = build.LabelName,
-                    CreatedAt = build.CreatedAt,
-                    UpdatedAt = build.UpdatedAt,
-                    FilesIds = pathIds,
-                };
-                
-                buildCount++;
-            }
-            catch (Exception ex)
-            {
-                await _renderer.Error(ex, "Failed to import {0}: {1}", id, ex.Message);
-            }
-        }
-        
-        var result = await tx.Commit();
-        await _renderer.TextLine("Imported {0} EGS builds", buildCount);
-        RemapHashPaths(result);
     }
 
     private void RemapHashPaths(ICommitResult result)

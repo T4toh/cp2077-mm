@@ -90,11 +90,7 @@ public static class DependencyInjectionHelper
             serviceCollection
                 .AddPathHashRelationModel()
                 .AddVersionDefinitionModel()
-                .AddGogBuildModel()
-                .AddGogDepotModel()
-                .AddGogManifestModel()
                 .AddSteamManifestModel()
-                .AddEpicGameStoreBuildModel()
                 .AddFileHashesQueriesSql()
                 .AddHashRelationModel()
                 .AddSingleton<IFileHashesService, StubbedFileHasherService>();

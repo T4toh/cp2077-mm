@@ -2,7 +2,6 @@ using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Sdk.EventBus;
-using NexusMods.Abstractions.GOG;
 using NexusMods.Abstractions.Library;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.NexusModsLibrary;
@@ -36,7 +35,6 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
     private readonly IGameDomainToGameIdMappingCache _cache;
 
     private readonly IServiceProvider _serviceProvider;
-    private readonly IClient _client;
     private readonly IEventBus _eventBus;
 
     /// <summary>
@@ -44,9 +42,8 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
     /// </summary>
     public NxmIpcProtocolHandler(
         IServiceProvider serviceProvider,
-        ILogger<NxmIpcProtocolHandler> logger, 
+        ILogger<NxmIpcProtocolHandler> logger,
         OAuth oauth,
-        IClient client,
         IGameDomainToGameIdMappingCache cache,
         ILoginManager loginManager)
     {
@@ -55,7 +52,6 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
 
         _logger = logger;
         _oauth = oauth;
-        _client = client;
         _cache = cache;
         _loginManager = loginManager;
     }
@@ -66,7 +62,7 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
         var parsed = NXMUrl.Parse(url);
 
         // NOTE(erri120): don't log OAuth callbacks, they contain sensitive information
-        if (parsed is not NXMOAuthUrl && parsed is not NXMGogAuthUrl) _logger.LogDebug("Received NXM URL: {Url}", parsed.ToString());
+        if (parsed is not NXMOAuthUrl) _logger.LogDebug("Received NXM URL: {Url}", parsed.ToString());
         else _logger.LogDebug("Received URL of type {Type}", parsed.GetType());
 
         var isUserLogged = await _loginManager.GetIsUserLoggedInAsync(cancel);
@@ -74,9 +70,6 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
         {
             case NXMOAuthUrl oauthUrl:
                 _oauth.AddUrl(oauthUrl);
-                break;
-            case NXMGogAuthUrl gogUrl:
-                _client.AuthUrl(gogUrl);
                 break;
             case NXMProtocolRegistrationCheck protocolRegistrationTest:
                 _eventBus.Send(new CliMessages.TestProtocolRegistration(protocolRegistrationTest.Id));

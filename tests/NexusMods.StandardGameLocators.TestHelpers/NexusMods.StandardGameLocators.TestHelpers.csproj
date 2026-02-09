@@ -1,7 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <ItemGroup>
-        <ProjectReference Include="..\..\src\NexusMods.Games.StardewValley\NexusMods.Games.StardewValley.csproj" />
-        <ProjectReference Include="..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
         <ProjectReference Include="..\..\src\NexusMods.DataModel\NexusMods.DataModel.csproj" />
     </ItemGroup>
 
