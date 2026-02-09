@@ -3,7 +3,6 @@
         <!-- Target WinExe so that a console isn't automatically created on Windows -->
         <OutputType>WinExe</OutputType>
         <ApplicationIcon>icon.ico</ApplicationIcon>
-        <ApplicationManifest>app.manifest</ApplicationManifest>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -15,14 +14,9 @@
         <ProjectReference Include="..\NexusMods.Abstractions.Logging\NexusMods.Abstractions.Logging.csproj" />
         <ProjectReference Include="..\NexusMods.Backend\NexusMods.Backend.csproj" />
         <ProjectReference Include="..\NexusMods.Games.AdvancedInstaller.UI\NexusMods.Games.AdvancedInstaller.UI.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.CreationEngine\NexusMods.Games.CreationEngine.csproj" />
         <ProjectReference Include="..\NexusMods.Games.FOMOD.UI\NexusMods.Games.FOMOD.UI.csproj" />
         <ProjectReference Include="..\NexusMods.Games.FOMOD\NexusMods.Games.FOMOD.csproj" />
         <ProjectReference Include="..\NexusMods.Games.Generic\NexusMods.Games.Generic.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.Larian\NexusMods.Games.Larian.csproj" />
-        <ProjectReference Include="..\NexusMods.Games.MountAndBlade2Bannerlord\NexusMods.Games.MountAndBlade2Bannerlord.csproj" />
-        <ProjectReference Include="..\NexusMods.Networking.EpicGameStore\NexusMods.Networking.EpicGameStore.csproj" />
-        <ProjectReference Include="..\\NexusMods.Networking.GOG\NexusMods.Networking.GOG.csproj" />
         <ProjectReference Include="..\\NexusMods.Networking.HttpDownloader\NexusMods.Networking.HttpDownloader.csproj" />
         <ProjectReference Include="..\\NexusMods.Networking.NexusWebApi\NexusMods.Networking.NexusWebApi.csproj" />
         <ProjectReference Include="..\\NexusMods.Networking.Steam\NexusMods.Networking.Steam.csproj" />
@@ -42,7 +36,6 @@
     </ItemGroup>
    
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Games.StardewValley\NexusMods.Games.StardewValley.csproj" />
         <ProjectReference Include="..\NexusMods.Games.RedEngine\NexusMods.Games.RedEngine.csproj" />
     </ItemGroup>
 
@@ -61,23 +54,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Update="uninstall-helper.ps1">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-            <DependentUpon>app.pupnet.conf</DependentUpon>
-        </None>
         <None Update="com.nexusmods.app.desktop">
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
-        <None Update="app.manifest">
-            <DependentUpon>app.pupnet.conf</DependentUpon>
-        </None>
         <None Update="com.nexusmods.app.metainfo.xml">
-            <DependentUpon>app.pupnet.conf</DependentUpon>
-        </None>
-        <None Update="sign.bat">
-            <DependentUpon>app.pupnet.conf</DependentUpon>
-        </None>
-        <None Update="uninstall.bat">
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
         <None Update="icon.svg">
@@ -88,8 +68,4 @@
         </None>
     </ItemGroup>
 
-    <Target Name="CopyCustomContentOnPublish" AfterTargets="Publish"
-            Condition="'$(RuntimeIdentifier)' == 'win-x64' Or '$(RuntimeIdentifier)' == 'win-x86' Or '$(RuntimeIdentifier)' == 'win'">
-        <Copy SourceFiles="uninstall.bat" DestinationFolder="$(PublishDir)" />
-    </Target>
 </Project>

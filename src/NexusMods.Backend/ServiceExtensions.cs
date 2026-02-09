@@ -30,37 +30,7 @@ public static class ServiceExtensions
         this IServiceCollection serviceCollection,
         GameLocatorSettings? settings = null)
     {
-        OSInformation.Shared.SwitchPlatform(
-            onWindows: () =>
-            {
-                serviceCollection.AddSingleton<IGameLocator, SteamLocator>();
-                serviceCollection.AddSingleton<IGameLocator, GOGLocator>();
-                serviceCollection.AddSingleton<IGameLocator, EGSLocator>();
-
-                if (settings?.EnableXboxGamePass ?? false)
-                    serviceCollection.AddSingleton<IGameLocator, XboxLocator>();
-            },
-            onLinux: () =>
-            {
-                serviceCollection.AddSingleton<IGameLocator>(serviceProvider => new SteamLocator(serviceProvider.GetServices<IGameData>(), serviceProvider.GetRequiredService<ILoggerFactory>(), serviceProvider.GetRequiredService<IFileSystem>(), registry: null));
-                serviceCollection.AddSingleton<IGameLocator, HeroicGOGLocator>();
-
-                serviceCollection.AddSingleton<IGameLocator>(serviceProvider =>
-                {
-                    var locatorFactories = new WinePrefixWrappingLocator.LocatorFactory[]
-                    {
-                        (provider, loggerFactory, fileSystem, registry) => new GOGLocator(provider.GetServices<IGameData>(), loggerFactory, fileSystem, registry),
-                        (provider, loggerFactory, fileSystem, registry) => new EGSLocator(provider.GetServices<IGameData>(), loggerFactory, fileSystem, registry),
-                    };
-
-                    return new WinePrefixWrappingLocator(serviceProvider, locatorFactories);
-                });
-            },
-            onOSX: () =>
-            {
-                serviceCollection.AddSingleton<IGameLocator, SteamLocator>();
-            }
-        );
+        serviceCollection.AddSingleton<IGameLocator>(serviceProvider => new SteamLocator(serviceProvider.GetServices<IGameData>(), serviceProvider.GetRequiredService<ILoggerFactory>(), serviceProvider.GetRequiredService<IFileSystem>(), registry: null));
 
         return serviceCollection;
     }
@@ -84,12 +54,7 @@ public static class ServiceExtensions
             .AddSingleton(os)
             .AddSingleton<IProcessRunner, ProcessRunner>();
 
-        serviceCollection = os.MatchPlatform(
-            ref serviceCollection,
-            onWindows: static (ref IServiceCollection value) => value.AddSingleton<IOSInterop, WindowsInterop>(),
-            onLinux: static (ref IServiceCollection value) => value.AddSingleton<IOSInterop, LinuxInterop>(),
-            onOSX: static (ref IServiceCollection value) => value.AddSingleton<IOSInterop, MacOSInterop>()
-        );
+        serviceCollection = serviceCollection.AddSingleton<IOSInterop, LinuxInterop>();
 
         return serviceCollection;
     }

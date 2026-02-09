@@ -9,13 +9,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NexusMods.Abstractions.EpicGameStore\NexusMods.Abstractions.EpicGameStore.csproj" />
         <ProjectReference Include="..\NexusMods.Abstractions.Steam\NexusMods.Abstractions.Steam.csproj" />
-        <ProjectReference Include="..\NexusMods.Abstractions.GOG\NexusMods.Abstractions.GOG.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Attributes\EpicGameStore\" />
     </ItemGroup>
 
 </Project>

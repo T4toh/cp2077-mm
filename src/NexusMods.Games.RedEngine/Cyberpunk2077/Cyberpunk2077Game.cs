@@ -27,8 +27,6 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>
     public StoreIdentifiers StoreIdentifiers { get; } = new(GameId)
     {
         SteamAppIds = [1091500u],
-        GOGProductIds = [2093619782L, 1423049311L],
-        EGSCatalogItemId = ["5beededaad9743df90e8f07d92df153f"],
     };
 
     public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<Cyberpunk2077Game>("NexusMods.Games.RedEngine.Resources.Cyberpunk2077.thumbnail.webp");

@@ -20,7 +20,7 @@ using NexusMods.CrossPlatform;
 using NexusMods.DataModel.SchemaVersions;
 using NexusMods.FileExtractor;
 using NexusMods.Games.FileHashes;
-using NexusMods.Games.StardewValley;
+using NexusMods.Games.RedEngine;
 using NexusMods.Hashing.xxHash3;
 using NexusMods.MnemonicDB;
 using NexusMods.MnemonicDB.Abstractions;
@@ -83,7 +83,7 @@ public abstract class AArchivedDatabaseTest
             .AddFileSystem()
             .AddDataModel()
             .AddLibraryModels()
-            .AddStardewValley()
+            .AddRedEngineGames()
             .AddLoadoutAbstractions()
             .AddFileExtractors()
             .AddNexusModsCollections()

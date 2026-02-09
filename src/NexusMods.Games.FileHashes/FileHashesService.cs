@@ -5,10 +5,8 @@ using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NexusMods.Abstractions.EpicGameStore.Values;
 using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Games.FileHashes.Models;
-using NexusMods.Abstractions.GOG.Values;
 using NexusMods.Sdk.Settings;
 using NexusMods.Abstractions.Steam.Values;
 using NexusMods.Games.FileHashes.DTOs;
@@ -22,7 +20,6 @@ using NexusMods.Sdk.Games;
 using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.NexusModsApi;
-using BuildId = NexusMods.Abstractions.GOG.Values.BuildId;
 using Connection = NexusMods.MnemonicDB.Connection;
 
 namespace NexusMods.Games.FileHashes;
@@ -324,63 +321,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     {
         var (gameStore, locatorIds) = locatorIdsWithGameStore;
 
-        if (gameStore == GameStore.GOG)
-        {
-            HashSet<GogBuild.ReadOnly> gogBuilds = [];
-            HashSet<ProductId> gogProducts = [];
-            Dictionary<EntityId, GogManifest.ReadOnly> gogManifests = [];
-            
-            // So first we find all the valid build Ids, and then assume that everything else is a product Id
-            foreach (var id in locatorIds)
-            {
-                if (!ulong.TryParse(id.Value, out var parsedId))
-                    continue;
-
-                var gogId = BuildId.From(parsedId);
-
-                if (GogBuild.FindByBuildId(Current, gogId).TryGetFirst(out var firstBuild))
-                {
-                    gogBuilds.Add(firstBuild);
-                    continue;
-                }
-                
-                var productId = ProductId.From(parsedId);
-                gogProducts.Add(productId);
-            }
-            
-            // Now we emit all the files from the build products, and then also from any secondary products
-            foreach (var build in gogBuilds)
-            {
-                foreach (var depot in build.Depots)
-                {
-                    // We only care about the productId of the build, and the productIds of the secondary products
-                    if (!(depot.ProductId == build.ProductId || gogProducts.Contains(depot.ProductId)))
-                        continue;
-                    
-                    // If there is a language setting for the files, they have to be the same as the default language
-                    if (!(depot.Languages.Count == 0 || depot.Languages.Contains(DefaultLanguage)))
-                        continue;
-
-                    gogManifests[depot.Manifest.Id] = depot.Manifest;
-                }
-            }
-
-            foreach (var (_ , manifest) in gogManifests)
-            {
-                foreach (var file in manifest.Files)
-                {
-                    yield return new GameFileRecord
-                    {
-                        Path = (LocationId.Game, file.Path),
-                        Size = file.Hash.Size,
-                        MinimalHash = file.Hash.MinimalHash,
-                        Hash = file.Hash.XxHash3,
-                    };
-                }
-            }
-            
-        }
-        else if (gameStore == GameStore.Steam)
+        if (gameStore == GameStore.Steam)
         {
             foreach (var id in locatorIds)
             {
@@ -392,30 +333,6 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                 if (!SteamManifest.FindByManifestId(Current, manifestId).TryGetFirst(out var firstManifest))
                     continue;
 
-                foreach (var file in firstManifest.Files)
-                {
-                    yield return new GameFileRecord
-                    {
-                        Path = (LocationId.Game, file.Path),
-                        Size = file.Hash.Size,
-                        MinimalHash = file.Hash.MinimalHash,
-                        Hash = file.Hash.XxHash3,
-                    };
-                }
-            }
-        }
-        else if (gameStore == GameStore.EGS)
-        {
-            foreach (var manifestId in locatorIds)
-            {
-                var egManifestId = ManifestHash.FromUnsanitized(manifestId.Value);
-                
-                if (!EpicGameStoreBuild.FindByManifestHash(Current, egManifestId).TryGetFirst(out var firstManifest))
-                {
-                    _logger.LogWarning("No EGS manifest found for {ManifestId}", egManifestId.Value);
-                    continue;
-                }
-                
                 foreach (var file in firstManifest.Files)
                 {
                     yield return new GameFileRecord
@@ -457,46 +374,7 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         var (gameStore, locatorIds) = locatorIdsWithGameStore;
 
         versionDefinition = default(VersionDefinition.ReadOnly);
-        if (gameStore == GameStore.GOG)
-        {
-            List<GogBuild.ReadOnly> gogBuilds = [];
-
-            foreach (var gogId in locatorIds)
-            {
-                if (!ulong.TryParse(gogId.Value, out var parsedId))
-                {
-                    _logger.LogWarning("Unable to parse `{Raw}` as ulong", gogId);
-                    return false;
-                }
-
-                var hasBuild = GogBuild.FindByBuildId(Current, BuildId.From(parsedId)).TryGetFirst(out var gogBuild);
-                if (hasBuild) gogBuilds.Add(gogBuild);
-            }
-
-            if (gogBuilds.Count == 0)
-            {
-                _logger.LogDebug("No GOG builds found");
-                return false;
-            }
-
-            var hasVersionDefinition = VersionDefinition.All(_currentDb!.Db)
-                .Select(version =>
-                {
-                    var matchingIdCount = gogBuilds.Count(g => version.GogBuildsIds.Contains(g));
-                    return (matchingIdCount, version);
-                })
-                .Where(row => row.matchingIdCount > 0)
-                .OrderByDescending(row => row.matchingIdCount)
-                .Select(t => t.version)
-                .TryGetFirst(out versionDefinition);
-
-            if (!hasVersionDefinition)
-            {
-                _logger.LogDebug("No matching version definition found");
-                return false;
-            }
-        }
-        else if (gameStore == GameStore.Steam)
+        if (gameStore == GameStore.Steam)
         {
             List<SteamManifest.ReadOnly> steamManifests = [];
             
@@ -535,30 +413,6 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                 return false;
             }
         }
-        else if (gameStore == GameStore.EGS)
-        {
-            var versionsByManifestHash = VersionDefinition.All(_currentDb!.Db)
-                .SelectMany(version =>
-                    {
-                        if (VersionDefinition.EpicGameStoreBuildsIds.IsIn(version)) 
-                            return version.EpicGameStoreBuilds.Select(build => (Version: version, Build: build));
-                        return [];
-                    }
-                )
-                .ToLookup(row => row.Build.ManifestHash);
-
-            var builds = locatorIds
-                .Select(locatorString => ManifestHash.FromUnsanitized(locatorString.Value))
-                .SelectMany(manifestHash => versionsByManifestHash[manifestHash].Select(row => (row.Version, manifestHash)));
-
-            if (builds.TryGetFirst(out var build))
-            {
-                versionDefinition = build.Version;
-                return true;
-            }
-
-            return false;
-        }
         else
         {
             _logger.LogDebug("No way to get game version for: {Store}", gameStore);
@@ -583,21 +437,11 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
 
     public LocatorId[] GetLocatorIdsForVersionDefinition(GameStore gameStore, VersionDefinition.ReadOnly versionDefinition)
     {
-        if (gameStore == GameStore.GOG)
-        {
-            return versionDefinition.GogBuilds.Select(build => LocatorId.From(build.BuildId!.Value.ToString())).ToArray();
-        }
-
         if (gameStore == GameStore.Steam)
         {
             return versionDefinition.SteamManifests.Select(manifest => LocatorId.From(manifest.ManifestId.ToString())).ToArray();
         }
         
-        if (gameStore == GameStore.EGS)
-        {
-            return versionDefinition.EpicGameStoreBuilds.Select(build => LocatorId.From(build.ManifestHash.Value)).ToArray();
-        }
-
         throw new NotSupportedException("No way to get common IDs for: " + gameStore);
     }
 

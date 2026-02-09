@@ -29,32 +29,12 @@ public partial class VersionDefinition : IModelDefinition
     public static readonly NexusModsGameIdAttribute GameId = new(Namespace, nameof(GameId)) { IsIndexed = true };
     
     /// <summary>
-    /// The gog build ids for this version
-    /// </summary>
-    public static readonly StringsAttribute GOG = new(Namespace, nameof(GOG)) { IsIndexed = true };
-    
-    /// <summary>
     /// The associated Steam ManifestIDs for this version
     /// </summary>
     public static readonly StringsAttribute Steam = new(Namespace, nameof(Steam)) { IsIndexed = true };
-    
+
     /// <summary>
-    /// The associated Epic ManifestIDs for this version
-    /// </summary>
-    public static readonly StringsAttribute EpicBuildIds = new(Namespace, nameof(EpicBuildIds)) { IsIndexed = true };
-    
-    /// <summary>
-    /// The resolved gog builds for this version (if they exist)
-    /// </summary>
-    public static readonly ReferencesAttribute<GogBuild> GogBuilds = new(Namespace, nameof(GogBuilds));
-    
-    /// <summary>
-    /// The resolved steam manfiests builds for this version (if they exist)
+    /// The resolved steam manifests builds for this version (if they exist)
     /// </summary>
     public static readonly ReferencesAttribute<SteamManifest> SteamManifests = new(Namespace, nameof(SteamManifests));
-    
-    /// <summary>
-    /// The resolved Epic manfiests builds for this version (if they exist)
-    /// </summary>
-    public static readonly ReferencesAttribute<EpicGameStoreBuild> EpicGameStoreBuilds = new(Namespace, nameof(EpicGameStoreBuilds));
 }
