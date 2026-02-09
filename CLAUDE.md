@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Fork de NexusMods.App enfocado exclusivamente en **Cyberpunk 2077** vía **Steam en Linux**. Construido con C#/.NET 9 y Avalonia UI. Gestiona instalación de mods, orden de carga, conflictos de archivos y sincronización con el directorio del juego.
+Fork de NexusMods.App enfocado exclusivamente en **Cyberpunk 2077** vía **Steam en Linux**. Construido con C#/.NET 10 y Avalonia UI. Gestiona instalación de mods, orden de carga, conflictos de archivos y sincronización con el directorio del juego.
 
 El repositorio upstream fue discontinuado. Este fork eliminó soporte para otros juegos (Stardew Valley, BG3, Skyrim/Fallout, M&B Bannerlord), tiendas (GOG, Epic Games Store, Xbox) y plataformas (Windows, macOS).
 
@@ -138,7 +138,7 @@ Defined in `NexusMods.App.Cli` using attributes:
 
 ## Code Style
 
-- .NET 9, C# with nullable reference types enabled, implicit usings
+- .NET 10, C# with nullable reference types enabled, implicit usings
 - UTF-8, LF line endings, 4-space indentation (see `.editorconfig`)
 - Centralized NuGet versions in `Directory.Packages.props`
 - Global analyzer rules in `.globalconfig`: un-awaited tasks are errors (`CS4014`), missing switch cases are errors (`CS8509`)

@@ -35,7 +35,7 @@ internal class GameLocationsService : IGameLocationsService
         CancellationToken outerToken = default)
     {
         var topLevelLocations = installation.Locations.GetTopLevelLocations();
-        var enumerable = topLevelLocations.Where(kv => kv.Value.DirectoryExists()).SelectMany(kv => kv.Value.EnumerateFiles()).ToAsyncEnumerable();
+        var enumerable = topLevelLocations.Where(kv => kv.Value.DirectoryExists()).SelectMany(kv => kv.Value.EnumerateFiles());
 
         var seenPaths = new ConcurrentDictionary<GamePath, bool>();
         var newFiles = new ConcurrentDictionary<GamePath, IndexFileResult>();

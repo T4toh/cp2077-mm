@@ -32,22 +32,18 @@ Mod {Mod} has been made obsolete:
 
 file class MyDiagnosticLoadoutEmitter : ILoadoutDiagnosticEmitter
 {
-    public IAsyncEnumerable<Diagnostic> Diagnose(
+    public async IAsyncEnumerable<Diagnostic> Diagnose(
         Loadout.ReadOnly loadout,
         CancellationToken cancellationToken)
     {
-        var res = new List<Diagnostic>();
-
         var someMod = LoadoutItem.FindByLoadout(loadout.Db, loadout).First();
 
         // this "Create" method was generated for you
-        res.Add(Diagnostics.CreateModCompatabilityObsolete(
-                ModName: someMod.Name,
-                ReasonPhrase: "it's incompatible"
-            )
+        yield return Diagnostics.CreateModCompatabilityObsolete(
+            ModName: someMod.Name,
+            ReasonPhrase: "it's incompatible"
         );
 
-        // alternatively, use the "yield"/generator pattern
-        return res.ToAsyncEnumerable();
+        await Task.CompletedTask;
     }
 }

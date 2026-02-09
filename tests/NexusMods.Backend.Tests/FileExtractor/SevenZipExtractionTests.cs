@@ -85,10 +85,11 @@ public class SevenZipExtractionTests : AFileExtractorTest
 
         await act.Should().NotThrowAsync();
 
-        var actual = await tempFolder.Path.EnumerateFiles()
-            .ToAsyncEnumerable()
-            .SelectAwait(async f => (f.RelativeTo(dest), await f.XxHash3Async()))
-            .ToArrayAsync();
+        var files = tempFolder.Path.EnumerateFiles();
+        var results = new List<(RelativePath, Hash)>();
+        foreach (var f in files)
+            results.Add((f.RelativeTo(dest), await f.XxHash3Async()));
+        var actual = results.ToArray();
 
         (RelativePath, Hash)[] expected = [
             ("deepFolder/deepFolder2/deepFolder3/deepFolder4/deepFile.txt", (Hash)0x3F0AB4D495E35A9A),
