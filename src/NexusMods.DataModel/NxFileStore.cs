@@ -181,10 +181,13 @@ public class NxFileStore : IFileStore, IReadOnlyStreamSource
         enumerable = enumerable.DistinctBy(x => x.Hash);
         if (deduplicate)
         {
-            filesToBackup = await enumerable
-                .ToAsyncEnumerable()
-                .WhereAwait(async x => !(await HaveFile(x.Hash)))
-                .ToDictionaryAsync(fileToBackUp => fileToBackUp.Hash, fileToBackUp => (fileToBackUp, Stream.Null), cancellationToken: token);
+            var filtered = new Dictionary<Hash, (ArchivedFileEntry, Stream)>();
+            foreach (var x in enumerable)
+            {
+                if (!await HaveFile(x.Hash))
+                    filtered[x.Hash] = (x, Stream.Null);
+            }
+            filesToBackup = filtered;
         }
         else
         {

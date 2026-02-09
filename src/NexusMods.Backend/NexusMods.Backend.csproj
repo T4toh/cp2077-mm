@@ -15,7 +15,6 @@
         <PackageReference Include="SharpZipLib" />
         <PackageReference Include="TransparentValueObjects" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <PackageReference Include="NexusMods.MnemonicDB.SourceGenerator" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-        <PackageReference Include="System.Linq.Async" />
     </ItemGroup>
     
     <ItemGroup>

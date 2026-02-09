@@ -71,7 +71,9 @@ internal class LocalMappingCache : IGameDomainToGameIdMappingCache
 
             gameIdToDomain = pairs.DistinctBy(tuple => tuple.Id).ToFrozenDictionary(tuple => tuple.Id, tuple => tuple.Domain);
             gameDomainToId = pairs.DistinctBy(tuple => tuple.Domain).ToFrozenDictionary(tuple => tuple.Domain, tuple => tuple.Id);
-            Debug.Assert(gameIdToDomain.Count == gameDomainToId.Count);
+
+            if (gameIdToDomain.Count != gameDomainToId.Count)
+                logger.LogWarning("Game ID count ({IdCount}) differs from domain count ({DomainCount}) in games.json", gameIdToDomain.Count, gameDomainToId.Count);
             return true;
         }
         catch (Exception e)
