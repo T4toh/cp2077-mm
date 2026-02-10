@@ -29,6 +29,15 @@ public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
                         }
                     )
                     .DisposeWith(d);
+
+                this.WhenAnyValue(view => view.ViewModel!.WinePrefixStatus)
+                    .Subscribe(vm =>
+                        {
+                            WinePrefixPanel.ViewModel = vm;
+                            WinePrefixPanel.IsVisible = vm is not null;
+                        }
+                    )
+                    .DisposeWith(d);
             }
         );
     }

@@ -1,0 +1,96 @@
+<reactiveUi:ReactiveUserControl
+    x:Class="NexusMods.App.UI.Pages.MyGames.WinePrefix.WinePrefixStatusView"
+    x:TypeArguments="local:IWinePrefixStatusViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactiveUi="http://reactiveui.net"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.MyGames.WinePrefix"
+    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+    d:DesignHeight="300"
+    d:DesignWidth="600"
+    mc:Ignorable="d">
+
+    <Border x:Name="WinePrefixBorder"
+            Padding="16"
+            CornerRadius="8"
+            BorderThickness="1"
+            BorderBrush="{StaticResource StrokeTranslucentWeakBrush}">
+
+        <Expander x:Name="WinePrefixExpander"
+                  HorizontalAlignment="Stretch">
+
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <icons:UnifiedIcon x:Name="StatusIcon" Size="20" />
+                    <TextBlock x:Name="HeaderText"
+                               Text="Requisitos del prefijo Wine"
+                               Theme="{StaticResource HeadingXSSemiTheme}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Expander.Header>
+
+            <StackPanel Spacing="12" Margin="0,12,0,0">
+
+                <!-- Protontricks -->
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <icons:UnifiedIcon x:Name="ProtontricksIcon" Size="16" />
+                    <TextBlock x:Name="ProtontricksText"
+                               Theme="{StaticResource BodyMDNormalTheme}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- d3dcompiler_47 -->
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <icons:UnifiedIcon x:Name="D3dCompilerIcon" Size="16" />
+                    <TextBlock x:Name="D3dCompilerText"
+                               Theme="{StaticResource BodyMDNormalTheme}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- vcrun2022 -->
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <icons:UnifiedIcon x:Name="VcRunIcon" Size="16" />
+                    <TextBlock x:Name="VcRunText"
+                               Theme="{StaticResource BodyMDNormalTheme}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- DLL Overrides -->
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <icons:UnifiedIcon x:Name="DllOverridesIcon" Size="16" />
+                    <TextBlock x:Name="DllOverridesText"
+                               Theme="{StaticResource BodyMDNormalTheme}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Instructions sections -->
+                <Border x:Name="InstructionsBorder"
+                        Background="{StaticResource SurfaceTranslucentMidBrush}"
+                        CornerRadius="4"
+                        Padding="12"
+                        Margin="0,4,0,0">
+                    <StackPanel Spacing="8">
+                        <TextBlock x:Name="DllOverridesInstructionsText"
+                                   Theme="{StaticResource BodySMNormalTheme}"
+                                   Foreground="{StaticResource NeutralSubduedBrush}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock x:Name="WinetricksInstructionsText"
+                                   Theme="{StaticResource BodySMNormalTheme}"
+                                   Foreground="{StaticResource NeutralSubduedBrush}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Refresh button -->
+                <Button x:Name="RefreshButton"
+                        Content="Verificar de nuevo"
+                        HorizontalAlignment="Left"
+                        Margin="0,4,0,0" />
+
+            </StackPanel>
+        </Expander>
+    </Border>
+
+</reactiveUi:ReactiveUserControl>

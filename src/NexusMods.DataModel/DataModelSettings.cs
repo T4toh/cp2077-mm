@@ -29,6 +29,11 @@ public record DataModelSettings : ISettings
     /// </summary>
     public ConfigurablePath[] ArchiveLocations { get; set; } = [];
 
+    /// <summary>
+    /// Folder where original downloaded files (zip, rar, 7z) are preserved.
+    /// </summary>
+    public ConfigurablePath DownloadsFolder { get; set; }
+
     /// <inheritdoc/>
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {
@@ -67,6 +72,7 @@ public record DataModelSettings : ISettings
             ArchiveLocations = [
                 new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/{DataModelFolderName}/Archives"),
             ],
+            DownloadsFolder = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/Downloads"),
         };
     }
 
