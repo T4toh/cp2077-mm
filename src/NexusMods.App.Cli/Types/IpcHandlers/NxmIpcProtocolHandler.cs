@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Sdk.EventBus;
 using NexusMods.Abstractions.Library;
-using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
@@ -14,8 +13,6 @@ using NexusMods.Networking.NexusWebApi.Auth;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Games;
-using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.Tracking;
 
 namespace NexusMods.CLI.Types.IpcHandlers;
@@ -32,7 +29,6 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
     private readonly ILogger<NxmIpcProtocolHandler> _logger;
     private readonly ILoginManager _loginManager;
     private readonly OAuth _oauth;
-    private readonly IGameDomainToGameIdMappingCache _cache;
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IEventBus _eventBus;
@@ -44,7 +40,6 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
         IServiceProvider serviceProvider,
         ILogger<NxmIpcProtocolHandler> logger,
         OAuth oauth,
-        IGameDomainToGameIdMappingCache cache,
         ILoginManager loginManager)
     {
         _serviceProvider = serviceProvider;
@@ -52,7 +47,6 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
 
         _logger = logger;
         _oauth = oauth;
-        _cache = cache;
         _loginManager = loginManager;
     }
 
@@ -96,18 +90,9 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
             return;
         }
         
-        var domain = GameDomain.From(collectionUrl.Game);
         var nexusModsLibrary = _serviceProvider.GetRequiredService<NexusModsLibrary>();
         var library = _serviceProvider.GetRequiredService<ILibraryService>();
         var connection = _serviceProvider.GetRequiredService<IConnection>();
-
-        var game = GetManagedGameFor(domain);
-        if (game is null)
-        {
-            _logger.LogWarning("Collection add aborted: {Game} is not a managed game", collectionUrl.Game);
-            _eventBus.Send(new CliMessages.CollectionAddFailed(new FailureReason.GameNotManaged(collectionUrl.Game)));
-            return;
-        }
                     
         var temporaryFileManager = _serviceProvider.GetRequiredService<TemporaryFileManager>();
         _eventBus.Send(new CliMessages.CollectionAddStarted());
@@ -173,15 +158,6 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
             return;
         }
         
-        var domain = GameDomain.From(modUrl.Game);
-        var game = GetManagedGameFor(domain);
-        if (game is null)
-        {
-            _logger.LogWarning("Mod download aborted: {Game} is not a managed game", modUrl.Game);
-            _eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.GameNotManaged(modUrl.Game)));
-            return;
-        }
-
         var library = _serviceProvider.GetRequiredService<ILibraryService>();
         var temporaryFileManager = _serviceProvider.GetRequiredService<TemporaryFileManager>();
 
@@ -209,27 +185,6 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
             _eventBus.Send(new CliMessages.ModDownloadFailed(new FailureReason.Unknown(e)));
             throw;
         }
-    }
-    
-    
-    private GameInstallation? GetManagedGameFor(GameDomain domain)
-    {
-        var gameRegistry = _serviceProvider.GetRequiredService<IGameRegistry>();
-        var connection = _serviceProvider.GetRequiredService<IConnection>();
-        var syncService = _serviceProvider.GetRequiredService<ISynchronizerService>();
-
-        var gameId = _cache[domain];
-        foreach (var installedGame in gameRegistry.LocateGameInstallations())
-        {
-            if (installedGame.Game.NexusModsGameId != gameId) continue;
-            if (syncService.TryGetLastAppliedLoadout(installedGame, out _)) return installedGame;
-
-            var activeLoadouts = Loadout.All(connection.Db).Where(ld => ld.Game.NexusModsGameId == installedGame.Game.NexusModsGameId);
-            if (!activeLoadouts.Any()) continue;
-            return installedGame;
-        }
-
-        return null;
     }
 }
 

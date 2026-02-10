@@ -15,8 +15,7 @@
     xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
     xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
     xmlns:panels="clr-namespace:Avalonia.Labs.Panels;assembly=Avalonia.Labs.Panels"
-    xmlns:pageHeader="clr-namespace:NexusMods.App.UI.Controls.PageHeader"
-    xmlns:sdk="clr-namespace:NexusMods.UI.Sdk;assembly=NexusMods.UI.Sdk">
+    xmlns:pageHeader="clr-namespace:NexusMods.App.UI.Controls.PageHeader">
 
     <Design.DataContext>
         <myGames:MyGamesDesignViewModel />
@@ -86,61 +85,6 @@
 
             <!-- Wine Prefix Status Panel -->
             <reactiveUi:ViewModelViewHost x:Name="WinePrefixPanel" />
-
-            <Separator
-                Background="{StaticResource StrokeTranslucentWeakBrush}"
-                Margin="0" />
-
-            <Border x:Name="AllCurrentlySupportedGames"
-                    Padding="0"
-                    BorderThickness="0"
-                    BorderBrush="{StaticResource StrokeTranslucentWeakBrush}"
-                    CornerRadius="8">
-
-                <StackPanel Spacing="24">
-
-                    <TextBlock Text="Other supported games"
-                               Theme="{StaticResource HeadingXSSemiTheme}"
-                               Foreground="{StaticResource NeutralStrongBrush}" />
-
-                    <controls:EmptyState x:Name="SupportedGamesEmptyState"
-                                         Margin="0"
-                                         HorizontalAlignment="Left">
-
-                        <controls:EmptyState.Styles>
-                            <Style Selector="Border#EmptyStateBorder">
-                                <Setter Property="Margin" Value="0" />
-                            </Style>
-                        </controls:EmptyState.Styles>
-
-                        <controls:EmptyState.Subtitle>
-                            <TextBlock Text="No games found"
-                                       Theme="{StaticResource BodyXLNormalTheme}"
-                                       Foreground="{StaticResource NeutralSubduedBrush}"
-                                       TextAlignment="Left"
-                                       TextWrapping="Wrap"
-                                       Margin="0,16,0,0" />
-                        </controls:EmptyState.Subtitle>
-
-                        <ItemsControl x:Name="SupportedGamesItemsControl">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <panels:FlexPanel
-                                        Wrap="Wrap"
-                                        RowSpacing="12"
-                                        ColumnSpacing="12" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="sdk:IViewModelInterface">
-                                    <reactiveUi:ViewModelViewHost ViewModel="{CompiledBinding .}" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </controls:EmptyState>
-
-                </StackPanel>
-            </Border>
 
         </StackPanel>
 

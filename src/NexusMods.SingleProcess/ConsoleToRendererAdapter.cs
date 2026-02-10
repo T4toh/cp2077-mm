@@ -1,23 +1,19 @@
-using System.CommandLine;
-using System.CommandLine.IO;
+using System.Text;
 using NexusMods.Sdk.ProxyConsole;
 
 namespace NexusMods.SingleProcess;
 
-internal class ConsoleToRendererAdapter(IRenderer renderer) : IConsole
+/// <summary>
+/// A TextWriter that delegates to an IRenderer, replacing the old IConsole/IStandardStreamWriter
+/// adapters removed in System.CommandLine 2.0.2.
+/// </summary>
+internal class RendererTextWriter(IRenderer renderer) : TextWriter
 {
-    public IStandardStreamWriter Out { get; } = new StreamWriterAdapter(renderer);
-    public bool IsOutputRedirected => true;
-    public IStandardStreamWriter Error { get; } = new StreamWriterAdapter(renderer);
-    public bool IsErrorRedirected => true;
-    public bool IsInputRedirected => true;
-}
+    public override Encoding Encoding => Encoding.UTF8;
 
-internal class StreamWriterAdapter(IRenderer renderer) : IStandardStreamWriter
-{
-    public void Write(string? value)
+    public override void Write(string? value)
     {
-        renderer.RenderAsync(new Text {Template = value ?? string.Empty})
+        renderer.RenderAsync(new Text { Template = value ?? string.Empty })
             .AsTask()
             .Wait(CancellationToken.None);
     }

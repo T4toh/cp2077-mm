@@ -1,3 +1,4 @@
+using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,19 +9,17 @@ using NexusMods.Sdk.ProxyConsole;
 namespace NexusMods.SingleProcess;
 
 /// <summary>
-/// Command handler for linking a verb definition to the parser
+/// Command handler for linking a verb definition to the parser.
+/// Extends AsynchronousCommandLineAction (replaces ICommandHandler removed in System.CommandLine 2.0.2).
 /// </summary>
-/// <param name="getters"></param>
-/// <param name="methodInfo"></param>
-internal class CommandHandler(IServiceProvider serviceProvider, List<Func<InvocationContext, object?>> getters, MethodInfo methodInfo)
-    : ICommandHandler
+internal class CommandHandler(
+    IServiceProvider serviceProvider,
+    List<Func<ParseResult, CancellationToken, object?>> getters,
+    MethodInfo methodInfo,
+    Func<IRenderer> rendererProvider)
+    : AsynchronousCommandLineAction
 {
-    public int Invoke(InvocationContext context)
-    {
-        throw new NotSupportedException("Only async is supported");
-    }
-
-    public async Task<int> InvokeAsync(InvocationContext context)
+    public override async Task<int> InvokeAsync(ParseResult parseResult, CancellationToken cancellationToken)
     {
         try
         {
@@ -28,7 +27,7 @@ internal class CommandHandler(IServiceProvider serviceProvider, List<Func<Invoca
             var args = GC.AllocateUninitializedArray<object?>(getters.Count);
             for (var i = 0; i < getters.Count; i++)
             {
-                args[i] = getters[i](context);
+                args[i] = getters[i](parseResult, cancellationToken);
             }
 
             // Invoke the method
@@ -37,7 +36,7 @@ internal class CommandHandler(IServiceProvider serviceProvider, List<Func<Invoca
         catch (Exception ex)
         {
             serviceProvider.GetRequiredService<ILogger<CommandHandler>>().LogError(ex, "An error occurred while executing the command {0}", methodInfo.Name);
-            await context.BindingContext.GetRequiredService<IRenderer>().Error(ex, "An error occurred while executing the command");
+            await rendererProvider().Error(ex, "An error occurred while executing the command");
             return -1;
         }
     }
