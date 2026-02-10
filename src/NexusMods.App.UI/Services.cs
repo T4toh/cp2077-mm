@@ -53,6 +53,7 @@ using NexusMods.App.UI.Pages.LoadoutPage.Dialogs;
 using NexusMods.App.UI.Pages.LoadoutPage.Dialogs.CollectionPublished;
 using NexusMods.App.UI.Pages.LoadoutPage.Dialogs.ShareCollection;
 using NexusMods.App.UI.Pages.MyGames;
+using NexusMods.App.UI.Pages.MyGames.WinePrefix;
 using NexusMods.App.UI.Pages.MyLoadouts;
 using NexusMods.App.UI.Pages.ObservableInfo;
 using NexusMods.App.UI.Pages.Settings;
@@ -136,6 +137,7 @@ public static class Services
             .AddView<ImageButton, IImageButtonViewModel>()
             .AddView<LaunchButtonView, ILaunchButtonViewModel>()
             .AddView<MyGamesView, IMyGamesViewModel>()
+            .AddView<WinePrefixStatusView, IWinePrefixStatusViewModel>()
             .AddView<NexusLoginOverlayView, INexusLoginOverlayViewModel>()
             .AddView<Spine, ISpineViewModel>()
             .AddView<TopBarView, ITopBarViewModel>()

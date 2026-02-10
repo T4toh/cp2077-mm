@@ -84,6 +84,9 @@
                 </StackPanel>
             </Border>
 
+            <!-- Wine Prefix Status Panel -->
+            <reactiveUi:ViewModelViewHost x:Name="WinePrefixPanel" />
+
             <Separator
                 Background="{StaticResource StrokeTranslucentWeakBrush}"
                 Margin="0" />

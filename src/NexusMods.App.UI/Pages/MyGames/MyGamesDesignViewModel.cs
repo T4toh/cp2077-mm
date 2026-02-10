@@ -4,6 +4,7 @@ using DynamicData;
 using NexusMods.App.UI.Controls.GameWidget;
 using NexusMods.App.UI.Controls.MiniGameWidget.ComingSoon;
 using NexusMods.App.UI.Controls.MiniGameWidget.Standard;
+using NexusMods.App.UI.Pages.MyGames.WinePrefix;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
 using NexusMods.UI.Sdk;
@@ -17,6 +18,7 @@ public class MyGamesDesignViewModel : APageViewModel<IMyGamesViewModel>, IMyGame
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand => Initializers.DisabledReactiveCommand;
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames { get; }
     public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames { get; }
+    public IWinePrefixStatusViewModel? WinePrefixStatus => null;
 
     public MyGamesDesignViewModel() : base(new DesignWindowManager())
     {

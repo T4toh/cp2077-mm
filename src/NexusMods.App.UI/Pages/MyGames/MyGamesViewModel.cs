@@ -11,6 +11,7 @@ using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.App.UI.Controls.GameWidget;
+using NexusMods.App.UI.Pages.MyGames.WinePrefix;
 using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
@@ -72,6 +73,7 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand { get; }
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames => _installedGames;
     public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames => _supportedGames;
+    public IWinePrefixStatusViewModel? WinePrefixStatus { get; private set; }
 
     public MyGamesViewModel(
         IWindowManager windowManager,
@@ -181,6 +183,21 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                     .Bind(out _installedGames)
                     .SubscribeWithErrorLogging()
                     .DisposeWith(d);
+
+                // Create Wine prefix status panel for the first installed game
+                var firstInstallation = gameRegistry.LocateGameInstallations()
+                    .Where(game =>
+                    {
+                        if (experimentalSettings.EnableAllGames) return true;
+                        return experimentalSettings.SupportedGames.Contains(game.Game.GameId);
+                    })
+                    .FirstOrDefault();
+
+                if (firstInstallation is not null)
+                {
+                    var runtimeDeps = serviceProvider.GetServices<IRuntimeDependency>();
+                    WinePrefixStatus = new WinePrefixStatusViewModel(firstInstallation, runtimeDeps);
+                }
 
                 var supportedGamesAsIGame = serviceProvider
                     .GetServices<IGameData>()
