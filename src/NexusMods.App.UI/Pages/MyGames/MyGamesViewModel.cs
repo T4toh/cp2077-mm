@@ -41,6 +41,7 @@ using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Loadouts;
+using NexusMods.Sdk.NexusModsApi;
 using NexusMods.Telemetry;
 using NexusMods.UI.Sdk;
 using NexusMods.UI.Sdk.Dialog;
@@ -68,6 +69,7 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     private ReadOnlyObservableCollection<IGameWidgetViewModel> _installedGames = new([]);
 
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand { get; }
+    public ReactiveCommand<Unit, Unit> AddGameManuallyCommand { get; }
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames => _installedGames;
     public IWinePrefixStatusViewModel? WinePrefixStatus { get; private set; }
 
@@ -105,6 +107,34 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         {
             var uri = new Uri(TrelloPublicRoadmapUrl);
             osInterop.OpenUri(uri);
+        });
+
+        AddGameManuallyCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            // Crear ManuallyAddedGame en la DB
+            var defaultPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".local/share/Steam/steamapps/common/Cyberpunk 2077"
+            );
+
+            using var tx = conn.BeginTransaction();
+            _ = new ManuallyAddedGame.New(tx)
+            {
+                GameId = NexusModsGameId.From(3333),
+                Version = "Manual",
+                Path = defaultPath,
+            };
+            await tx.Commit();
+
+            // Forzar re-deteccion
+            gameRegistry.ClearCache();
+            var installations = gameRegistry.LocateGameInstallations();
+            var cp2077 = installations.FirstOrDefault(i => i.Game.GameId == GameId.From("RedEngine.Cyberpunk2077"));
+            if (cp2077 is null) return;
+
+            // Crear loadout y navegar a Library
+            await Task.Run(async () => await ManageGame(cp2077));
+            NavigateToLoadoutLibrary(conn, cp2077);
         });
 
         this.WhenActivated(d =>

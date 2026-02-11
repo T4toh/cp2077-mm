@@ -11,6 +11,8 @@ public interface IMyGamesViewModel : IPageViewModelInterface
 {
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand { get; }
 
+    public ReactiveCommand<Unit, Unit> AddGameManuallyCommand { get; }
+
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames { get; }
 
     public IWinePrefixStatusViewModel? WinePrefixStatus { get; }

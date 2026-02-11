@@ -60,10 +60,13 @@ internal class GameRegistry : IGameRegistry
 
                             if (_logger.IsEnabled(LogLevel.Information))
                             {
-                                var locatorIds = installation.LocatorResult.LocatorIds
+                                var locatorIdValues = installation.LocatorResult.LocatorIds
                                     .Select(x => x.Value)
                                     .Order(StringComparer.OrdinalIgnoreCase)
-                                    .Aggregate((a,b) => $"{a}, {b}");
+                                    .ToArray();
+                                var locatorIds = locatorIdValues.Length > 0
+                                    ? string.Join(", ", locatorIdValues)
+                                    : "(none)";
 
                                 _logger.LogInformation("Found game installation for '{Game}' installed using '{Store}' at '{Path}' with locator IDs {LocatorIds}", installation.Game.DisplayName, installation.LocatorResult.Store, installation.LocatorResult.Path, locatorIds);
                             }

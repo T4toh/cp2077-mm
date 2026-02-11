@@ -49,12 +49,19 @@
                         </controls:EmptyState.Styles>
 
                         <controls:EmptyState.Subtitle>
-                            <TextBlock Text="No games found"
-                                       Theme="{StaticResource BodyXLNormalTheme}"
-                                       Foreground="{StaticResource NeutralSubduedBrush}"
-                                       TextAlignment="Left"
-                                       TextWrapping="Wrap"
-                                       Margin="0,16,0,0" />
+                            <StackPanel Spacing="16"
+                                        x:DataType="myGames:IMyGamesViewModel">
+                                <TextBlock Text="No games found"
+                                           Theme="{StaticResource BodyXLNormalTheme}"
+                                           Foreground="{StaticResource NeutralSubduedBrush}"
+                                           TextAlignment="Left"
+                                           TextWrapping="Wrap" />
+                                <Button x:Name="AddGameManuallyButton"
+                                        Content="Agregar Cyberpunk 2077"
+                                        Command="{CompiledBinding AddGameManuallyCommand}"
+                                        Classes="Primary"
+                                        HorizontalAlignment="Left" />
+                            </StackPanel>
                         </controls:EmptyState.Subtitle>
 
                         <StackPanel Spacing="24" Margin="0,16,0,0">
