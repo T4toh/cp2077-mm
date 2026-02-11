@@ -283,4 +283,51 @@ The current WINE prefix does not have the required packages installed for moddin
             .AddValue<string>("Instructions")
         )
         .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate RedundantFolderDetected = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 7))
+        .WithTitle("Redundant folder structure detected")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("Mod '{ModName}' may be installed incorrectly due to a redundant folder.")
+        .WithDetails("""
+The mod **{ModName}** appears to have a redundant folder structure (e.g., `Cyberpunk 2077/Cyberpunk 2077/...`). This usually happens when a mod is compressed with an extra top-level folder.
+
+### How to Resolve
+1. Re-install the mod ensuring the folder structure matches the game's directory (e.g., `bin`, `r6`, `archive` should be at the root of the mod).
+
+### Technical Details
+Found a file or folder `{RedundantPath}` that indicates a redundant level. Common game folders like `bin`, `r6`, or `red4ext` should be at the root of the mod's structure.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("ModName")
+            .AddValue<string>("RedundantPath")
+        )
+        .Finish();
+
+    [DiagnosticTemplate]
+    [UsedImplicitly]
+    internal static IDiagnosticTemplate RedscriptCompilationFailed = DiagnosticTemplateBuilder
+        .Start()
+        .WithId(new DiagnosticId(Source, number: 8))
+        .WithTitle("Redscript compilation issue")
+        .WithSeverity(DiagnosticSeverity.Warning)
+        .WithSummary("Redscript may have failed to compile.")
+        .WithDetails("""
+Redscript files were detected in `r6/scripts`, but the script cache in `r6/cache` has not been updated. This usually indicates that Redscript failed to compile your scripts when the game started.
+
+### How to Resolve
+1. Check the Redscript logs in `{RedscriptLogPath}` for errors.
+2. Ensure all required dependencies for your scripts are installed.
+3. Try deleting the `r6/cache/final.pc` file (it will be recreated) and launching the game again.
+
+### Technical Details
+The folder `r6/scripts` contains `.reds` files, but the compiler output in `r6/cache` is missing or outdated.
+""")
+        .WithMessageData(messageBuilder => messageBuilder
+            .AddValue<string>("RedscriptLogPath")
+        )
+        .Finish();
 }
