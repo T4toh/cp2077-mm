@@ -17,10 +17,6 @@ public partial class MyGamesView : ReactiveUserControl<IMyGamesViewModel>
                     .BindToView(this, view => view.DetectedGamesItemsControl.ItemsSource)
                     .DisposeWith(d);
 
-                this.WhenAnyValue(view => view.ViewModel!.SupportedGames)
-                    .BindToView(this, view => view.SupportedGamesItemsControl.ItemsSource)
-                    .DisposeWith(d);
-
                 this.WhenAnyValue(view  => view.ViewModel!.InstalledGames.Count)
                     .Select(installedCount  => installedCount == 0)
                     .Subscribe(isEmpty =>

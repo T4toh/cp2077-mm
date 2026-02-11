@@ -27,8 +27,6 @@ using NexusMods.Abstractions.Library;
 using NexusMods.Abstractions.NexusModsLibrary.Models;
 using NexusMods.Sdk.Settings;
 using NexusMods.App.UI.Controls.MarkdownRenderer;
-using NexusMods.App.UI.Controls.MiniGameWidget.ComingSoon;
-using NexusMods.App.UI.Controls.MiniGameWidget.Standard;
 using NexusMods.App.UI.Dialog;
 using NexusMods.App.UI.Dialog.Enums;
 using NexusMods.App.UI.Extensions;
@@ -43,6 +41,7 @@ using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Loadouts;
+using NexusMods.Sdk.NexusModsApi;
 using NexusMods.Telemetry;
 using NexusMods.UI.Sdk;
 using NexusMods.UI.Sdk.Dialog;
@@ -67,12 +66,11 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     private readonly ILoadoutManager _loadoutManager;
     private readonly IGameRegistry _gameRegistry;
 
-    private ReadOnlyObservableCollection<IViewModelInterface> _supportedGames = new([]);
     private ReadOnlyObservableCollection<IGameWidgetViewModel> _installedGames = new([]);
 
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand { get; }
+    public ReactiveCommand<Unit, Unit> AddGameManuallyCommand { get; }
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames => _installedGames;
-    public ReadOnlyObservableCollection<IViewModelInterface> SupportedGames => _supportedGames;
     public IWinePrefixStatusViewModel? WinePrefixStatus { get; private set; }
 
     public MyGamesViewModel(
@@ -109,6 +107,34 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         {
             var uri = new Uri(TrelloPublicRoadmapUrl);
             osInterop.OpenUri(uri);
+        });
+
+        AddGameManuallyCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            // Crear ManuallyAddedGame en la DB
+            var defaultPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".local/share/Steam/steamapps/common/Cyberpunk 2077"
+            );
+
+            using var tx = conn.BeginTransaction();
+            _ = new ManuallyAddedGame.New(tx)
+            {
+                GameId = NexusModsGameId.From(3333),
+                Version = "Manual",
+                Path = defaultPath,
+            };
+            await tx.Commit();
+
+            // Forzar re-deteccion
+            gameRegistry.ClearCache();
+            var installations = gameRegistry.LocateGameInstallations();
+            var cp2077 = installations.FirstOrDefault(i => i.Game.GameId == GameId.From("RedEngine.Cyberpunk2077"));
+            if (cp2077 is null) return;
+
+            // Crear loadout y navegar a Library
+            await Task.Run(async () => await ManageGame(cp2077));
+            NavigateToLoadoutLibrary(conn, cp2077);
         });
 
         this.WhenActivated(d =>
@@ -199,43 +225,6 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                     WinePrefixStatus = new WinePrefixStatusViewModel(firstInstallation, runtimeDeps);
                 }
 
-                var supportedGamesAsIGame = serviceProvider
-                    .GetServices<IGameData>()
-                    .Where(game =>
-                    {
-                        if (experimentalSettings.EnableAllGames) return true;
-                        return experimentalSettings.SupportedGames.Contains(game.GameId);
-                    })
-                    .Cast<IGame>()
-                    .Where(game => _installedGames.All(install => install.Installation?.GetGame().GameId != game.GameId)); // Exclude found games
-
-                var miniGameWidgetViewModels = supportedGamesAsIGame
-                    .Select(game =>
-                        {
-                            var vm = _serviceProvider.GetRequiredService<IMiniGameWidgetViewModel>();
-                            vm.Game = game;
-                            vm.Name = game.DisplayName;
-                            // is this supported game installed?
-                            vm.IsFound = _installedGames.Any(install => install.Installation?.GetGame().GameId == game.GameId);
-                            vm.GameInstallations = _installedGames
-                                .Where(install => install.Installation?.GetGame().GameId == game.GameId)
-                                .Select(install => install.Installation)
-                                .NotNull()
-                                .ToArray();
-                            return vm;
-                        }
-                    )
-                    .OrderByDescending(vm => vm.IsFound)
-                    .ToList();
-
-                var comingSoonMiniGameWidget = _serviceProvider.GetRequiredService<IComingSoonMiniGameWidgetViewModel>();
-
-                // create a new ReadOnlyObservableCollection from miniGameWidgetViewModels and comingSoonMiniGameWidget
-                _supportedGames = new ReadOnlyObservableCollection<IViewModelInterface>(
-                    new ObservableCollection<IViewModelInterface>(miniGameWidgetViewModels) {
-                    // Add the coming soon widget to the end of the list
-                    comingSoonMiniGameWidget,
-                });
             }
         );
     }

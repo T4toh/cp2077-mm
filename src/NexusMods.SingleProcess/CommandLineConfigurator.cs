@@ -1,7 +1,4 @@
-using System.Collections.Immutable;
 using System.CommandLine;
-using System.CommandLine.Builder;
-using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,34 +16,36 @@ namespace NexusMods.SingleProcess;
 public class CommandLineConfigurator
 {
     private readonly RootCommand _rootCommand;
-    private readonly Type[] _injectedTypes;
     private readonly IServiceProvider _provider;
     private readonly MethodInfo _makeOptionMethod;
 
     private ILogger _logger;
 
     /// <summary>
+    /// Current renderer, set before each invocation in RunAsync.
+    /// </summary>
+    internal IRenderer? CurrentRenderer { get; private set; }
+
+    /// <summary>
     /// DI constructor
     /// </summary>
     /// <param name="provider"></param>
     /// <param name="verbDefinitions"></param>
+    /// <param name="moduleDefinitions"></param>
     public CommandLineConfigurator(IServiceProvider provider, IEnumerable<VerbDefinition> verbDefinitions, IEnumerable<ModuleDefinition> moduleDefinitions)
     {
         _provider = provider;
         _logger = provider.GetRequiredService<ILogger<CommandLineConfigurator>>();
         _makeOptionMethod = GetType().GetMethod(nameof(MakeOption), BindingFlags.Instance | BindingFlags.NonPublic)!;
-        (_rootCommand, _injectedTypes) = MakeRootCommand(verbDefinitions, moduleDefinitions);
+        _rootCommand = MakeRootCommand(verbDefinitions, moduleDefinitions);
     }
 
     /// <summary>
-    /// Builds the root command and returns it, along with the list of injected types.
+    /// Builds the root command and returns it.
     /// </summary>
-    /// <param name="verbDefinitions"></param>
-    /// <returns></returns>
-    private (RootCommand, Type[]) MakeRootCommand(IEnumerable<VerbDefinition> verbDefinitions, IEnumerable<ModuleDefinition> moduleDefinitions)
+    private RootCommand MakeRootCommand(IEnumerable<VerbDefinition> verbDefinitions, IEnumerable<ModuleDefinition> moduleDefinitions)
     {
-        var rootCommand = new RootCommand();
-        var injectedTypes = new HashSet<Type>();
+        var rootCommand = new RootCommand("");
 
         var modules = new Dictionary<string, Command>();
 
@@ -55,7 +54,7 @@ public class CommandLineConfigurator
         {
             if (modules.ContainsKey(module.Name))
                 throw new InvalidOperationException($"Module {module.Name} already exists can't define it again");
-            
+
             var nameParts = module.Name.Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
             var localName = nameParts[^1];
             var command = new Command(localName, module.Description);
@@ -66,14 +65,14 @@ public class CommandLineConfigurator
                 var parentName = string.Join(" ", nameParts[..^1]);
                 if (!modules.TryGetValue(parentName, out var parent))
                     throw new InvalidOperationException($"Parent module {module.Name} does not exist");
-                
-                parent.AddCommand(command);
+
+                parent.Add(command);
             }
             else
             {
-                rootCommand.AddCommand(command);
+                rootCommand.Add(command);
             }
-            
+
         }
 
         foreach (var verbDefinition in verbDefinitions.OrderBy(v => v.Name.Last()))
@@ -89,48 +88,53 @@ public class CommandLineConfigurator
             }
 
             var command = new Command(nameParts[^1], verbDefinition.Description);
-            var getters = new List<Func<InvocationContext, object?>>();
+            var getters = new List<Func<ParseResult, CancellationToken, object?>>();
 
             foreach (var optionDefinition in verbDefinition.Options)
             {
                 if (optionDefinition.IsInjected)
                 {
-                    // Injected options are pulled from the service provider via the binding context
-                    injectedTypes.Add(optionDefinition.Type);
-                    getters.Add(ctx => ctx.BindingContext.GetRequiredService(optionDefinition.Type));
+                    // Injected options are pulled from the service provider or runtime context
+                    if (optionDefinition.Type == typeof(IRenderer))
+                        getters.Add((_, _) => CurrentRenderer!);
+                    else if (optionDefinition.Type == typeof(CancellationToken))
+                        getters.Add((_, ct) => ct);
+                    else
+                        getters.Add((_, _) => _provider.GetRequiredService(optionDefinition.Type));
                 }
                 else
                 {
                     var option = (Option)_makeOptionMethod.MakeGenericMethod(optionDefinition.Type)
-                        .Invoke(this, [optionDefinition])!;
+                        .Invoke(this, [optionDefinition, getters])!;
 
-                    option.IsRequired = !optionDefinition.IsOptional;
-                    
-                    command.AddOption(option);
-                    getters.Add(ctx => ctx.ParseResult.GetValueForOption(option));
+                    option.Required = !optionDefinition.IsOptional;
+
+                    command.Add(option);
                 }
             }
-            command.Handler = new CommandHandler(_provider, getters, verbDefinition.Info);
+            command.Action = new CommandHandler(_provider, getters, verbDefinition.Info, () => CurrentRenderer!);
 
-            parentCommand.AddCommand(command);
+            parentCommand.Add(command);
         }
-        return (rootCommand, injectedTypes.ToArray());
+        return rootCommand;
     }
 
-    private Option MakeOption<T>(OptionDefinition optionDefinition) where T : notnull
+    private Option MakeOption<T>(OptionDefinition optionDefinition, List<Func<ParseResult, CancellationToken, object?>> getters) where T : notnull
     {
-        var aliases = new[] { "-" + optionDefinition.ShortName, "--" + optionDefinition.LongName };
+        var option = new Option<T>("--" + optionDefinition.LongName, ["-" + optionDefinition.ShortName]);
+        option.Description = optionDefinition.HelpText;
 
-        ParseArgument<T> parser = result =>
+        option.CustomParser = result =>
         {
             var service = _provider.GetService<IOptionParser<T>>();
             if (service is null) return default!;
             if (service.TryParse(result.Tokens.Single().Value, out var itm, out var error)) return itm;
-            result.ErrorMessage = error;
+            result.AddError(error);
             return default!;
         };
 
-        var option = new Option<T>(aliases, parser, false, optionDefinition.HelpText);
+        getters.Add((pr, _) => pr.GetValue(option));
+
         return option;
     }
 
@@ -175,24 +179,16 @@ public class CommandLineConfigurator
         if (await RunLink(args, token)) return 0;
         if (_logger.IsEnabled(LogLevel.Debug)) _logger.LogDebug("Received command `{Command}`", string.Join(" ", args));
 
-        var parser = new CommandLineBuilder(_rootCommand)
-            .UseHelp()
-            .UseParseErrorReporting()
-            .AddMiddleware((ctx, next) =>
-            {
-                foreach (var type in _injectedTypes)
-                {
-                    if (type == typeof(IRenderer))
-                        ctx.BindingContext.AddService(type, _ => renderer);
-                    else if (type == typeof(CancellationToken))
-                        ctx.BindingContext.AddService(type, _ => token);
-                    else
-                        ctx.BindingContext.AddService(type, _ => _provider.GetRequiredService(type));
-                }
-                return next(ctx);
-            })
-            .Build();
+        CurrentRenderer = renderer;
 
-        return await parser.InvokeAsync(args, new ConsoleToRendererAdapter(renderer));
+        var textWriter = new RendererTextWriter(renderer);
+        var config = new InvocationConfiguration
+        {
+            Output = textWriter,
+            Error = textWriter,
+        };
+
+        var parseResult = _rootCommand.Parse(args);
+        return await parseResult.InvokeAsync(config, token);
     }
 }

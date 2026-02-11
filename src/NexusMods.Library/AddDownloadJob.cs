@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Downloads;
 using NexusMods.Abstractions.HttpDownloads;
 using NexusMods.Abstractions.Library.Jobs;
+using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Jobs;
@@ -89,11 +90,27 @@ internal class AddDownloadJob : IJobDefinitionWithStart<AddDownloadJob, LibraryF
     }
 
     /// <summary>
-    /// Tries to get a meaningful filename from the download job URI,
-    /// falling back to the temp file name.
+    /// Tries to get a meaningful filename from NexusMods metadata, the download URI,
+    /// or falls back to the temp file name.
     /// </summary>
     private string GetMeaningfulFileName(AbsolutePath tempFilePath)
     {
+        // Prioritize NexusMods file metadata name (e.g. "Enhanced Police v1.7z")
+        if (DownloadJob.JobDefinition is INexusModsDownloadJob nxmJob)
+        {
+            try
+            {
+                var metadataName = nxmJob.FileMetadata.Name;
+                if (!string.IsNullOrEmpty(metadataName))
+                    return metadataName;
+            }
+            catch
+            {
+                // Metadata might not be available
+            }
+        }
+
+        // Fall back to extracting filename from HTTP URI
         if (DownloadJob.JobDefinition is IHttpDownloadJob httpJob)
         {
             try

@@ -170,7 +170,7 @@ while true; do
         9) run_all ;;
         10) build_appimage ;;
         0)
-            echo -e "${BLUE}Hasta luego!${NC}"
+            echo -e "${BLUE}¡Ahí luego!${NC}"
             exit 0
             ;;
         *)
