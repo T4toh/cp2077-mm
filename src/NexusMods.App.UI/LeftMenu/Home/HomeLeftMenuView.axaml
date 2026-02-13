@@ -20,6 +20,16 @@
         <StackPanel Margin="12,0,12,12" x:Name="LeftMenuStack">
             <items:LeftMenuItemView x:Name="MyGamesItem" />
             <items:LeftMenuItemView x:Name="MyLoadoutsItem" />
+            <items:LeftMenuItemView x:Name="DownloadsItem" />
+            <items:LeftMenuItemView x:Name="CollectionsItem" />
+
+            <ItemsControl x:Name="CollectionItemsControl">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <items:LeftMenuItemView ViewModel="{Binding}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </StackPanel>
     </ScrollViewer>
 

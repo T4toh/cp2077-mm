@@ -324,6 +324,20 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     {
         if (GetJobRunningForGameInstallation(installation).IsT1) return;
 
+        // Check if game is actually installed (exists on disk)
+        var primaryFile = installation.Locations.ToAbsolutePath(installation.GetGame().GetPrimaryFile(installation));
+        if (!primaryFile.FileExists)
+        {
+            var messageBox = new MessageBoxOkViewModel
+            {
+                Title = "Game Not Found",
+                Description = $"The game folder for {installation.Game.DisplayName} was found, but the main executable is missing ({primaryFile.FileName} not found). Please make sure the game is fully installed.",
+                MarkdownRenderer = null
+            };
+            await _overlayController.EnqueueAndWait(messageBox);
+            return;
+        }
+
         vm.State = GameWidgetState.AddingGame;
         var loadout = await Task.Run(async () => await ManageGame(installation));
         

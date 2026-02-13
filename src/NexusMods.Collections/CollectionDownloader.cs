@@ -29,6 +29,7 @@ using NexusMods.Sdk.NexusModsApi;
 using OneOf;
 using Reloaded.Memory.Extensions;
 using NexusMods.Sdk.Library;
+using NexusMods.Sdk.Hashes;
 
 namespace NexusMods.Collections;
 
@@ -600,12 +601,14 @@ public class CollectionDownloader
     /// </summary>
     public static Optional<NexusCollectionLoadoutGroup.ReadOnly> GetCollectionGroup(
         CollectionRevisionMetadata.ReadOnly revisionMetadata,
-        LoadoutId loadoutId,
+        Optional<LoadoutId> loadoutId,
         IDb db)
     {
+        if (!loadoutId.HasValue) return Optional.None<NexusCollectionLoadoutGroup.ReadOnly>();
+
         var entityIds = db.Datoms(
             (NexusCollectionLoadoutGroup.Revision, revisionMetadata),
-            (LoadoutItem.Loadout, loadoutId)
+            (LoadoutItem.Loadout, loadoutId.Value)
         );
 
         if (entityIds.Count == 0) return Optional.None<NexusCollectionLoadoutGroup.ReadOnly>();
@@ -621,8 +624,10 @@ public class CollectionDownloader
     /// <summary>
     /// Gets an observable stream containing the collection group associated with the revision.
     /// </summary>
-    public IObservable<Optional<CollectionGroup.ReadOnly>> GetCollectionGroupObservable(CollectionRevisionMetadata.ReadOnly revision, LoadoutId targetLoadout)
+    public IObservable<Optional<CollectionGroup.ReadOnly>> GetCollectionGroupObservable(CollectionRevisionMetadata.ReadOnly revision, Optional<LoadoutId> targetLoadout)
     {
+        if (!targetLoadout.HasValue) return Observable.Return(Optional<CollectionGroup.ReadOnly>.None);
+
         return _connection
             .ObserveDatoms(NexusCollectionLoadoutGroup.Revision, revision)
             .QueryWhenChanged(query =>
@@ -631,13 +636,181 @@ public class CollectionDownloader
                 {
                     var group = CollectionGroup.Load(_connection.Db, datom.E);
                     if (!group.IsValid()) continue;
-                    if (group.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId != targetLoadout) continue;
+                    if (group.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId != targetLoadout.Value) continue;
                     return Optional<CollectionGroup.ReadOnly>.Create(group);
                 }
 
                 return Optional<CollectionGroup.ReadOnly>.None;
             })
             .Prepend(GetCollectionGroup(revision, targetLoadout, _connection.Db).Convert(static x => x.AsCollectionGroup()));
+    }
+
+    public async ValueTask RescanDownloads(CollectionRevisionMetadata.ReadOnly revision, CancellationToken ct)
+    {
+        _logger.LogInformation("Starting rescan of Downloads folder for collection `{CollectionName}`", revision.Collection.Name);
+        
+        var fs = _serviceProvider.GetRequiredService<IFileSystem>();
+        var downloadsFolder = GetDownloadsFolder(fs);
+        if (!downloadsFolder.DirectoryExists()) 
+        {
+            _logger.LogWarning("Downloads folder does not exist: `{Path}`", downloadsFolder);
+            return;
+        }
+
+        var db = _connection.Db;
+        var files = downloadsFolder.EnumerateFiles().ToArray();
+        _logger.LogInformation("Found {Count} files in Downloads folder", files.Length);
+        
+        foreach (var file in files)
+        {
+            if (ct.IsCancellationRequested) break;
+
+            try 
+            {
+                // Skip files that are too small or likely not mods
+                if (file.FileInfo.Size < Size.From(1024)) continue;
+
+                // Hash the file
+                Md5Value md5;
+                await using (var stream = file.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    md5 = await Md5Hasher.HashAsync(stream, cancellationToken: ct);
+                }
+
+                // Check if already in library
+                var existingDatoms = db.Datoms(LibraryFile.Md5, md5);
+                
+                bool matched = false;
+                foreach (var download in revision.Downloads)
+                {
+                    // 1. Match External downloads by MD5
+                    if (download.TryGetAsCollectionDownloadExternal(out var external) && external.Md5 == md5)
+                    {
+                        _logger.LogInformation("Match found (External) for `{DownloadName}`: `{FilePath}`", download.Name, file);
+                        if (existingDatoms.Count == 0) await _libraryService.AddLocalFile(file);
+                        matched = true;
+                        break;
+                    }
+
+                    // 2. Match Nexus downloads by filename (Exact match or match without extension)
+                    if (download.TryGetAsCollectionDownloadNexusMods(out var nexus))
+                    {
+                        var metadata = nexus.FileMetadata;
+                        var metadataName = metadata.Name;
+                        var currentFileName = file.FileName.ToString();
+                        var currentFileNameWithoutExt = Path.GetFileNameWithoutExtension(currentFileName);
+                        
+                        if (currentFileName.Equals(metadataName, StringComparison.OrdinalIgnoreCase) || 
+                            currentFileNameWithoutExt.Equals(metadataName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogInformation("Match found (Nexus) for `{DownloadName}`: `{FilePath}`", download.Name, file);
+                            
+                            var currentFile = file;
+
+                            // TRY TO FIX MISSING EXTENSION
+                            var ext = file.Extension;
+                            if (ext == Extension.None || ext.ToString().Equals(".tmp", StringComparison.OrdinalIgnoreCase))
+                            {
+                                var detectedExt = DetectExtension(file);
+                                if (!string.IsNullOrEmpty(detectedExt))
+                                {
+                                    var newName = currentFileNameWithoutExt + detectedExt;
+                                    var newPath = file.Parent.Combine(newName);
+                                    if (!newPath.FileExists)
+                                    {
+                                        _logger.LogInformation("Renaming `{OldPath}` to `{NewPath}` (Detected extension: {Ext})", file, newPath, detectedExt);
+                                        file.FileSystem.MoveFile(file, newPath, true);
+                                        currentFile = newPath;
+                                    }
+                                }
+                            }
+
+                            // Get or add the library file
+                            EntityId libraryFileId;
+                            LibraryFile.ReadOnly libraryFile;
+                            if (existingDatoms.Count == 0)
+                            {
+                                var result = await _libraryService.AddLocalFile(currentFile);
+                                libraryFileId = result.Id;
+                                libraryFile = new LibraryFile.ReadOnly(db, result.Id);
+                            }
+                            else
+                            {
+                                libraryFileId = existingDatoms[0].E;
+                                libraryFile = new LibraryFile.ReadOnly(db, libraryFileId);
+                                
+                                // Update DB if filename changed
+                                if (libraryFile.FileName != currentFile.FileName)
+                                {
+                                    using var txName = _connection.BeginTransaction();
+                                    txName.Add(libraryFileId, LibraryFile.FileName, currentFile.FileName);
+                                    await txName.Commit();
+                                }
+                            }
+
+                            // FORCED LINKING: Ensure this library file is linked to the metadata
+                            _logger.LogInformation("Ensuring library file `{LibraryFileId}` is linked to Nexus Metadata `{MetadataId}`", libraryFileId, metadata.Id);
+                            using var tx = _connection.BeginTransaction();
+                            
+                            _ = new NexusModsLibraryItem.New(tx, libraryFileId)
+                            {
+                                LibraryItem = new LibraryItem.New(tx, libraryFileId) { Name = libraryFile.FileName.ToString() },
+                                FileMetadataId = metadata.Id,
+                                ModPageMetadataId = metadata.ModPageId,
+                            };
+                            await tx.Commit();
+
+                            matched = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!matched)
+                {
+                    _logger.LogDebug("No match found in collection for `{FileName}` (MD5: {Hash})", file.FileName, md5);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to hash or process file during rescan: `{FilePath}`", file);
+            }
+        }
+        
+        _logger.LogInformation("Rescan complete.");
+    }
+
+    private static string DetectExtension(AbsolutePath file)
+    {
+        try
+        {
+            using var stream = file.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
+            byte[] header = new byte[8];
+            int read = stream.Read(header, 0, 8);
+            if (read < 4) return string.Empty;
+
+            // 7-Zip: 37 7A BC AF 27 1C
+            if (header[0] == 0x37 && header[1] == 0x7A && header[2] == 0xBC && header[3] == 0xAF) return ".7z";
+            // ZIP: 50 4B 03 04
+            if (header[0] == 0x50 && header[1] == 0x4B && header[2] == 0x03 && header[3] == 0x04) return ".zip";
+            // RAR: 52 61 72 21 1A 07
+            if (header[0] == 0x52 && header[1] == 0x61 && header[2] == 0x72 && header[3] == 0x21) return ".rar";
+
+            return string.Empty;
+        }
+        catch { return string.Empty; }
+    }
+
+    private static AbsolutePath GetDownloadsFolder(IFileSystem fs)
+    {
+        var basePath = fs.OS.MatchPlatform(
+            onWindows: () => KnownPath.LocalApplicationDataDirectory,
+            onLinux: () => KnownPath.XDG_DATA_HOME,
+            onOSX: () => KnownPath.LocalApplicationDataDirectory
+        );
+
+        var dirName = fs.OS.IsOSX ? "NexusMods_App" : "NexusMods.App";
+        return fs.GetKnownPath(basePath).Combine(dirName).Combine("Downloads");
     }
 
     /// <summary>

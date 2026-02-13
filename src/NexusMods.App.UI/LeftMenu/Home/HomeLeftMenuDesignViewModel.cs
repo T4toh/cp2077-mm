@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using NexusMods.App.UI.Controls;
 using NexusMods.App.UI.LeftMenu.Items;
 using NexusMods.App.UI.Resources;
@@ -21,5 +22,21 @@ public class HomeLeftMenuDesignViewModel : AViewModel<IHomeLeftMenuViewModel>, I
         Text = new StringComponent(Language.MyLoadoutsPageTitle),
         Icon = IconValues.Package,
     };
-    
+
+    public ILeftMenuItemViewModel LeftMenuItemDownloads { get; } = new LeftMenuItemDesignViewModel
+    {
+        Text = new StringComponent(Language.Downloads_WorkspaceTitle),
+        Icon = IconValues.Download,
+    };
+
+    public ILeftMenuItemViewModel LeftMenuItemCollections { get; } = new LeftMenuItemDesignViewModel
+    {
+        Text = new StringComponent("My Collections"),
+        Icon = IconValues.CollectionsOutline,
+    };
+
+    public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuCollectionItems { get; } = new(new ObservableCollection<ILeftMenuItemViewModel>());
 }
+
+
+    

@@ -3,6 +3,7 @@ using System.Reactive.Disposables;
 using DynamicData;
 using DynamicData.Kernel;
 using NexusMods.Abstractions.Downloads;
+using NexusMods.Abstractions.HttpDownloads;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Networking.HttpDownloader;

@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.DependencyInjection;
+using DynamicData.Kernel;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.NexusModsLibrary.Models;
 using NexusMods.Abstractions.Serialization.Attributes;
@@ -12,7 +13,7 @@ namespace NexusMods.App.UI.Pages.CollectionDownload;
 [JsonName(nameof(CollectionDownloadPageContext))]
 public record CollectionDownloadPageContext : IPageFactoryContext
 {
-    public required LoadoutId TargetLoadout { get; init; }
+    public required Optional<LoadoutId> TargetLoadout { get; init; }
     public required CollectionRevisionMetadataId CollectionRevisionMetadataId { get; init; }
 }
 

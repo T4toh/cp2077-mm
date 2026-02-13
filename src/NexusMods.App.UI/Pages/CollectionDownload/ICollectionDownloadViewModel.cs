@@ -110,11 +110,17 @@ public interface ICollectionDownloadViewModel : IPageViewModelInterface
     ReactiveCommand<Unit> CommandInstallOptionalItems { get; }
 
     ReactiveCommand<Unit> CommandUpdateCollection { get; }
+    ReactiveCommand<Unit> CommandRescanDownloads { get; }
 
     ReactiveCommand<Unit> CommandViewOnNexusMods { get; }
     ReactiveCommand<Unit> CommandOpenJsonFile { get; }
     ReactiveCommand<Unit> CommandDeleteAllDownloads { get; }
     ReactiveCommand<Unit> CommandDeleteCollectionRevision { get; }
+
+    ModDetail[] ModList { get; }
+    ReactiveCommand<Unit> CommandCopyModList { get; }
 }
+
+public record ModDetail(string Name, string Source, string Link, string Hash);
 
 public record ModInstructions(string ModName, string Instructions, CollectionDownloader.ItemType ItemType);

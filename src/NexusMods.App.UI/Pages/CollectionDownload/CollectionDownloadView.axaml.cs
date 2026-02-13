@@ -52,6 +52,15 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                 this.BindCommand(ViewModel, vm => vm.CommandUpdateCollection, view => view.ButtonUpdateCollection)
                     .DisposeWith(d);
 
+                this.BindCommand(ViewModel, vm => vm.CommandRescanDownloads, view => view.ButtonRescanDownloads)
+                    .DisposeWith(d);
+
+                this.BindCommand(ViewModel, vm => vm.CommandCopyModList, view => view.ButtonCopyModList)
+                    .DisposeWith(d);
+
+                this.OneWayBind(ViewModel, vm => vm.ModList, view => view.ModListDataGrid.ItemsSource)
+                    .DisposeWith(d);
+
                 this.OneWayBind(ViewModel, vm => vm.TreeDataGridAdapter.Source.Value, view => view.DownloadsTree.Source)
                     .DisposeWith(d);
 

@@ -58,7 +58,19 @@ public class LaunchButtonViewModel : AViewModel<ILaunchButtonViewModel>, ILaunch
             }).DisposeWith(cd);
         });
 
-        Command = ReactiveCommand.CreateFromObservable(() => Observable.StartAsync(LaunchGame, RxApp.TaskpoolScheduler));
+        var canExecute = this.WhenAnyValue(vm => vm.LoadoutId)
+            .Select(id =>
+            {
+                if (id == Initializers.LoadoutId) return false;
+                var loadout = Sdk.Loadouts.Loadout.Load(_conn.Db, id);
+                var installation = loadout.InstallationInstance;
+                var primaryFile = installation.Locations.ToAbsolutePath(installation.GetGame().GetPrimaryFile(installation));
+                return primaryFile.FileExists;
+            });
+
+        Command = ReactiveCommand.CreateFromObservable(
+            () => Observable.StartAsync(LaunchGame, RxApp.TaskpoolScheduler),
+            canExecute);
     }
 
     private async Task LaunchGame(CancellationToken token)
