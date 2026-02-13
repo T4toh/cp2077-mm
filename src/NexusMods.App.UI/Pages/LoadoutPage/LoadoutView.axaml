@@ -216,6 +216,16 @@
                                                   ButtonSize="Toolbar" />
                         </ItemsControl>
 
+                        <ItemsControl>
+                            <controls:StandardButton x:Name="EssentialModsButton"
+                                                     Text="Essentials"
+                                                     Type="Tertiary"
+                                                     Size="Toolbar"
+                                                     Fill="None"
+                                                     ShowIcon="Left"
+                                                     LeftIcon="{x:Static icons:IconValues.Star}" />
+                        </ItemsControl>
+
                         <!-- selection related button group -->
                         <ItemsControl x:Name="ContextControlGroup">
 

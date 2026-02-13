@@ -1,0 +1,78 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:IManualAddGameOverlayViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:NexusMods.App.UI.Overlays"
+    xmlns:base="clr-namespace:NexusMods.App.UI.Overlays.Generic.MessageBox.Base"
+    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
+    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+    x:DataType="local:IManualAddGameOverlayViewModel"
+    mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="400"
+    x:Class="NexusMods.App.UI.Overlays.ManualAddGameOverlayView">
+
+    <base:MessageBoxBackground MinWidth="600" MaxWidth="600">
+        <base:MessageBoxBackground.TopContent>
+            <Border Padding="24">
+                <StackPanel Spacing="16">
+                    <TextBlock
+                        Text="Manually Add Cyberpunk 2077"
+                        TextWrapping="Wrap"
+                        Theme="{StaticResource HeadingXSSemiTheme}" />
+                    
+                    <TextBlock
+                        Text="Select the game installation folder and optionally a WINE prefix if you are using a non-standard runner (e.g. Lutris, Heroic, or manual WINE)."
+                        TextWrapping="Wrap"
+                        Theme="{StaticResource BodyMDNormalTheme}" />
+
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Game Installation Path" Theme="{StaticResource BodySMNormalTheme}" Opacity="0.7" />
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBox x:Name="TextBoxGamePath" 
+                                     Text="{CompiledBinding GamePath.Value}"
+                                     IsReadOnly="True" />
+                            <controls:StandardButton Grid.Column="1" 
+                                                     x:Name="ButtonBrowseGamePath"
+                                                     Margin="8,0,0,0"
+                                                     Text="Browse"
+                                                     Type="Secondary"
+                                                     Size="Small" />
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="WINE Prefix (Optional)" Theme="{StaticResource BodySMNormalTheme}" Opacity="0.7" />
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBox x:Name="TextBoxWinePrefix" 
+                                     Text="{CompiledBinding WinePrefix.Value}"
+                                     IsReadOnly="True" />
+                            <controls:StandardButton Grid.Column="1" 
+                                                     x:Name="ButtonBrowseWinePrefix"
+                                                     Margin="8,0,0,0"
+                                                     Text="Browse"
+                                                     Type="Secondary"
+                                                     Size="Small" />
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </base:MessageBoxBackground.TopContent>
+
+        <base:MessageBoxBackground.BottomContent>
+            <StackPanel Orientation="Horizontal"
+                        Margin="24"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Right"
+                        Spacing="{StaticResource Spacing-2.5}">
+                <controls:StandardButton x:Name="ButtonCancel" Text="Cancel" />
+                <controls:StandardButton x:Name="ButtonAdd"
+                                         Text="Add Game"
+                                         Type="Primary"
+                                         Fill="StrongAlt" />
+            </StackPanel>
+        </base:MessageBoxBackground.BottomContent>
+    </base:MessageBoxBackground>
+
+</reactive:ReactiveUserControl>

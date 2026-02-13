@@ -5,6 +5,7 @@ using NexusMods.Abstractions.HttpDownloads;
 using NexusMods.Abstractions.Library.Jobs;
 using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.Networking.HttpDownloader;
 using NexusMods.Paths;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Library;
@@ -69,11 +70,11 @@ internal class AddDownloadJob : IJobDefinitionWithStart<AddDownloadJob, LibraryF
             if (destPath.FileExists)
             {
                 var stem = destPath.GetFileNameWithoutExtension();
-                var ext = destPath.Extension;
+                var extStr = destPath.Extension.ToString();
                 var counter = 1;
                 do
                 {
-                    destPath = downloadsFolder.Combine($"{stem}_{counter}{ext}");
+                    destPath = downloadsFolder.Combine($"{stem}_{counter}{extStr}");
                     counter++;
                 } while (destPath.FileExists);
             }
@@ -95,14 +96,28 @@ internal class AddDownloadJob : IJobDefinitionWithStart<AddDownloadJob, LibraryF
     /// </summary>
     private string GetMeaningfulFileName(AbsolutePath tempFilePath)
     {
-        // Prioritize NexusMods file metadata name (e.g. "Enhanced Police v1.7z")
-        if (DownloadJob.JobDefinition is INexusModsDownloadJob nxmJob)
+        var filename = string.Empty;
+
+        // 1. Try to get filename from HTTP headers (Content-Disposition)
+        // Check if the job is an HTTP job directly
+        if (DownloadJob.JobDefinition is IHttpDownloadJob httpJob && httpJob.GetJobStateData() is IHttpDownloadState state && state.FileName.HasValue)
+        {
+            filename = state.FileName.Value.ToString();
+        }
+        // Check if the job is a Nexus job that contains an HTTP job
+        else if (DownloadJob.JobDefinition is INexusModsDownloadJob nxmJob && nxmJob.HttpDownloadJob.JobDefinition.GetJobStateData() is IHttpDownloadState state2 && state2.FileName.HasValue)
+        {
+            filename = state2.FileName.Value.ToString();
+        }
+
+        // 2. Prioritize NexusMods file metadata name if we still don't have a filename
+        if (string.IsNullOrEmpty(filename) && DownloadJob.JobDefinition is INexusModsDownloadJob nxmJob2)
         {
             try
             {
-                var metadataName = nxmJob.FileMetadata.Name;
+                var metadataName = nxmJob2.FileMetadata.Name;
                 if (!string.IsNullOrEmpty(metadataName))
-                    return metadataName;
+                    filename = metadataName;
             }
             catch
             {
@@ -110,25 +125,47 @@ internal class AddDownloadJob : IJobDefinitionWithStart<AddDownloadJob, LibraryF
             }
         }
 
-        // Fall back to extracting filename from HTTP URI
-        if (DownloadJob.JobDefinition is IHttpDownloadJob httpJob)
+        // 3. Fall back to extracting filename from HTTP URI
+        if (string.IsNullOrEmpty(filename))
         {
-            try
+            IHttpDownloadJob? httpJobFallback = DownloadJob.JobDefinition switch
             {
-                var uriPath = httpJob.Uri.AbsolutePath;
-                var lastSegment = uriPath.Split('/').LastOrDefault(s => !string.IsNullOrEmpty(s));
-                if (!string.IsNullOrEmpty(lastSegment) && lastSegment.Contains('.'))
+                IHttpDownloadJob h => h,
+                INexusModsDownloadJob n => n.HttpDownloadJob.JobDefinition,
+                _ => null
+            };
+
+            if (httpJobFallback != null)
+            {
+                try
                 {
-                    return Uri.UnescapeDataString(lastSegment);
+                    var uriPath = httpJobFallback.Uri.AbsolutePath;
+                    var lastSegment = uriPath.Split('/').LastOrDefault(s => !string.IsNullOrEmpty(s));
+                    if (!string.IsNullOrEmpty(lastSegment) && lastSegment.Contains('.'))
+                    {
+                        filename = Uri.UnescapeDataString(lastSegment);
+                    }
                 }
-            }
-            catch
-            {
-                // Ignore URI parsing errors
+                catch
+                {
+                    // Ignore URI parsing errors
+                }
             }
         }
 
-        return tempFilePath.FileName;
+        if (string.IsNullOrEmpty(filename))
+            filename = tempFilePath.FileName;
+
+        // Ensure we have an extension if the temp file has one, but AVOID .tmp
+        var ext = tempFilePath.Extension;
+        var extStr = ext.ToString();
+        if (ext != Extension.None && !extStr.Equals(".tmp", StringComparison.OrdinalIgnoreCase) && !filename.EndsWith(extStr, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!Path.HasExtension(filename))
+                filename += extStr;
+        }
+
+        return filename;
     }
 
     private static AbsolutePath GetDownloadsFolder(IFileSystem fs)

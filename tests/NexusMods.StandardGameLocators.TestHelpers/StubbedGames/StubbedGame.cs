@@ -87,6 +87,7 @@ public class StubbedGame : IGame, IGameData<StubbedGame>
                 Path = path.ToString(),
                 Version = Version.Parse($"1.{version}.0.0").ToString(),
                 GameId = NexusModsGameId.Value,
+                WinePrefix = string.Empty,
             };
             await tx.Commit();
         }

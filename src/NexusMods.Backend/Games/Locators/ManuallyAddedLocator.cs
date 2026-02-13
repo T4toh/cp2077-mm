@@ -13,12 +13,14 @@ namespace NexusMods.Backend.Games.Locators;
 [Obsolete("this is a hack that will be removed soon tm")]
 internal class ManuallyAddedLocator : IGameLocator
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly IConnection _connection;
     private readonly IFileSystem _fileSystem;
     private readonly FrozenDictionary<NexusModsGameId, IGameData> _registeredGames;
 
     public ManuallyAddedLocator(IServiceProvider serviceProvider)
     {
+        _serviceProvider = serviceProvider;
         _connection = serviceProvider.GetRequiredService<IConnection>();
         _fileSystem = serviceProvider.GetRequiredService<IFileSystem>();
 
@@ -36,6 +38,16 @@ internal class ManuallyAddedLocator : IGameLocator
         {
             if (!_registeredGames.TryGetValue(entity.GameId, out var game)) continue;
 
+            ILinuxCompatabilityDataProvider? linuxCompatProvider = null;
+            if (entity.Contains(ManuallyAddedGame.WinePrefix) && !string.IsNullOrWhiteSpace(entity.WinePrefix))
+            {
+                var winePrefixPath = _fileSystem.FromUnsanitizedFullPath(entity.WinePrefix);
+                if (winePrefixPath.DirectoryExists())
+                {
+                    linuxCompatProvider = new ManualLinuxCompatabilityDataProvider(winePrefixPath, _serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ManualLinuxCompatabilityDataProvider>>());
+                }
+            }
+
             yield return new GameLocatorResult
             {
                 StoreIdentifier = entity.Id.ToString(),
@@ -44,6 +56,7 @@ internal class ManuallyAddedLocator : IGameLocator
                 Game = game,
                 Store = GameStore.ManuallyAdded,
                 Locator = this,
+                LinuxCompatabilityDataProvider = linuxCompatProvider,
             };
         }
     }

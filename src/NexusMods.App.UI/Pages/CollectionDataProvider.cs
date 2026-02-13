@@ -46,7 +46,7 @@ public class CollectionDataProvider
     public IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> ObserveCollectionItems(
         CollectionRevisionMetadata.ReadOnly revisionMetadata,
         IObservable<CollectionDownloadsFilter> filterObservable,
-        LoadoutId loadoutId)
+        Optional<LoadoutId> loadoutId)
     {
         var collectionGroupObservable = _collectionDownloader
             .GetCollectionGroupObservable(revisionMetadata, loadoutId)

@@ -128,6 +128,13 @@
 
                         <!-- static button group -->
                         <ItemsControl>
+                            <controls:StandardButton x:Name="EssentialModsButton"
+                                                     Text="Essentials"
+                                                     Type="Tertiary"
+                                                     Size="Toolbar"
+                                                     Fill="None"
+                                                     ShowIcon="Left"
+                                                     LeftIcon="{x:Static icons:IconValues.Star}" />
                             <controls:StandardButton
                                 Text="Add"
                                 Type="Tertiary"

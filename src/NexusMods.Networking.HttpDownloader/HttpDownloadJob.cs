@@ -283,6 +283,12 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
         _state.AcceptRanges = response.Headers.AcceptRanges.Contains("bytes");
         _state.ETag = response.Headers.ETag;
 
+        var contentDisposition = response.Content.Headers.ContentDisposition;
+        if (contentDisposition != null && !string.IsNullOrEmpty(contentDisposition.FileName))
+        {
+            _state.FileName = RelativePath.FromUnsanitizedInput(Uri.UnescapeDataString(contentDisposition.FileName.Trim('\"')));
+        }
+
         var contentLength = response.Content.Headers.ContentLength;
         _state.ContentLength = contentLength is not null ? Size.FromLong(contentLength.Value) : Optional<Size>.None;
     }
@@ -312,23 +318,6 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
 }
 
 /// <summary>
-/// Public interface for external access to download information
-/// </summary>
-[PublicAPI]
-public interface IHttpDownloadState : IPublicJobStateData, INotifyPropertyChanged
-{
-    /// <summary>
-    /// Content length from HTTP headers
-    /// </summary>
-    Optional<Size> ContentLength { get; }
-    
-    /// <summary>
-    /// Total bytes downloaded so far
-    /// </summary>
-    Size TotalBytesDownloaded { get; }
-}
-
-/// <summary>
 /// Internal mutable state that persists across pause/resume cycles
 /// </summary>
 internal sealed class HttpDownloadState : ReactiveObject, IHttpDownloadState
@@ -337,4 +326,5 @@ internal sealed class HttpDownloadState : ReactiveObject, IHttpDownloadState
     [Reactive] public Size TotalBytesDownloaded { get; set; }
     public Optional<EntityTagHeaderValue> ETag { get; set; }
     public Optional<bool> AcceptRanges { get; set; }
+    public Optional<RelativePath> FileName { get; set; }
 }

@@ -27,4 +27,9 @@ public partial class ManuallyAddedGame : IModelDefinition
     /// The path to the game install.
     /// </summary>
     public static readonly StringAttribute Path = new(Namespace, nameof(Path)) { IsIndexed = true };
+
+    /// <summary>
+    /// The path to the WINE prefix.
+    /// </summary>
+    public static readonly StringAttribute WinePrefix = new(Namespace, nameof(WinePrefix));
 }

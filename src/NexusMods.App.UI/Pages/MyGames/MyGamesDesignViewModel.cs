@@ -14,6 +14,7 @@ public class MyGamesDesignViewModel : APageViewModel<IMyGamesViewModel>, IMyGame
     public ReactiveCommand<Unit, Unit> GiveFeedbackCommand => Initializers.DisabledReactiveCommand;
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand => Initializers.DisabledReactiveCommand;
     public ReactiveCommand<Unit, Unit> AddGameManuallyCommand => Initializers.DisabledReactiveCommand;
+    public ReactiveCommand<Unit, Unit> RefreshGamesCommand => Initializers.DisabledReactiveCommand;
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames { get; }
     public IWinePrefixStatusViewModel? WinePrefixStatus => null;
 

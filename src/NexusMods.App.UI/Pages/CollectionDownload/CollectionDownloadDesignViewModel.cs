@@ -65,9 +65,16 @@ public class CollectionDownloadDesignViewModel : APageViewModel<ICollectionDownl
     public ReactiveCommand<Unit> CommandInstallOptionalItems { get; } = new ReactiveCommand();
     public ReactiveCommand<Unit> CommandInstallRequiredItems { get; } = new ReactiveCommand();
     public ReactiveCommand<Unit> CommandUpdateCollection { get; } = new ReactiveCommand();
+    public ReactiveCommand<Unit> CommandRescanDownloads { get; } = new ReactiveCommand();
 
     public ReactiveCommand<Unit> CommandViewOnNexusMods { get; } = new ReactiveCommand();
     public ReactiveCommand<Unit> CommandOpenJsonFile { get; } = new ReactiveCommand();
     public ReactiveCommand<Unit> CommandDeleteAllDownloads { get; } = new ReactiveCommand();
     public ReactiveCommand<Unit> CommandDeleteCollectionRevision { get; } = new ReactiveCommand();
+
+    public ModDetail[] ModList { get; } = [
+        new ModDetail("Mod 1", "Nexus Mods", "https://www.nexusmods.com/stardewvalley/mods/1", "MD5: 123"),
+        new ModDetail("Mod 2", "External", "https://example.com/mod2.zip", "MD5: 456"),
+    ];
+    public ReactiveCommand<Unit> CommandCopyModList { get; } = new ReactiveCommand();
 }

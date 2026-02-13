@@ -10,6 +10,6 @@ public class HomeLeftMenuFactory(IServiceProvider serviceProvider) : ILeftMenuFa
         IWorkspaceController workspaceController)
     {
         return new HomeLeftMenuViewModel(serviceProvider.GetRequiredService<IMyGamesViewModel>(), workspaceId,
-            workspaceController);
+            workspaceController, serviceProvider);
     }
 }

@@ -50,7 +50,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
     private readonly IServiceProvider _serviceProvider;
     private readonly IOverlayController _overlayController;
     private readonly IWindowNotificationService _notificationService;
-    private readonly LoadoutId _targetLoadout;
+    private readonly Optional<LoadoutId> _targetLoadout;
 
     public CollectionDownloadTreeDataGridAdapter TreeDataGridAdapter { get; }
 
@@ -58,7 +58,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
         IWindowManager windowManager,
         IServiceProvider serviceProvider,
         CollectionRevisionMetadata.ReadOnly revisionMetadata,
-        LoadoutId targetLoadout) : base(windowManager)
+        Optional<LoadoutId> targetLoadout) : base(windowManager)
     {
         _serviceProvider = serviceProvider;
         _overlayController = serviceProvider.GetRequiredService<IOverlayController>();
@@ -67,6 +67,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
         var connection = serviceProvider.GetRequiredService<IConnection>();
         var mappingCache = serviceProvider.GetRequiredService<IGameDomainToGameIdMappingCache>();
         var osInterop = serviceProvider.GetRequiredService<IOSInterop>();
+        var avaloniaInterop = serviceProvider.GetRequiredService<IAvaloniaInterop>();
         var nexusModsLibrary = serviceProvider.GetRequiredService<NexusModsLibrary>();
         var collectionDownloader = serviceProvider.GetRequiredService<CollectionDownloader>();
         var loginManager = serviceProvider.GetRequiredService<ILoginManager>();
@@ -86,14 +87,15 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
         TabTitle = _collection.Name;
         TabIcon = IconValues.CollectionsOutline;
 
-        TreeDataGridAdapter = new CollectionDownloadTreeDataGridAdapter(serviceProvider, revisionMetadata, targetLoadout);
+        TreeDataGridAdapter = new CollectionDownloadTreeDataGridAdapter(serviceProvider, revisionMetadata, _targetLoadout);
         TreeDataGridAdapter.ViewHierarchical.Value = false;
 
         RequiredDownloadsCount = CollectionDownloader.CountItems(_revision, CollectionDownloader.ItemType.Required);
         OptionalDownloadsCount = CollectionDownloader.CountItems(_revision, CollectionDownloader.ItemType.Optional);
 
+        var canInstall = R3.Observable.Return(_targetLoadout.HasValue);
 
-        CommandDownloadRequiredItems = _isDownloadingRequiredItems.CombineLatest(_canDownloadRequiredItems, static (isDownloading, canDownload) => !isDownloading && canDownload)
+        CommandDownloadRequiredItems = R3.Observable.CombineLatest(_isDownloadingRequiredItems, _canDownloadRequiredItems, static (isDownloading, canDownload) => !isDownloading && canDownload)
             .ToReactiveCommand<Unit>(
                 executeAsync: async (_, cancellationToken) =>
                 {
@@ -121,7 +123,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                 configureAwait: false
             );
 
-        CommandDownloadOptionalItems = _isDownloadingOptionalItems.CombineLatest(_canDownloadOptionalItems, static (isDownloading, canDownload) => !isDownloading && canDownload)
+        CommandDownloadOptionalItems = R3.Observable.CombineLatest(_isDownloadingOptionalItems, _canDownloadOptionalItems, static (isDownloading, canDownload) => !isDownloading && canDownload)
             .ToReactiveCommand<Unit>(
                 executeAsync: async (_, cancellationToken) =>
                 {
@@ -143,39 +145,41 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                 configureAwait: false
             );
 
-        CommandInstallOptionalItems = IsInstalling.CombineLatest(_canInstallOptionalItems, static (isInstalling, canInstall) => !isInstalling && canInstall).ToReactiveCommand<Unit>(
-            executeAsync: async (_, _) =>
-            {
-                await InstallCollectionJob.Create(
-                    serviceProvider,
-                    targetLoadout,
-                    source: libraryFile,
-                    revisionMetadata,
-                    items: CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Optional)
-                );
-            },
-            awaitOperation: AwaitOperation.Drop,
-            configureAwait: false
-        );
+        CommandInstallOptionalItems = R3.Observable.CombineLatest(IsInstalling, _canInstallOptionalItems, canInstall, static (isInstalling, canInstallItems, hasLoadout) => !isInstalling && canInstallItems && hasLoadout)
+            .ToReactiveCommand<Unit>(
+                executeAsync: async (_, _) =>
+                {
+                    await InstallCollectionJob.Create(
+                        serviceProvider,
+                        _targetLoadout.Value,
+                        source: libraryFile,
+                        revisionMetadata,
+                        items: CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Optional)
+                    );
+                },
+                awaitOperation: AwaitOperation.Drop,
+                configureAwait: false
+            );
 
-        CommandInstallRequiredItems = IsInstalling.CombineLatest(_canInstallRequiredItems, static (isInstalling, canInstall) => !isInstalling && canInstall).ToReactiveCommand<Unit>(
-            executeAsync: async (_, _) =>
-            {
-                var items = CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Required);
-                var group = await InstallCollectionJob.Create(
-                    serviceProvider,
-                    targetLoadout,
-                    source: libraryFile,
-                    revisionMetadata,
-                    items: items
-                );
+        CommandInstallRequiredItems = R3.Observable.CombineLatest(IsInstalling, _canInstallRequiredItems, canInstall, static (isInstalling, canInstallItems, hasLoadout) => !isInstalling && canInstallItems && hasLoadout)
+            .ToReactiveCommand<Unit>(
+                executeAsync: async (_, _) =>
+                {
+                    var items = CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Required);
+                    var group = await InstallCollectionJob.Create(
+                        serviceProvider,
+                        _targetLoadout.Value,
+                        source: libraryFile,
+                        revisionMetadata,
+                        items: items
+                    );
 
-                if (CollectionDownloader.IsFullyInstalled(items, group.AsCollectionGroup(), connection.Db))
-                    _notificationService.ShowToast(Language.ToastNotification_Collection_installed, ToastNotificationVariant.Success);
-            },
-            awaitOperation: AwaitOperation.Drop,
-            configureAwait: false
-        );
+                    if (CollectionDownloader.IsFullyInstalled(items, group.AsCollectionGroup(), connection.Db))
+                        _notificationService.ShowToast(Language.ToastNotification_Collection_installed, ToastNotificationVariant.Success);
+                },
+                awaitOperation: AwaitOperation.Drop,
+                configureAwait: false
+            );
 
         CommandDeleteCollectionRevision = new ReactiveCommand(
             executeAsync: async (_, _) =>
@@ -185,7 +189,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                     FactoryId = LibraryPageFactory.StaticId,
                     Context = new LibraryPageContext()
                     {
-                        LoadoutId = targetLoadout,
+                        LoadoutId = _targetLoadout.ValueOr(Initializers.LoadoutId),
                     },
                 };
 
@@ -203,6 +207,51 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
             awaitOperation: AwaitOperation.Drop,
             configureAwait: false,
             cancelOnCompleted: false
+        );
+
+        ModList = _revision.Downloads.Select(download =>
+        {
+            var source = "Unknown";
+            var link = string.Empty;
+            var hash = string.Empty;
+
+            if (download.TryGetAsCollectionDownloadNexusMods(out var nexusModsDownload))
+            {
+                source = "Nexus Mods";
+                var domain = mappingCache[nexusModsDownload.FileUid.GameId];
+                link = NexusModsUrlBuilder.GetFileDownloadUri(domain, nexusModsDownload.ModUid.ModId, nexusModsDownload.FileUid.FileId, useNxmLink: false, source: null).ToString();
+                hash = $"FileId: {nexusModsDownload.FileUid.FileId}";
+            }
+            else if (download.TryGetAsCollectionDownloadExternal(out var externalDownload))
+            {
+                source = "External";
+                link = externalDownload.Uri.ToString();
+                hash = $"MD5: {externalDownload.Md5}";
+            }
+            else if (download.TryGetAsCollectionDownloadBundled(out _))
+            {
+                source = "Bundled";
+            }
+
+            return new ModDetail(download.Name, source, link, hash);
+        }).ToArray();
+
+        CommandCopyModList = new ReactiveCommand(
+            executeAsync: async (_, _) =>
+            {
+                var sb = new System.Text.StringBuilder();
+                foreach (var mod in ModList)
+                {
+                    sb.AppendLine($"{mod.Name} ({mod.Source})");
+                    if (!string.IsNullOrEmpty(mod.Link)) sb.AppendLine($"  Link: {mod.Link}");
+                    if (!string.IsNullOrEmpty(mod.Hash)) sb.AppendLine($"  Hash: {mod.Hash}");
+                    sb.AppendLine();
+                }
+                await avaloniaInterop.SetClipboardTextAsync(sb.ToString());
+                _notificationService.ShowToast("Mod list copied to clipboard", ToastNotificationVariant.Success);
+            },
+            awaitOperation: AwaitOperation.Drop,
+            configureAwait: false
         );
 
         CommandDeleteAllDownloads = new ReactiveCommand(canExecuteSource: R3.Observable.Return(false), initialCanExecute: false);
@@ -234,51 +283,80 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
             }
         );
 
-        CommandViewCollection = IsInstalled.ToReactiveCommand<NavigationInformation>(info =>
-            {
-                var group = CollectionDownloader.GetCollectionGroup(_revision, _targetLoadout, connection.Db).Value;
-
-                var pageData = new PageData
+        CommandViewCollection = IsInstalled
+            .ToReactiveCommand<NavigationInformation>(info =>
                 {
-                    FactoryId = CollectionLoadoutPageFactory.StaticId,
-                    Context = new CollectionLoadoutPageContext
+                    var group = CollectionDownloader.GetCollectionGroup(_revision, _targetLoadout, connection.Db).Value;
+
+                    var pageData = new PageData
                     {
-                        LoadoutId = _targetLoadout,
-                        GroupId = group.AsCollectionGroup(),
-                    },
-                };
+                        FactoryId = CollectionLoadoutPageFactory.StaticId,
+                        Context = new CollectionLoadoutPageContext
+                        {
+                            LoadoutId = _targetLoadout.Value,
+                            GroupId = group.AsCollectionGroup(),
+                        },
+                    };
 
-                var workspaceController = GetWorkspaceController();
-                var behavior = workspaceController.GetOpenPageBehavior(pageData, info);
-                workspaceController.OpenPage(WorkspaceId, pageData, behavior);
-            }
-        );
+                    var workspaceController = GetWorkspaceController();
+                    var behavior = workspaceController.GetOpenPageBehavior(pageData, info);
+                    workspaceController.OpenPage(WorkspaceId, pageData, behavior);
+                }
+            );
 
-        IsDownloading = _isDownloadingRequiredItems.CombineLatest(_isDownloadingOptionalItems, static (a, b) => a || b).ToBindableReactiveProperty();
+        IsDownloading = R3.Observable.CombineLatest(_isDownloadingRequiredItems, _isDownloadingOptionalItems, static (a, b) => a || b).ToBindableReactiveProperty();
         IsUpdateAvailable = NewestRevisionNumber.Select(static optional => optional.HasValue).ToBindableReactiveProperty();
 
-        CommandUpdateCollection = IsUpdateAvailable.ToReactiveCommand<Unit>(
-            executeAsync: async (_, cancellationToken) =>
-            {
-                var newestRevisionNumber = NewestRevisionNumber.Value.Value;
-                var revision = await collectionDownloader.GetOrAddRevision(_collection.Slug, newestRevisionNumber, cancellationToken);
-
-                var pageData = new PageData
+        CommandUpdateCollection = IsUpdateAvailable
+            .ToReactiveCommand<Unit>(
+                executeAsync: async (_, cancellationToken) =>
                 {
-                    FactoryId = CollectionDownloadPageFactory.StaticId,
-                    Context = new CollectionDownloadPageContext
+                    var newestRevisionNumber = NewestRevisionNumber.Value.Value;
+                    var revision = await collectionDownloader.GetOrAddRevision(_collection.Slug, newestRevisionNumber, cancellationToken);
+
+                    var pageData = new PageData
                     {
-                        TargetLoadout = targetLoadout,
-                        CollectionRevisionMetadataId = revision,
-                    },
-                };
+                        FactoryId = CollectionDownloadPageFactory.StaticId,
+                        Context = new CollectionDownloadPageContext
+                        {
+                            TargetLoadout = _targetLoadout,
+                            CollectionRevisionMetadataId = revision,
+                        },
+                    };
 
-                var workspaceController = GetWorkspaceController();
-                workspaceController.OpenPage(WorkspaceId, pageData, new OpenPageBehavior.ReplaceTab(PanelId, TabId));
-            }, awaitOperation: AwaitOperation.Drop, configureAwait: false
-        );
+                                    var workspaceController = GetWorkspaceController();
 
-        this.WhenActivated(disposables =>
+                                    workspaceController.OpenPage(WorkspaceId, pageData, new OpenPageBehavior.ReplaceTab(PanelId, TabId));
+
+                                }, awaitOperation: AwaitOperation.Drop, configureAwait: false
+
+                            );
+
+                    
+
+                            CommandRescanDownloads = new ReactiveCommand(
+
+                                executeAsync: async (_, cancellationToken) =>
+
+                                {
+
+                                    await collectionDownloader.RescanDownloads(_revision, cancellationToken);
+
+                                    _notificationService.ShowToast("Rescan complete", ToastNotificationVariant.Success);
+
+                                },
+
+                                awaitOperation: AwaitOperation.Drop,
+
+                                configureAwait: false
+
+                            );
+
+                    
+
+                            this.WhenActivated(disposables =>
+
+                    
             {
                 TreeDataGridAdapter.Activate().AddTo(disposables);
 
@@ -471,11 +549,13 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
 
     private async ValueTask InstallItem(CollectionDownloadEntity.ReadOnly download, CancellationToken cancellationToken)
     {
+        if (!_targetLoadout.HasValue) return;
+
         var monitor = _serviceProvider.GetRequiredService<IJobMonitor>();
 
         var job = await InstallCollectionDownloadJob.Create(
             serviceProvider: _serviceProvider,
-            targetLoadout: _targetLoadout,
+            targetLoadout: _targetLoadout.Value,
             download: download,
             cancellationToken: cancellationToken
         );
@@ -535,11 +615,15 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
     public ReactiveCommand<Unit> CommandDownloadOptionalItems { get; }
     public ReactiveCommand<Unit> CommandInstallOptionalItems { get; }
     public ReactiveCommand<Unit> CommandUpdateCollection { get; }
+    public ReactiveCommand<Unit> CommandRescanDownloads { get; }
 
     public ReactiveCommand<Unit> CommandViewOnNexusMods { get; }
     public ReactiveCommand<Unit> CommandOpenJsonFile { get; }
     public ReactiveCommand<Unit> CommandDeleteAllDownloads { get; }
     public ReactiveCommand<Unit> CommandDeleteCollectionRevision { get; }
+
+    public ModDetail[] ModList { get; }
+    public ReactiveCommand<Unit> CommandCopyModList { get; }
 }
 
 public readonly record struct InstallMessage(CollectionDownloadEntity.ReadOnly DownloadEntity);
@@ -555,7 +639,7 @@ public class CollectionDownloadTreeDataGridAdapter :
     ITreeDataGirdMessageAdapter<OneOf<InstallMessage, DownloadNexusModsMessage, DownloadExternalMessage, ManualDownloadOpenModal>>
 {
     private readonly CollectionRevisionMetadata.ReadOnly _revisionMetadata;
-    private readonly LoadoutId _targetLoadout;
+    private readonly Optional<LoadoutId> _targetLoadout;
     private readonly CollectionDataProvider _collectionDataProvider;
 
     public R3.ReactiveProperty<CollectionDownloadsFilter> Filter { get; } = new(value: CollectionDownloadsFilter.OnlyRequired);
@@ -565,7 +649,7 @@ public class CollectionDownloadTreeDataGridAdapter :
     public CollectionDownloadTreeDataGridAdapter(
         IServiceProvider serviceProvider,
         CollectionRevisionMetadata.ReadOnly revisionMetadata,
-        LoadoutId targetLoadout) : base(serviceProvider)
+        Optional<LoadoutId> targetLoadout) : base(serviceProvider)
     {
         _revisionMetadata = revisionMetadata;
         _targetLoadout = targetLoadout;

@@ -18,6 +18,7 @@ using NexusMods.App.UI.Dialog;
 using NexusMods.App.UI.Dialog.Enums;
 using NexusMods.App.UI.Helpers;
 using NexusMods.App.UI.Pages.LibraryPage;
+using NexusMods.App.UI.Pages.EssentialMods;
 using NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
 using NexusMods.App.UI.Pages.LoadoutPage.Dialogs.CollectionPublished;
 using NexusMods.App.UI.Pages.LoadoutPage.Dialogs.ShareCollection;
@@ -79,6 +80,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
 
     public ReactiveCommand<NavigationInformation> CommandOpenLibraryPage { get; }
     public ReactiveCommand<NavigationInformation> CommandOpenFilesPage { get; }
+    public ReactiveCommand<Unit> CommandOpenEssentialModsPage { get; }
 
     public ReactiveCommand<Unit> CommandRemoveItem { get; }
     public ReactiveCommand<Unit> CommandDeselectItems { get; }
@@ -466,6 +468,20 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
                 workspaceController.OpenPage(workspaceController.ActiveWorkspaceId, pageData, behavior);
             }
         );
+
+        CommandOpenEssentialModsPage = new ReactiveCommand<Unit>(_ =>
+        {
+            var pageData = new PageData
+            {
+                FactoryId = EssentialModsPageFactory.StaticId,
+                Context = new EssentialModsPageContext
+                {
+                    LoadoutId = loadoutId,
+                },
+            };
+            var workspaceController = GetWorkspaceController();
+            workspaceController.OpenPage(workspaceController.ActiveWorkspaceId, pageData, new OpenPageBehavior.NewTab(Optional<PanelId>.None));
+        });
 
         HasRulesSection = true;
 

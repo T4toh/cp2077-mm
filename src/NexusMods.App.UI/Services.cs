@@ -45,6 +45,7 @@ using NexusMods.App.UI.Pages.DebugControls;
 using NexusMods.App.UI.Pages.Diagnostics;
 using NexusMods.App.UI.Pages.Diff.ApplyDiff;
 using NexusMods.App.UI.Pages.Downloads;
+using NexusMods.App.UI.Pages.EssentialMods;
 using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.App.UI.Pages.LibraryPage.Collections;
 using NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
@@ -219,6 +220,9 @@ public static class Services
             .AddView<RemoveGameOverlayView, IRemoveGameOverlayViewModel>()
             .AddViewModel<RemoveGameOverlayViewModel, IRemoveGameOverlayViewModel>()
 
+            .AddView<ManualAddGameOverlayView, IManualAddGameOverlayViewModel>()
+            .AddViewModel<ManualAddGameOverlayViewModel, IManualAddGameOverlayViewModel>()
+
             .AddView<WelcomeOverlayView, IWelcomeOverlayViewModel>()
             .AddViewModel<WelcomeOverlayViewModel, IWelcomeOverlayViewModel>()
             
@@ -238,6 +242,9 @@ public static class Services
 
             .AddView<LoadoutGroupFilesView, ILoadoutGroupFilesViewModel>()
             .AddViewModel<LoadoutGroupFilesViewModel, ILoadoutGroupFilesViewModel>()
+
+            .AddView<EssentialModsView, IEssentialModsViewModel>()
+            .AddViewModel<EssentialModsViewModel, IEssentialModsViewModel>()
 
             // workspace system
             .AddSingleton<IWindowManager, WindowManager>()
@@ -276,6 +283,7 @@ public static class Services
             .AddSingleton<IPageFactory, DebugControlsPageFactory>()
             .AddSingleton<IPageFactory, ProtocolRegistrationTestPageFactory>()
             .AddSingleton<IPageFactory, LoadoutGroupFilesPageFactory>()
+            .AddSingleton<IPageFactory, EssentialModsPageFactory>()
 
             // LeftMenu factories
             .AddSingleton<ILeftMenuFactory, HomeLeftMenuFactory>()

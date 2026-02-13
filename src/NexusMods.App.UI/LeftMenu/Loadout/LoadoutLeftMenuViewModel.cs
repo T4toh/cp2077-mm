@@ -29,7 +29,7 @@ using NexusMods.UI.Sdk.Icons;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.Query;
 using NexusMods.Sdk.Jobs;
-using NexusMods.UI.Sdk;
+using NexusMods.Sdk.Loadouts;
 using R3;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -128,7 +128,7 @@ public class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewModel>, I
             .FilterImmutable(revision => revision.Collection.GameId == game.NexusModsGameId)
             .FilterOnObservable(revision =>
             {
-                var groupObservable = collectionDownloader.GetCollectionGroupObservable(revision, loadout);
+                var groupObservable = collectionDownloader.GetCollectionGroupObservable(revision, (Optional<LoadoutId>)loadout.LoadoutId);
                 var isNotInstalledObservable = collectionDownloader.IsCollectionInstalledObservable(revision, groupObservable).Select(static isInstalled => !isInstalled);
                 return isNotInstalledObservable;
             })
@@ -139,7 +139,7 @@ public class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewModel>, I
                     FactoryId = CollectionDownloadPageFactory.StaticId,
                     Context = new CollectionDownloadPageContext
                     {
-                        TargetLoadout = loadout,
+                        TargetLoadout = (Optional<LoadoutId>)loadout.LoadoutId,
                         CollectionRevisionMetadataId = revision,
                     },
                 };
@@ -179,7 +179,7 @@ public class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewModel>, I
                         FactoryId = CollectionLoadoutPageFactory.StaticId,
                         Context = new CollectionLoadoutPageContext
                         {
-                            LoadoutId = loadout,
+                            LoadoutId = loadout.LoadoutId,
                             GroupId = collection,
                         },
                     }
@@ -188,7 +188,7 @@ public class LoadoutLeftMenuViewModel : AViewModel<ILoadoutLeftMenuViewModel>, I
                         FactoryId = LoadoutPageFactory.StaticId,
                         Context = new LoadoutPageContext
                         {
-                            LoadoutId = loadout,
+                            LoadoutId = loadout.LoadoutId,
                             GroupScope = collection.CollectionGroupId,
                         },
                     };

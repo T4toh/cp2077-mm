@@ -22,6 +22,7 @@ using OneOf.Types;
 using ReactiveUI;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using DynamicData.Aggregation;
 using NexusMods.Abstractions.Library;
 using NexusMods.Abstractions.NexusModsLibrary.Models;
@@ -31,6 +32,7 @@ using NexusMods.App.UI.Dialog;
 using NexusMods.App.UI.Dialog.Enums;
 using NexusMods.App.UI.Extensions;
 using NexusMods.App.UI.Overlays;
+using NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;
 using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.App.UI.Settings;
 using NexusMods.Collections;
@@ -65,11 +67,14 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     private readonly ISynchronizerService _syncService;
     private readonly ILoadoutManager _loadoutManager;
     private readonly IGameRegistry _gameRegistry;
+    private readonly BehaviorSubject<Unit> _refreshSignal = new(Unit.Default);
+    private readonly SourceList<GameInstallation> _sourceList = new();
 
     private ReadOnlyObservableCollection<IGameWidgetViewModel> _installedGames = new([]);
 
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand { get; }
     public ReactiveCommand<Unit, Unit> AddGameManuallyCommand { get; }
+    public ReactiveCommand<Unit, Unit> RefreshGamesCommand { get; }
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames => _installedGames;
     public IWinePrefixStatusViewModel? WinePrefixStatus { get; private set; }
 
@@ -109,27 +114,67 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
             osInterop.OpenUri(uri);
         });
 
+        RefreshGamesCommand = ReactiveCommand.Create(() =>
+        {
+            _gameRegistry.ClearCache();
+            _refreshSignal.OnNext(Unit.Default);
+        });
+
         AddGameManuallyCommand = ReactiveCommand.CreateFromTask(async () =>
         {
-            // Crear ManuallyAddedGame en la DB
-            var defaultPath = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".local/share/Steam/steamapps/common/Cyberpunk 2077"
-            );
+            var overlay = new ManualAddGameOverlayViewModel(_serviceProvider.GetRequiredService<IAvaloniaInterop>());
+            var result = await _overlayController.EnqueueAndWait(overlay);
+            if (result is null || !result.Confirmed) return;
+
+            var gamePath = _serviceProvider.GetRequiredService<IFileSystem>().FromUnsanitizedFullPath(result.GamePath);
+            var exePath = gamePath.Combine("bin/x64/Cyberpunk2077.exe");
+
+            if (!exePath.FileExists)
+            {
+                var messageBox = new MessageBoxOkViewModel
+                {
+                    Title = "Invalid Game Path",
+                    Description = "The selected folder does not appear to contain a Cyberpunk 2077 installation (bin/x64/Cyberpunk2077.exe not found).",
+                    MarkdownRenderer = null
+                };
+                await _overlayController.EnqueueAndWait(messageBox);
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(result.WinePrefix))
+            {
+                var winePrefixPath = _serviceProvider.GetRequiredService<IFileSystem>().FromUnsanitizedFullPath(result.WinePrefix);
+                if (!winePrefixPath.Combine("user.reg").FileExists)
+                {
+                    var messageBox = new MessageBoxOkViewModel
+                    {
+                        Title = "Invalid WINE Prefix",
+                        Description = "The selected folder does not appear to be a valid WINE prefix (user.reg not found).",
+                        MarkdownRenderer = null
+                    };
+                    await _overlayController.EnqueueAndWait(messageBox);
+                    return;
+                }
+            }
 
             using var tx = conn.BeginTransaction();
             _ = new ManuallyAddedGame.New(tx)
             {
                 GameId = NexusModsGameId.From(3333),
                 Version = "Manual",
-                Path = defaultPath,
+                Path = result.GamePath,
+                WinePrefix = result.WinePrefix,
             };
             await tx.Commit();
 
             // Forzar re-deteccion
-            gameRegistry.ClearCache();
+            _gameRegistry.ClearCache();
+            _refreshSignal.OnNext(Unit.Default);
+            
+            // Wait for refresh to propagate? 
+            // We can manually locate it here just to get the object for ManageGame
             var installations = gameRegistry.LocateGameInstallations();
-            var cp2077 = installations.FirstOrDefault(i => i.Game.GameId == GameId.From("RedEngine.Cyberpunk2077"));
+            var cp2077 = installations.FirstOrDefault(i => i.Game.GameId == GameId.From("RedEngine.Cyberpunk2077") && i.LocatorResult.Store == GameStore.ManuallyAdded);
             if (cp2077 is null) return;
 
             // Crear loadout y navegar a Library
@@ -139,14 +184,25 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
 
         this.WhenActivated(d =>
             {
-                gameRegistry.LocateGameInstallations()
-                    .Where(game =>
+                _refreshSignal
+                    .Subscribe(_ =>
                     {
-                        if (experimentalSettings.EnableAllGames) return true;
-                        return experimentalSettings.SupportedGames.Contains(game.Game.GameId);
+                        var games = gameRegistry.LocateGameInstallations()
+                            .Where(game =>
+                            {
+                                if (experimentalSettings.EnableAllGames) return true;
+                                return experimentalSettings.SupportedGames.Contains(game.Game.GameId);
+                            });
+                        
+                        _sourceList.Edit(innerList =>
+                        {
+                            innerList.Clear();
+                            innerList.AddRange(games);
+                        });
                     })
-                    .ToReadOnlyObservableCollection()
-                    .ToObservableChangeSet()
+                    .DisposeWith(d);
+
+                _sourceList.Connect()
                     .Transform(installation =>
                         {
                             var vm = _serviceProvider.GetRequiredService<IGameWidgetViewModel>();
@@ -179,6 +235,7 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                                 vm.State = GameWidgetState.DetectedGame;
 
                                 Tracking.AddEvent(Events.Game.RemoveGame, new EventMetadata(name: $"{installation.Game.DisplayName} - {installation.LocatorResult.Store}"));
+                                _refreshSignal.OnNext(Unit.Default);
                             });
 
                             vm.ViewGameCommand = ReactiveCommand.Create(() =>
@@ -211,20 +268,28 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                     .DisposeWith(d);
 
                 // Create Wine prefix status panel for the first installed game
-                var firstInstallation = gameRegistry.LocateGameInstallations()
-                    .Where(game =>
+                // We observe the source list directly to update this
+                _sourceList.Connect()
+                    .ToCollection()
+                    .Select(list => list.FirstOrDefault())
+                    .Subscribe(firstInstallation =>
                     {
-                        if (experimentalSettings.EnableAllGames) return true;
-                        return experimentalSettings.SupportedGames.Contains(game.Game.GameId);
+                        if (firstInstallation is not null)
+                        {
+                            var runtimeDeps = serviceProvider.GetServices<IRuntimeDependency>();
+                            WinePrefixStatus = new WinePrefixStatusViewModel(firstInstallation, runtimeDeps);
+                            // We need to notify property changed for WinePrefixStatus but since it's a property without INPC support (simple property),
+                            // and the view binds to it via viewmodel, we might need RaisePropertyChanged.
+                            // But MyGamesViewModel is an APageViewModel which inherits ReactiveObject.
+                            this.RaisePropertyChanged(nameof(WinePrefixStatus));
+                        }
+                        else
+                        {
+                            WinePrefixStatus = null;
+                            this.RaisePropertyChanged(nameof(WinePrefixStatus));
+                        }
                     })
-                    .FirstOrDefault();
-
-                if (firstInstallation is not null)
-                {
-                    var runtimeDeps = serviceProvider.GetServices<IRuntimeDependency>();
-                    WinePrefixStatus = new WinePrefixStatusViewModel(firstInstallation, runtimeDeps);
-                }
-
+                    .DisposeWith(d);
             }
         );
     }
@@ -258,6 +323,20 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     private async Task AddGameHandler(GameInstallation installation, IGameWidgetViewModel vm)
     {
         if (GetJobRunningForGameInstallation(installation).IsT1) return;
+
+        // Check if game is actually installed (exists on disk)
+        var primaryFile = installation.Locations.ToAbsolutePath(installation.GetGame().GetPrimaryFile(installation));
+        if (!primaryFile.FileExists)
+        {
+            var messageBox = new MessageBoxOkViewModel
+            {
+                Title = "Game Not Found",
+                Description = $"The game folder for {installation.Game.DisplayName} was found, but the main executable is missing ({primaryFile.FileName} not found). Please make sure the game is fully installed.",
+                MarkdownRenderer = null
+            };
+            await _overlayController.EnqueueAndWait(messageBox);
+            return;
+        }
 
         vm.State = GameWidgetState.AddingGame;
         var loadout = await Task.Run(async () => await ManageGame(installation));

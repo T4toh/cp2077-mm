@@ -168,7 +168,7 @@ detect that this mod is installed by looking for `ArchiveXL.dll` in the `red4ext
             DependencyName = "Cyber Engine Tweaks (CET)",
             DependencyPaths =
             [
-                new GamePath(LocationId.Game, "bin/x64/version.dll"),
+                new GamePath(LocationId.Game, "bin/x64/plugins/cyber_engine_tweaks.asi"),
             ],
             ModId = ModId.From(107),
             DependantSearchPatterns = [
@@ -177,10 +177,36 @@ detect that this mod is installed by looking for `ArchiveXL.dll` in the `red4ext
                     Path = new GamePath(LocationId.Game, "bin/x64/plugins/cyber_engine_tweaks"),
                     Extension = new Extension(".lua"),
                 },
+                new DependantSearchPattern
+                {
+                    Path = new GamePath(LocationId.Game, "bin/x64/plugins"),
+                    Extension = new Extension(".asi"),
+                },
             ],
             Explanation = """
-Cyber Engine Tweaks (also known as CET) is a mod that allows other mods to hook into the game. We detect the use of this mod by looking for `.lua` files
-in the `bin/x64/plugins/cyber_engine_tweaks` folder, and we detect that this mod is installed by looking for `version.dll` in the game folder.                          
+Cyber Engine Tweaks (also known as CET) is a mod that allows other mods to hook into the game. We detect the use of this mod by looking for '.lua' files
+in the `bin/x64/plugins/cyber_engine_tweaks` folder, and we detect that this mod is installed by looking for `cyber_engine_tweaks.asi` in the `bin/x64/plugins` folder.                          
+""",
+        },
+        new Pattern
+        {
+            DependencyName = "Redscript",
+            DependencyPaths =
+            [
+                new GamePath(LocationId.Game, "engine/tools/scc.exe"),
+            ],
+            ModId = ModId.From(1511),
+            DependantSearchPatterns =
+            [
+                new DependantSearchPattern
+                {
+                    Path = new GamePath(LocationId.Game, "r6/scripts"),
+                    Extension = new Extension(".reds"),
+                },
+            ],
+            Explanation = """
+Redscript is a compiler for Cyberpunk 2077 scripts. It allows you to add or modify game scripts using '.reds' files. 
+We detect the use of Redscript by looking for '.reds' files in the `r6/scripts` folder.
 """,
         },
         new Pattern

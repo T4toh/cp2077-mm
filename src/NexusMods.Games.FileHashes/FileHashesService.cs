@@ -345,6 +345,12 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
                 }
             }
         }
+        else if (gameStore == GameStore.ManuallyAdded)
+        {
+            // For manually added games, we don't have a manifest of vanilla files.
+            // Returning empty means all files found in the directory will be treated as External Changes (overrides).
+            yield break;
+        }
         else
         {
             throw new NotSupportedException("No way to get game files for: " + gameStore);
@@ -440,6 +446,11 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
         if (gameStore == GameStore.Steam)
         {
             return versionDefinition.SteamManifests.Select(manifest => LocatorId.From(manifest.ManifestId.ToString())).ToArray();
+        }
+        
+        if (gameStore == GameStore.ManuallyAdded)
+        {
+            return [];
         }
         
         throw new NotSupportedException("No way to get common IDs for: " + gameStore);
