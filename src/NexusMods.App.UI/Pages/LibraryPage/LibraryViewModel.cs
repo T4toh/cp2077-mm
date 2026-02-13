@@ -6,6 +6,7 @@ using System.Text;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Platform.Storage;
 using DynamicData;
+using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Library;
@@ -25,6 +26,7 @@ using NexusMods.App.UI.Extensions;
 using NexusMods.App.UI.Overlays;
 using NexusMods.App.UI.Pages.Library;
 using NexusMods.App.UI.Pages.LibraryPage.Collections;
+using NexusMods.App.UI.Pages.EssentialMods;
 using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
@@ -73,6 +75,7 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
 
     public ReactiveCommand<Unit> OpenNexusModsCommand { get; }
     public ReactiveCommand<Unit> OpenNexusModsCollectionsCommand { get; }
+    public ReactiveCommand<Unit> OpenEssentialModsCommand { get; }
 
     [Reactive] public int SelectionCount { get; private set; }
     
@@ -242,6 +245,20 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
             var gameDomain = _gameIdMappingCache[game.NexusModsGameId.Value];
             var gameUri = NexusModsUrlBuilder.GetBrowseCollectionsUri(gameDomain);
             osInterop.OpenUri(gameUri);
+        });
+
+        OpenEssentialModsCommand = new ReactiveCommand<Unit>(execute: _ =>
+        {
+            var pageData = new PageData
+            {
+                FactoryId = EssentialModsPageFactory.StaticId,
+                Context = new EssentialModsPageContext
+                {
+                    LoadoutId = loadoutId,
+                },
+            };
+            var workspaceController = GetWorkspaceController();
+            workspaceController.OpenPage(workspaceController.ActiveWorkspaceId, pageData, new OpenPageBehavior.NewTab(Optional<PanelId>.None));
         });
 
         this.WhenActivated(disposables =>

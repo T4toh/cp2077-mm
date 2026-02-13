@@ -1,0 +1,81 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:IEssentialModsViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.EssentialMods"
+    xmlns:resources="clr-namespace:NexusMods.App.UI.Resources"
+    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
+    xmlns:pageHeader="clr-namespace:NexusMods.App.UI.Controls.PageHeader"
+    xmlns:conv="clr-namespace:NexusMods.App.UI.Converters"
+    mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+    x:Class="NexusMods.App.UI.Pages.EssentialMods.EssentialModsView">
+
+    <UserControl.Resources>
+        <conv:EnumToBoolConverter x:Key="EnumToBoolConverter" />
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto, Auto, *">
+        <pageHeader:PageHeader Grid.Row="0"
+                               Title="Essential Mods"
+                               Description="Core frameworks and libraries required for most Cyberpunk 2077 mods."
+                               Icon="{x:Static icons:IconValues.Star}"
+                               Margin="24 24 24 0" />
+
+        <controls:Toolbar Grid.Row="1" Margin="24,12, 24, 0">
+            <ItemsControl>
+                <controls:StandardButton x:Name="InstallAllButton"
+                                         Text="Install All Missing"
+                                         Type="Primary"
+                                         Size="Toolbar"
+                                         Fill="StrongAlt"
+                                         ShowIcon="Left"
+                                         LeftIcon="{x:Static icons:IconValues.Download}" />
+            </ItemsControl>
+        </controls:Toolbar>
+
+        <ScrollViewer Grid.Row="2" Margin="24,12">
+            <ItemsControl x:Name="EssentialModsList">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="local:IEssentialModEntryViewModel">
+                        <Border Background="{DynamicResource SurfaceBrush}" 
+                                CornerRadius="8" 
+                                Padding="16" 
+                                Margin="0,0,0,12"
+                                BorderBrush="{DynamicResource OutlineBrush}"
+                                BorderThickness="1">
+                            <Grid ColumnDefinitions="*, Auto">
+                                <StackPanel Grid.Column="0" Spacing="4">
+                                    <TextBlock Text="{CompiledBinding Name}" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock Text="{CompiledBinding Description}" TextWrapping="Wrap" Opacity="0.7" />
+                                </StackPanel>
+                                
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="12">
+                                    <TextBlock Text="{CompiledBinding Status}" 
+                                               VerticalAlignment="Center" 
+                                               Opacity="0.5" />
+                                    
+                                    <controls:StandardButton Command="{CompiledBinding InstallCommand}"
+                                                             Text="Install"
+                                                             Type="Secondary"
+                                                             IsVisible="{CompiledBinding Status, Converter={StaticResource EnumToBoolConverter}, ConverterParameter='NotDownloaded|InLibrary'}" />
+                                    
+                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.CheckCircle}" 
+                                                       Foreground="Green"
+                                                       IsVisible="{CompiledBinding Status, Converter={StaticResource EnumToBoolConverter}, ConverterParameter='Installed'}" />
+                                    
+                                    <ProgressBar IsIndeterminate="True" 
+                                                 Width="100" 
+                                                 IsVisible="{CompiledBinding Status, Converter={StaticResource EnumToBoolConverter}, ConverterParameter='Downloading|Installing'}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</reactive:ReactiveUserControl>

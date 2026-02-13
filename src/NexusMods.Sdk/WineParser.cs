@@ -141,4 +141,37 @@ public static class WineParser
 
         return span;
     }
+
+    /// <summary>
+    /// Parses the DLL overrides out of a registry string (e.g. `user.reg`).
+    /// </summary>
+    public static ImmutableArray<WineDllOverride> ParseDllOverridesFromRegistry(string content)
+    {
+        const string sectionHeader = "[Software\\Wine\\DllOverrides]";
+        var sectionStart = content.IndexOf(sectionHeader, StringComparison.OrdinalIgnoreCase);
+        if (sectionStart == -1) return [];
+
+        var results = new List<WineDllOverride>();
+        var lines = content.AsSpan(sectionStart).Split('\n');
+        // Skip the header
+        lines.MoveNext();
+
+        foreach (var lineRange in lines)
+        {
+            var line = content.AsSpan(sectionStart)[lineRange].Trim();
+            if (line.Length == 0) continue;
+            if (line.StartsWith("[")) break; // Start of next section
+
+            var eqIndex = line.IndexOf('=');
+            if (eqIndex == -1) continue;
+
+            var key = line[..eqIndex].Trim('"').ToString();
+            var value = line[(eqIndex + 1)..].Trim('"');
+
+            var dllOverrideTypes = GetOverrideTypes(value);
+            results.Add(new WineDllOverride(key, dllOverrideTypes));
+        }
+
+        return [..results];
+    }
 }

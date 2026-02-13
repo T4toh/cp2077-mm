@@ -28,8 +28,9 @@ The mod **{Group}** requires **{DependencyName}** to function, but **{Dependency
 
 
 ### How to Resolve
-1. Download **{DependencyName}** from {NexusModsDependencyUri}
-2. Add **{DependencyName}** to the loadout. 
+1. Use the **Essential Mods** page to easily install core frameworks.
+2. Download **{DependencyName}** from {NexusModsDependencyUri}
+3. Add **{DependencyName}** to the loadout. 
 
 OR 
 
@@ -65,8 +66,9 @@ The mod **{Group}** requires **{DependencyName}** to function, but **{Dependency
 
 
 ### How to Resolve
-1. Download **{DependencyName}** from {NexusModsDependencyUri}
-2. Add **{DependencyName}** to the loadout. 
+1. Use the **Essential Mods** page to easily install core frameworks.
+2. Download **{DependencyName}** from {NexusModsDependencyUri}
+3. Add **{DependencyName}** to the loadout. 
 
 OR 
 

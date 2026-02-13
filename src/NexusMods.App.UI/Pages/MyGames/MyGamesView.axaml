@@ -24,7 +24,8 @@
     <ScrollViewer>
         <StackPanel Margin="24"
                     Orientation="Vertical"
-                    Spacing="24">
+                    Spacing="24"
+                    x:DataType="myGames:IMyGamesViewModel">
 
             <Border x:Name="AddGamesToGetStarted"
                     Padding="0"
@@ -38,9 +39,32 @@
                         Description="{x:Static resources:Language.MyGamesView__Page_Description}"
                         Icon="{x:Static icons:IconValues.PictogramGame3D}" />
 
+                    <controls:Toolbar Margin="0,12"
+                                      x:DataType="myGames:IMyGamesViewModel">
+                        <ItemsControl>
+                            <controls:StandardButton x:Name="RefreshGamesButton"
+                                                     Text="Refresh"
+                                                     Command="{CompiledBinding RefreshGamesCommand}"
+                                                     Type="Secondary"
+                                                     Size="Small"
+                                                     Fill="Weak"
+                                                     ShowIcon="Left"
+                                                     LeftIcon="{x:Static icons:IconValues.Refresh}" />
+                            <controls:StandardButton x:Name="AddGameManuallyButton"
+                                                     Text="Locate Manually"
+                                                     Command="{CompiledBinding AddGameManuallyCommand}"
+                                                     Type="Primary"
+                                                     Size="Small"
+                                                     Fill="Strong"
+                                                     ShowIcon="Left"
+                                                     LeftIcon="{x:Static icons:IconValues.FolderOpen}" />
+                        </ItemsControl>
+                    </controls:Toolbar>
+
                     <controls:EmptyState x:Name="DetectedGamesEmptyState"
                                          Margin="0"
-                                         HorizontalAlignment="Left">
+                                         HorizontalAlignment="Left"
+                                         IsVisible="{CompiledBinding !InstalledGames.Count}">
 
                         <controls:EmptyState.Styles>
                             <Style Selector="Border#EmptyStateBorder">
@@ -56,17 +80,13 @@
                                            Foreground="{StaticResource NeutralSubduedBrush}"
                                            TextAlignment="Left"
                                            TextWrapping="Wrap" />
-                                <Button x:Name="AddGameManuallyButton"
-                                        Content="Agregar Cyberpunk 2077"
-                                        Command="{CompiledBinding AddGameManuallyCommand}"
-                                        Classes="Primary"
-                                        HorizontalAlignment="Left" />
                             </StackPanel>
                         </controls:EmptyState.Subtitle>
+                    </controls:EmptyState>
 
-                        <StackPanel Spacing="24" Margin="0,16,0,0">
-                            <ItemsControl
-                                x:Name="DetectedGamesItemsControl">
+                    <StackPanel Spacing="24" Margin="0,16,0,0">
+                        <ItemsControl
+                            x:Name="DetectedGamesItemsControl">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <panels:FlexPanel
@@ -82,11 +102,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </StackPanel>
-
-                    </controls:EmptyState>
-
-                    <!-- </Border> -->
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

@@ -12,6 +12,8 @@ public interface IMyGamesViewModel : IPageViewModelInterface
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand { get; }
 
     public ReactiveCommand<Unit, Unit> AddGameManuallyCommand { get; }
+    
+    public ReactiveCommand<Unit, Unit> RefreshGamesCommand { get; }
 
     public ReadOnlyObservableCollection<IGameWidgetViewModel> InstalledGames { get; }
 

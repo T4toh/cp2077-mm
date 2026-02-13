@@ -30,6 +30,7 @@ public interface ILoadoutViewModel : IPageViewModelInterface
 
     ReactiveCommand<NavigationInformation> CommandOpenLibraryPage { get; }
     ReactiveCommand<NavigationInformation> CommandOpenFilesPage { get; }
+    ReactiveCommand<Unit> CommandOpenEssentialModsPage { get; }
 
     ReactiveCommand<Unit> CommandRemoveItem { get; }
     ReactiveCommand<Unit> CommandDeselectItems { get; }
