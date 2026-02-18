@@ -25,6 +25,7 @@ public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidget
         AddGameCommand = ReactiveCommand.Create(() => { });
         ViewGameCommand = ReactiveCommand.Create(() => { });
         RemoveAllLoadoutsCommand = ReactiveCommand.Create(() => { });
+        DeepCleanCommand = ReactiveCommand.Create(() => { });
 
         _image = this
             .WhenAnyValue(vm => vm.Installation)
@@ -118,6 +119,7 @@ public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidget
     }
 
     [Reactive] public GameInstallation? Installation { get; set; }
+    public bool IsDeepCleanAvailable => Installation?.Game.GameId == NexusMods.Games.RedEngine.Cyberpunk2077.Cyberpunk2077Game.GameId;
 
     [Reactive] public string Name { get; set; } = "";
     [Reactive] public string Version { get; set; } = "";
@@ -132,6 +134,8 @@ public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidget
     [Reactive] public ReactiveCommand<Unit, Unit> ViewGameCommand { get; set; }
 
     [Reactive] public ReactiveCommand<Unit, Unit> RemoveAllLoadoutsCommand { get; set; }
+
+    [Reactive] public ReactiveCommand<Unit, Unit> DeepCleanCommand { get; set; }
     
     public IObservable<bool> IsManagedObservable { get; set; } = Observable.Return(false);
 

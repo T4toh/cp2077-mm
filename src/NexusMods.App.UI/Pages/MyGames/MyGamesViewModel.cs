@@ -33,9 +33,11 @@ using NexusMods.App.UI.Dialog.Enums;
 using NexusMods.App.UI.Extensions;
 using NexusMods.App.UI.Overlays;
 using NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;
+using NexusMods.App.UI.Overlays.Generic.MessageBox.OkCancel;
 using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.App.UI.Settings;
 using NexusMods.Collections;
+using NexusMods.Games.RedEngine.Cyberpunk2077;
 using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using NexusMods.Sdk;
@@ -67,6 +69,8 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     private readonly ISynchronizerService _syncService;
     private readonly ILoadoutManager _loadoutManager;
     private readonly IGameRegistry _gameRegistry;
+    private readonly IToolManager _toolManager;
+    private readonly IWindowNotificationService _notificationService;
     private readonly BehaviorSubject<Unit> _refreshSignal = new(Unit.Default);
     private readonly SourceList<GameInstallation> _sourceList = new();
 
@@ -86,7 +90,8 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         IOverlayController overlayController,
         IOSInterop osInterop,
         ISynchronizerService syncService,
-        IGameRegistry gameRegistry) : base(windowManager)
+        IGameRegistry gameRegistry,
+        IToolManager toolManager) : base(windowManager)
     {
         var settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
         var experimentalSettings = settingsManager.Get<ExperimentalSettings>();
@@ -100,6 +105,8 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         _connection = conn;
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
         _gameRegistry = gameRegistry;
+        _toolManager = toolManager;
+        _notificationService = serviceProvider.GetRequiredService<IWindowNotificationService>();
 
         TabTitle = Language.MyGames;
         TabIcon = IconValues.GamepadOutline;
@@ -209,6 +216,53 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                             vm.Installation = installation;
 
                             vm.AddGameCommand = ReactiveCommand.CreateFromTask(async () => await AddGameHandler(installation, vm));
+
+                            vm.DeepCleanCommand = ReactiveCommand.CreateFromTask(async () =>
+                            {
+                                var dialog = DialogFactory.CreateStandardDialog(
+                                    title: "Deep Clean Cyberpunk 2077",
+                                    new StandardDialogParameters()
+                                    {
+                                        Text = "This will move all non-original mod folders (like red4ext, plugins, etc.) to a timestamped backup directory.\n\nDo you want to continue?",
+                                    },
+                                    buttonDefinitions:
+                                    [
+                                        DialogStandardButtons.Cancel,
+                                        new DialogButtonDefinition("Deep Clean", ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Primary),
+                                    ]
+                                );
+
+                                var dialogResult = await _windowManager.ShowDialog(dialog, DialogWindowType.Modal);
+                                if (dialogResult.ButtonId != ButtonDefinitionId.Accept) return;
+
+                                vm.State = GameWidgetState.AddingGame;
+                                
+                                // Get or create marker loadout
+                                var loadoutId = GetLoadout(conn, installation);
+                                Loadout.ReadOnly loadout;
+                                if (loadoutId.HasValue)
+                                {
+                                    loadout = Loadout.Load(conn.Db, loadoutId.Value);
+                                }
+                                else
+                                {
+                                    loadout = await _loadoutManager.CreateLoadout(installation);
+                                }
+
+                                var tool = _toolManager.GetTools(loadout).OfType<CyberpunkDeepCleanTool>().FirstOrDefault();
+                                if (tool is not null)
+                                {
+                                    await tool.Execute(loadout, CancellationToken.None);
+                                    _notificationService.ShowToast("Deep clean completed. Non-game files moved to backup.", ToastNotificationVariant.Success);
+                                }
+                                else
+                                {
+                                    _notificationService.ShowToast("Deep clean tool not found.", ToastNotificationVariant.Failure);
+                                }
+
+                                vm.State = GameWidgetState.DetectedGame;
+                                _refreshSignal.OnNext(Unit.Default);
+                            });
 
                             vm.RemoveAllLoadoutsCommand = ReactiveCommand.CreateFromTask(async () =>
                             {

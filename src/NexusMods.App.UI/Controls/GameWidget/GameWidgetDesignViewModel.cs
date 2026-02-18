@@ -21,6 +21,8 @@ public class GameWidgetDesignViewModel : AViewModel<IGameWidgetViewModel>, IGame
     public ReactiveCommand<Unit,Unit> AddGameCommand { get; set; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> ViewGameCommand { get; set; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> RemoveAllLoadoutsCommand { get; set; } = ReactiveCommand.Create(() => { });
+    public ReactiveCommand<Unit, Unit> DeepCleanCommand { get; set; } = ReactiveCommand.Create(() => { });
+    public bool IsDeepCleanAvailable { get; } = true;
     
     public IObservable<bool> IsManagedObservable { get; set; } = Observable.Return(false);
 

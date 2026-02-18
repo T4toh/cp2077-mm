@@ -17,7 +17,7 @@
         <gameWidget:GameWidgetDesignViewModel />
     </Design.DataContext>
 
-    <Border Width="140" x:Name="GameWidgetBorder">
+    <Border Width="140" x:Name="GameWidgetBorder" x:DataType="gameWidget:IGameWidgetViewModel">
         
         <Grid RowDefinitions="Auto,Auto,Auto">
             
@@ -40,17 +40,29 @@
             <Panel Grid.Row="1" >
 
                 <!-- DetectedGame -->
-                <StackPanel x:Name="DetectedGameStackPanel"
-                            IsVisible="False">
+                <Grid x:Name="DetectedGameStackPanel"
+                      ColumnDefinitions="*, 6, Auto"
+                      IsVisible="False">
 
                     <controls:StandardButton x:Name="AddGameButton"
+                                             Grid.Column="0"
                                              HorizontalAlignment="Stretch"
                                              Text="{x:Static resources:Language.GameWidget__Add_game}"
                                              LeftIcon="{x:Static icons:IconValues.Add}"
                                              ShowIcon="Left"
                                              Type="Primary"
                                              Fill="Strong" />
-                </StackPanel>
+
+                    <controls:StandardButton Grid.Column="2" x:Name="DeepCleanButtonDetected"
+                                             LeftIcon="{x:Static icons:IconValues.ClearAll}"
+                                             ShowLabel="False"
+                                             ShowIcon="Left"
+                                             Type="Tertiary"
+                                             Fill="Weak"
+                                             IsVisible="{CompiledBinding IsDeepCleanAvailable}"
+                                             Command="{CompiledBinding DeepCleanCommand}"
+                                             ToolTip.Tip="Deep Clean (Disable all mods)"/>
+                </Grid>
 
                 <!-- AddingGame -->
                 <StackPanel x:Name="AddingGameStackPanel"
@@ -67,7 +79,7 @@
 
                 <!-- ManagedGame -->
                 <Grid x:Name="ManagedGameGrid"
-                      ColumnDefinitions="*, 6, Auto"
+                      ColumnDefinitions="*, 6, Auto, 6, Auto"
                       IsVisible="False"
                       VerticalAlignment="Center"
                       HorizontalAlignment="Stretch">
@@ -79,7 +91,17 @@
                                              Fill="Weak"
                                              HorizontalAlignment="Stretch" />
 
-                    <controls:StandardButton Grid.Column="2" x:Name="RemoveGameButton"
+                    <controls:StandardButton Grid.Column="2" x:Name="DeepCleanButton"
+                                             LeftIcon="{x:Static icons:IconValues.ClearAll}"
+                                             ShowLabel="False"
+                                             ShowIcon="Left"
+                                             Type="Tertiary"
+                                             Fill="Weak"
+                                             IsVisible="{CompiledBinding IsDeepCleanAvailable}"
+                                             Command="{CompiledBinding DeepCleanCommand}"
+                                             ToolTip.Tip="Deep Clean (Disable all mods)"/>
+
+                    <controls:StandardButton Grid.Column="4" x:Name="RemoveGameButton"
                                              LeftIcon="{x:Static icons:IconValues.DeleteForever}"
                                              ShowLabel="False"
                                              ShowIcon="Left"

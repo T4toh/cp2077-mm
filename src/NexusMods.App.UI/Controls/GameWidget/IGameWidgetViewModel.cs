@@ -18,6 +18,8 @@ public interface IGameWidgetViewModel : IViewModelInterface
     public ReactiveCommand<Unit, Unit> AddGameCommand { get; set; }
     public ReactiveCommand<Unit, Unit> ViewGameCommand { get; set; }
     public ReactiveCommand<Unit, Unit> RemoveAllLoadoutsCommand { get; set; }
+    public ReactiveCommand<Unit, Unit> DeepCleanCommand { get; set; }
+    public bool IsDeepCleanAvailable { get; }
     public IObservable<bool> IsManagedObservable { get; set; }
     public GameWidgetState State { get; set; }
 }

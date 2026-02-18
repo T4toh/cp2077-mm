@@ -21,6 +21,7 @@ public static class Services
             .AddSingleton<RedModSortOrderVariety, RedModSortOrderVariety>()
             .AddSingleton<ITool, RunCyberpunk2077Game>()
             .AddSingleton<ITool, RedModDeployTool>()
+            .AddSingleton<ITool, CyberpunkDeepCleanTool>()
             // Diagnostics
             
             
