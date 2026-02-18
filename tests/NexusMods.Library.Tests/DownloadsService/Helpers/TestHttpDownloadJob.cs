@@ -18,6 +18,7 @@ internal sealed class TestHttpDownloadState : ReactiveObject, IHttpDownloadState
 {
     [Reactive] public Optional<Size> ContentLength { get; set; } = Optional<Size>.None;
     [Reactive] public Size TotalBytesDownloaded { get; set; } = Size.Zero;
+    [Reactive] public Optional<RelativePath> FileName { get; set; } = Optional<RelativePath>.None;
 }
 
 /// <summary>
