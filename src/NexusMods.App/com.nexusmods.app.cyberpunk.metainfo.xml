@@ -2,19 +2,19 @@
 <component type="desktop-application">
     <!-- See https://www.freedesktop.org/software/appstream/docs/chap-Metadata.html#spec-component-filespec -->
 
-    <id>com.nexusmods.app</id>
+    <id>com.nexusmods.app.cyberpunk</id>
     <metadata_license>CC0-1.0</metadata_license>
     <project_license>GPL-3.0-only</project_license>
 
-    <name>Nexus Mods App</name>
-    <summary>Mod Manager for your games</summary>
+    <name>Nexus Mods App (Cyberpunk)</name>
+    <summary>Mod Manager for Cyberpunk 2077 on Linux</summary>
 
     <developer id="com.nexusmods">
-        <name>The Nexus Mods Team</name>
+        <name>The Nexus Mods Team (Cyberpunk Fork)</name>
     </developer>
 
     <description>
-        <p>The Nexus Mods App is a mod manager for your games and the successor to Vortex with native support for Linux.</p>
+        <p>This is a specialized fork of the Nexus Mods App, focused exclusively on managing mods for Cyberpunk 2077 on Linux via Steam.</p>
     </description>
 
     <branding>
@@ -22,7 +22,7 @@
         <color type="primary" scheme_preference="dark">#1d1d21</color>
     </branding>
 
-    <launchable type="desktop-id">com.nexusmods.app.desktop</launchable>
+    <launchable type="desktop-id">com.nexusmods.app.cyberpunk.desktop</launchable>
 
     <url type="homepage">https://github.com/Nexus-Mods/NexusMods.App</url>
     <url type="bugtracker">https://github.com/Nexus-Mods/NexusMods.App/issues</url>

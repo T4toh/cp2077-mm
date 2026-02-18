@@ -2,16 +2,16 @@
 Type=Application
 # Version=1.5
 # Commented out because PupNet needs updating to recognise 1.5, so letting it default to latest is ideal.
-Name=Nexus Mods App
+Name=Nexus Mods App (Cyberpunk)
 GenericName=Mod Manager
-Comment=Mod Manager for your games
+Comment=Mod Manager for Cyberpunk 2077 on Linux
 Categories=Game
 Terminal=false
 StartupWMClass=NexusMods.App
 MimeType=x-scheme-handler/nxm
-Icon=com.nexusmods.app
+Icon=com.nexusmods.app.cyberpunk
 Exec=${INSTALL_EXEC} %u
 TryExec=${INSTALL_TRYEXEC}
 X-AppImage-Integrate=true
-X-AppImage-Name=NexusMods.App
+X-AppImage-Name=NexusMods.App.Cyberpunk
 X-AppImage-Arch=x86_64

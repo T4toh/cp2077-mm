@@ -66,13 +66,16 @@ public record DataModelSettings : ISettings
         var os = serviceProvider.GetRequiredService<IFileSystem>().OS;
         var baseKnownPath = GetLocalApplicationDataDirectory(os, out var baseDirectoryName);
 
+        // NOTE: We share the downloads folder with the official app to save disk space and time.
+        var officialDirectoryName = os.IsOSX ? "NexusMods_App" : "NexusMods.App";
+
         return new DataModelSettings
         {
             MnemonicDBPath = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/{DataModelFolderName}/MnemonicDB.rocksdb"),
             ArchiveLocations = [
                 new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/{DataModelFolderName}/Archives"),
             ],
-            DownloadsFolder = new ConfigurablePath(baseKnownPath, $"{baseDirectoryName}/Downloads"),
+            DownloadsFolder = new ConfigurablePath(baseKnownPath, $"{officialDirectoryName}/Downloads"),
         };
     }
 
@@ -112,7 +115,7 @@ public record DataModelSettings : ISettings
         );
 
         // NOTE: OSX ".App" is apparently special, using _ instead of . to prevent weirdness
-        baseDirectoryName = os.IsOSX ? "NexusMods_App" : "NexusMods.App";
+        baseDirectoryName = os.IsOSX ? "NexusMods_App_Cyberpunk" : "NexusMods.App.Cyberpunk";
         return baseKnownPath;
     }
 }
