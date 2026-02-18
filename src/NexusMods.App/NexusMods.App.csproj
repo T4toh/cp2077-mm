@@ -54,16 +54,16 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Update="com.nexusmods.app.desktop">
+        <None Update="com.nexusmods.app.cyberpunk.desktop">
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
-        <None Update="com.nexusmods.app.metainfo.xml">
+        <None Update="com.nexusmods.app.cyberpunk.metainfo.xml">
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
         <None Update="icon.svg">
             <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
-        <None Update="com.nexusmods.app.releases.xml">
+        <None Update="com.nexusmods.app.cyberpunk.releases.xml">
           <DependentUpon>app.pupnet.conf</DependentUpon>
         </None>
     </ItemGroup>
