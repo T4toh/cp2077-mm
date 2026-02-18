@@ -8,6 +8,9 @@ Proporcionar un gestor de mods moderno, nativo para Linux, que resuelva las comp
 
 ## ✨ Diferencias y Mejoras (vs Upstream)
 
+- **Aislamiento del Sistema:** Este fork utiliza su propio ID de aplicación (`com.nexusmods.app.cyberpunk`) y directorios de datos independientes (`~/.local/share/NexusMods.App.Cyberpunk`). Esto permite que conviva con la versión oficial sin romper bases de datos ni conflictos de protocolos.
+- **Descargas Compartidas:** A pesar del aislamiento, el fork comparte la carpeta de descargas con la versión oficial para ahorrar espacio en disco y evitar re-descargas.
+- **Limpiador Profundo (Deep Clean) Nativo:** Integrada una herramienta de limpieza que desactiva y respalda automáticamente todos los mods instalados manualmente o por otros gestores. Mueve carpetas críticas (`red4ext`, `plugins`, `r6/scripts`, `r6/tweaks`, etc.) a un directorio de backup con marca de tiempo dentro de la carpeta del juego.
 - **Foco Único:** Eliminado el soporte para GOG, EGS, Windows, macOS y otros juegos para reducir la complejidad y el tamaño del binario.
 - **Detección Manual de Juego:** Permite especificar manualmente la ruta de instalación de Cyberpunk 2077 y el prefijo de WINE (Proton), facilitando el soporte para instalaciones en discos secundarios o Steam Deck.
 - **Gestión de Colecciones Global:** Ahora puedes navegar y descargar colecciones incluso si no tienes un juego gestionado o instalado.
@@ -26,7 +29,7 @@ Proporcionar un gestor de mods moderno, nativo para Linux, que resuelva las comp
 ## 🚀 Próximos Pasos (Checklist)
 
 - [ ] **Descarga Automatizada de Colecciones:** Integrar el flujo de descarga completa para que procese todos los mods de una colección de forma secuencial.
-- [ ] **Captura de Enlaces NXM:** Implementar el manejador de protocolos para capturar clics de "Vortex/Mod Manager Download" directamente desde el navegador.
+- [x] **Captura de Enlaces NXM:** Implementado mediante aislamiento de ID de aplicación, permitiendo registro independiente del protocolo nxm.
 - [ ] **Chequeo de Frameworks Específicos:** Verificación automática de la presencia y versión de mods base críticos:
     - [ ] REDmod
     - [ ] Cyber Engine Tweaks (CET)
