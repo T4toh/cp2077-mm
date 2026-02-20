@@ -27,6 +27,7 @@ public class SimpleOverlayModInstaller : ALibraryArchiveInstaller
         "r6",
         "red4ext",
         "archive/pc/mod",
+        "plugins",
     ];
 
     public override ValueTask<InstallerResult> ExecuteAsync(
@@ -38,46 +39,53 @@ public class SimpleOverlayModInstaller : ALibraryArchiveInstaller
     {
         var tree = LibraryArchiveTreeExtensions.GetTree(libraryArchive);
         
-        // Note: Expected search space here is small, highest expected overhead is in FindSubPathRootsByKeyUpward.
-        // Find all paths which match a known base/root directory.
-        var roots = RootPaths
-            .SelectMany(x => tree.FindSubPathRootsByKeyUpward(x.Parts.ToArray()))
-            .OrderBy(node => node.Depth())
-            .ToArray();
+        // 1. Find the best root candidate
+        // We look for where the core folders (bin, r6, etc.) start in the archive.
+        var allFiles = tree.EnumerateFilesBfs().ToArray();
+        if (allFiles.Length == 0) return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "Archive is empty"));
 
-        if (roots.Length == 0) return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "Archive contains no valid roots"));
-
-        var highestRoot = roots.First();
-
-        var newFiles = 0;
-
-        // Enumerate over all directories with the same depth as the most rooted item.
-        foreach (var node in roots.Where(root => root.Depth() == highestRoot.Depth()))
-        foreach (var file in node.Item.GetFiles<LibraryArchiveTree, RelativePath>())
+        RelativePath? archiveRoot = null;
+        foreach (var rootPath in RootPaths)
         {
-            var fullPath = file.Item.Path; // all the way up to root
-            var relativePath = fullPath.DropFirst(node.Depth() - 1); // get relative path
+            var match = allFiles.Where(f => f.Value.Item.Path.ToString().Contains(rootPath.ToString(), StringComparison.OrdinalIgnoreCase))
+                .Select(f => f.Value.Item.Path)
+                .Cast<RelativePath?>()
+                .FirstOrDefault();
 
-            _ = new LoadoutFile.New(tx, out var id)
+            if (match is not null)
             {
-                LoadoutItemWithTargetPath = new LoadoutItemWithTargetPath.New(tx, id)
-                {
-                    TargetPath = (loadout.Id, LocationId.Game, relativePath),
-                    LoadoutItem = new LoadoutItem.New(tx, id)
-                    {
-                        Name = relativePath.Name,
-                        LoadoutId = loadout.Id,
-                        ParentId = loadoutGroup.Id,
-                    },
-                },
-                Hash = file.Item.LibraryFile.Value.Hash,
-                Size = file.Item.LibraryFile.Value.Size,
-            };
+                var pathStr = match.Value.ToString();
+                var index = pathStr.IndexOf(rootPath.ToString(), StringComparison.OrdinalIgnoreCase);
+                archiveRoot = RelativePath.FromUnsanitizedInput(pathStr.AsSpan(0, index).ToString());
+                break;
+            }
+        }
+
+        // 2. If no core folders found, this might be a simple archive mod or we don't support its structure here
+        if (archiveRoot is null) return ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "Archive contains no recognized Cyberpunk 2077 root folders"));
+
+        var root = archiveRoot.Value;
+        var newFiles = 0;
+        foreach (var file in allFiles)
+        {
+            if (!file.Value.Item.Path.InFolder(root)) continue;
+
+            var relativePath = file.Value.Item.Path.RelativeTo(root);
+            
+            // Heuristic: if 'plugins' is at the root of the mod, it usually belongs in 'bin/x64/plugins'
+            if (relativePath.ToString().StartsWith("plugins", StringComparison.OrdinalIgnoreCase))
+            {
+                relativePath = RelativePath.FromUnsanitizedInput("bin/x64").Join(relativePath);
+            }
+
+            Logger.LogDebug("Installing file {File} to {TargetPath}", file.Value.Item.Path, relativePath);
+
+            _ = file.Value.ToLoadoutFile(loadout.Id, loadoutGroup.Id, tx, new GamePath(LocationId.Game, relativePath));
             newFiles++;
         }
 
         return newFiles == 0
-            ? ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "Found no matching files in the archive"))
+            ? ValueTask.FromResult<InstallerResult>(new NotSupported(Reason: "Found no matching files after root resolution"))
             : ValueTask.FromResult<InstallerResult>(new Success());
     }
 }

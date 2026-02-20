@@ -26,6 +26,7 @@ public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidget
         ViewGameCommand = ReactiveCommand.Create(() => { });
         RemoveAllLoadoutsCommand = ReactiveCommand.Create(() => { });
         DeepCleanCommand = ReactiveCommand.Create(() => { });
+        DismissCommand = ReactiveCommand.Create(() => { });
 
         _image = this
             .WhenAnyValue(vm => vm.Installation)
@@ -54,6 +55,18 @@ public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidget
                         return $"Version: {vanityVersion.Value}";
                     })
                     .BindToVM(this, vm => vm.Version)
+                    .DisposeWith(disposables);
+
+                this.WhenAnyValue(vm => vm.Installation)
+                    .WhereNotNull()
+                    .Select(inst => $"{inst.Locations[LocationId.Game].Path}")
+                    .BindToVM(this, vm => vm.Path)
+                    .DisposeWith(disposables);
+
+                this.WhenAnyValue(vm => vm.Installation)
+                    .WhereNotNull()
+                    .Select(inst => $"Path: {inst.Locations[LocationId.Game].Path}\nID: {inst.LocatorResult.StoreIdentifier}")
+                    .BindToVM(this, vm => vm.PathTooltip)
                     .DisposeWith(disposables);
 
                 this.WhenAnyValue(vm => vm.Installation)
@@ -123,6 +136,8 @@ public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidget
 
     [Reactive] public string Name { get; set; } = "";
     [Reactive] public string Version { get; set; } = "";
+    [Reactive] public string Path { get; set; } = "";
+    [Reactive] public string PathTooltip { get; set; } = "";
     [Reactive] public string Store { get; set; } = "";
     public IconValue GameStoreIcon { get; set; } = new IconValue();
 
@@ -136,7 +151,9 @@ public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidget
     [Reactive] public ReactiveCommand<Unit, Unit> RemoveAllLoadoutsCommand { get; set; }
 
     [Reactive] public ReactiveCommand<Unit, Unit> DeepCleanCommand { get; set; }
-    
+
+    [Reactive] public ReactiveCommand<Unit, Unit> DismissCommand { get; set; }
+
     public IObservable<bool> IsManagedObservable { get; set; } = Observable.Return(false);
 
 

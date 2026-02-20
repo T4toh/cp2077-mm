@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using GameFinder.StoreHandlers.Steam;
 using GameFinder.StoreHandlers.Steam.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
@@ -22,10 +23,19 @@ internal class SteamLocator : IGameLocator
     {
         _logger = loggerFactory.CreateLogger<SteamLocator>();
 
+        var handlerLogger = loggerFactory.CreateLogger<SteamHandler>();
+        if (OSInformation.Shared.IsLinux)
+        {
+            if (!GetCommonSteamPaths().Any(p => Directory.Exists(p) && File.Exists(Path.Combine(p, "config/libraryfolders.vdf"))))
+            {
+                handlerLogger = NullLogger<SteamHandler>.Instance;
+            }
+        }
+
         _handler = new SteamHandler(
             fileSystem: fileSystem,
             registry: registry,
-            logger: loggerFactory.CreateLogger<SteamHandler>()
+            logger: handlerLogger
         );
 
         _registeredGames = games
@@ -33,8 +43,30 @@ internal class SteamLocator : IGameLocator
             .ToFrozenDictionary();
     }
 
+    private static string[] GetCommonSteamPaths()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return
+        [
+            Path.Combine(home, ".local/share/Steam"),
+            Path.Combine(home, ".steam/steam"),
+            Path.Combine(home, ".steam/debian-installation"),
+            Path.Combine(home, ".var/app/com.valvesoftware.Steam/.local/share/Steam")
+        ];
+    }
+
     public IEnumerable<GameLocatorResult> Locate()
     {
+        // NOTE(erri120): silences warnings if Steam isn't installed
+        if (OSInformation.Shared.IsLinux)
+        {
+            var steamExists = GetCommonSteamPaths().Any(p => 
+                Directory.Exists(p) && 
+                File.Exists(Path.Combine(p, "config/libraryfolders.vdf")));
+            
+            if (!steamExists) yield break;
+        }
+
         foreach (var result in _handler.FindAllGames())
         {
             if (result.TryPickT1(out var errorMessage, out var gameFinderGame))

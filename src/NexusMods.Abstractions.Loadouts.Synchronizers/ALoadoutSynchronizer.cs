@@ -392,7 +392,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <inheritdoc />
-    public void ProcessSyncTree(Dictionary<GamePath, SyncNode> tree)
+    public virtual void ProcessSyncTree(Dictionary<GamePath, SyncNode> tree)
     {
         foreach (var path in tree.Keys)
         {

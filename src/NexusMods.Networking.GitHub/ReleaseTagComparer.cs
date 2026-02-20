@@ -19,15 +19,19 @@ public class ReleaseTagComparer : IComparer<Release>
     /// <inheritdoc/>
     public int Compare(Release? x, Release? y)
     {
-        if (x is null && y is null) return 0;
-        if (x is null && y is not null) return -1;
-        if (x is not null && y is null) return 1;
+        if (ReferenceEquals(x, y)) return 0;
+        if (x is null) return -1;
+        if (y is null) return 1;
 
-        Debug.Assert(x is not null);
-        Debug.Assert(y is not null);
+        var hasA = x.TryGetVersion(out var a);
+        var hasB = y.TryGetVersion(out var b);
 
-        if (!x.TryGetVersion(out var a)) return -1;
-        if (!y.TryGetVersion(out var b)) return -1;
+        if (!hasA && !hasB) return string.Compare(x.TagName, y.TagName, StringComparison.OrdinalIgnoreCase);
+        if (!hasA) return -1;
+        if (!hasB) return 1;
+
+        Debug.Assert(a is not null);
+        Debug.Assert(b is not null);
 
         return a.CompareTo(b);
     }

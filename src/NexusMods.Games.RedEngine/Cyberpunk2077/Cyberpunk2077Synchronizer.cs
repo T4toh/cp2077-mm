@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Sdk.Settings;
 using NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
 using NexusMods.Sdk.Games;
@@ -37,6 +38,75 @@ public class Cyberpunk2077Synchronizer : ALoadoutSynchronizer
     
     private readonly RedModDeployTool _redModTool;
     
+    private static bool IsVanillaContentPath(GamePath path)
+    {
+        if (path.LocationId != LocationId.Game) return false;
+        var pathStr = path.Path.ToString().Replace('\\', '/').ToLowerInvariant();
+        
+        // Cyberpunk 2077 specific: archive/pc/content and archive/pc/ep1 contain 90GB of data.
+        // archive/pc/mod is where mods go, so we must NOT ignore that.
+        // We ignore everything else in archive/pc/ to be safe.
+        if (pathStr.StartsWith("archive/pc/") && !pathStr.StartsWith("archive/pc/mod"))
+            return true;
+
+        // Also ignore the deep clean backup folders just in case
+        if (pathStr.Contains("_mod_remover_backup_"))
+            return true;
+
+        return false;
+    }
+
+    protected override IGamePathFilter GamePathFilter => GamePathFilters.Create(path => 
+    {
+        if (IsVanillaContentPath(path)) return false;
+        return true;
+    });
+    
+    public override bool IsIgnoredBackupPath(GamePath path)
+    {
+        if (_settings.DoFullGameBackup)
+            return false;
+        
+        if (path.LocationId != LocationId.Game)
+            return false;
+
+        if (IsVanillaContentPath(path))
+            return true;
+
+        var pathStr = path.Path.ToString().Replace('\\', '/').ToLowerInvariant();
+        if (pathStr.StartsWith("_mod_remover_backup_") || pathStr.Contains("/_mod_remover_backup_"))
+            return true;
+        
+        return IgnoredBackupFolders.Any(ignore => path.Path.InFolder(ignore.Path));
+    }
+
+    public override void ProcessSyncTree(Dictionary<GamePath, SyncNode> syncTree)
+    {
+        base.ProcessSyncTree(syncTree);
+        
+        // Final safety pass to ensure no huge vanilla archives are ever marked for backup.
+        // This is necessary because some state-action mappings (like AxB_xxx_IL) might still 
+        // include the BackupFile flag even if the path is ignored.
+        foreach (var path in syncTree.Keys.ToArray())
+        {
+            if (IsVanillaContentPath(path))
+            {
+                var node = syncTree[path];
+                node.Actions &= ~Actions.BackupFile;
+                syncTree[path] = node;
+            }
+        }
+    }
+
+    public override async Task ActionBackupNewFiles(GameInstallation installation, GameInstallMetadataId installMetadataId, Dictionary<GamePath, SyncNode> files)
+    {
+        var filteredFiles = files
+            .Where(x => !IsVanillaContentPath(x.Key))
+            .ToDictionary(x => x.Key, x => x.Value);
+        
+        await base.ActionBackupNewFiles(installation, installMetadataId, filteredFiles);
+    }
+
     protected internal Cyberpunk2077Synchronizer(IServiceProvider provider) : base(provider)
     {
         var settingsManager = provider.GetRequiredService<ISettingsManager>();
@@ -65,17 +135,4 @@ public class Cyberpunk2077Synchronizer : ALoadoutSynchronizer
         await _redModTool.Execute(loadout, CancellationToken.None);
         return await base.Synchronize(loadout, job);
     }
-
-
-    public override bool IsIgnoredBackupPath(GamePath path)
-    {
-        if (_settings.DoFullGameBackup)
-            return false;
-        
-        if (path.LocationId != LocationId.Game)
-            return false;
-        
-        return IgnoredBackupFolders.Any(ignore => path.Path.InFolder(ignore.Path));
-    }
-
 }

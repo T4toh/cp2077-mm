@@ -71,6 +71,7 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     private readonly IGameRegistry _gameRegistry;
     private readonly IToolManager _toolManager;
     private readonly IWindowNotificationService _notificationService;
+    private readonly ILogger<MyGamesViewModel> _logger;
     private readonly BehaviorSubject<Unit> _refreshSignal = new(Unit.Default);
     private readonly SourceList<GameInstallation> _sourceList = new();
 
@@ -106,6 +107,7 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
         _gameRegistry = gameRegistry;
         _toolManager = toolManager;
+        _logger = logger;
         _notificationService = serviceProvider.GetRequiredService<IWindowNotificationService>();
 
         TabTitle = Language.MyGames;
@@ -164,6 +166,21 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                 }
             }
 
+            // Check for duplicates
+            var existing = ManuallyAddedGame.All(conn.Db)
+                .Any(x => string.Equals(x.Path, result.GamePath, StringComparison.OrdinalIgnoreCase));
+            if (existing)
+            {
+                var messageBox = new MessageBoxOkViewModel
+                {
+                    Title = "Game Already Added",
+                    Description = "This game path has already been added manually.",
+                    MarkdownRenderer = null
+                };
+                await _overlayController.EnqueueAndWait(messageBox);
+                return;
+            }
+
             using var tx = conn.BeginTransaction();
             _ = new ManuallyAddedGame.New(tx)
             {
@@ -215,81 +232,112 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                             var vm = _serviceProvider.GetRequiredService<IGameWidgetViewModel>();
                             vm.Installation = installation;
 
-                            vm.AddGameCommand = ReactiveCommand.CreateFromTask(async () => await AddGameHandler(installation, vm));
+                            vm.AddGameCommand = ReactiveCommand.CreateFromTask(async () =>
+                            {
+                                try
+                                {
+                                    await AddGameHandler(installation, vm);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Error adding game");
+                                    vm.State = GameWidgetState.DetectedGame;
+                                }
+                            });
 
                             vm.DeepCleanCommand = ReactiveCommand.CreateFromTask(async () =>
                             {
-                                var dialog = DialogFactory.CreateStandardDialog(
-                                    title: "Deep Clean Cyberpunk 2077",
-                                    new StandardDialogParameters()
+                                try
+                                {
+                                    var gamePath = installation.Locations[LocationId.Game].Path;
+                                    var dialog = DialogFactory.CreateStandardDialog(
+                                        title: "Deep Clean Cyberpunk 2077",
+                                        new StandardDialogParameters()
+                                        {
+                                            Text = $"This will move all non-original mod folders to a backup directory.\n\nTarget Path: {gamePath}\n\nDo you want to continue?",
+                                        },
+                                        buttonDefinitions:
+                                        [
+                                            DialogStandardButtons.Cancel,
+                                            new DialogButtonDefinition("Deep Clean", ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Primary),
+                                        ]
+                                    );
+
+                                    var dialogResult = await _windowManager.ShowDialog(dialog, DialogWindowType.Modal);
+                                    if (dialogResult.ButtonId != ButtonDefinitionId.Accept) return;
+
+                                    vm.State = GameWidgetState.AddingGame;
+                                    
+                                    // Get or create marker loadout
+                                    var loadoutId = GetLoadout(conn, installation);
+                                    Loadout.ReadOnly loadout;
+                                    if (loadoutId.HasValue)
                                     {
-                                        Text = "This will move all non-original mod folders (like red4ext, plugins, etc.) to a timestamped backup directory.\n\nDo you want to continue?",
-                                    },
-                                    buttonDefinitions:
-                                    [
-                                        DialogStandardButtons.Cancel,
-                                        new DialogButtonDefinition("Deep Clean", ButtonDefinitionId.Accept, ButtonAction.Accept, ButtonStyling.Primary),
-                                    ]
-                                );
+                                        loadout = Loadout.Load(conn.Db, loadoutId.Value);
+                                    }
+                                    else
+                                    {
+                                        loadout = await _loadoutManager.CreateLoadout(installation);
+                                    }
 
-                                var dialogResult = await _windowManager.ShowDialog(dialog, DialogWindowType.Modal);
-                                if (dialogResult.ButtonId != ButtonDefinitionId.Accept) return;
-
-                                vm.State = GameWidgetState.AddingGame;
-                                
-                                // Get or create marker loadout
-                                var loadoutId = GetLoadout(conn, installation);
-                                Loadout.ReadOnly loadout;
-                                if (loadoutId.HasValue)
-                                {
-                                    loadout = Loadout.Load(conn.Db, loadoutId.Value);
+                                    var tool = _toolManager.GetTools(loadout).OfType<CyberpunkDeepCleanTool>().FirstOrDefault();
+                                    if (tool is not null)
+                                    {
+                                        await tool.Execute(loadout, CancellationToken.None);
+                                        _notificationService.ShowToast("Deep clean completed. Non-game files moved to backup.", ToastNotificationVariant.Success);
+                                    }
+                                    else
+                                    {
+                                        _notificationService.ShowToast("Deep clean tool not found.", ToastNotificationVariant.Failure);
+                                    }
                                 }
-                                else
+                                catch (Exception ex)
                                 {
-                                    loadout = await _loadoutManager.CreateLoadout(installation);
+                                    _logger.LogError(ex, "Error during deep clean");
                                 }
-
-                                var tool = _toolManager.GetTools(loadout).OfType<CyberpunkDeepCleanTool>().FirstOrDefault();
-                                if (tool is not null)
+                                finally
                                 {
-                                    await tool.Execute(loadout, CancellationToken.None);
-                                    _notificationService.ShowToast("Deep clean completed. Non-game files moved to backup.", ToastNotificationVariant.Success);
+                                    vm.State = GameWidgetState.DetectedGame;
+                                    _refreshSignal.OnNext(Unit.Default);
                                 }
-                                else
-                                {
-                                    _notificationService.ShowToast("Deep clean tool not found.", ToastNotificationVariant.Failure);
-                                }
-
-                                vm.State = GameWidgetState.DetectedGame;
-                                _refreshSignal.OnNext(Unit.Default);
                             });
 
                             vm.RemoveAllLoadoutsCommand = ReactiveCommand.CreateFromTask(async () =>
                             {
-                                if (GetJobRunningForGameInstallation(installation).IsT2) return;
-
-                                var filesToDelete = libraryDataProviders.SelectMany(dataProvider => dataProvider.GetAllFiles(installation.Game.GameId)).ToArray();
-                                var totalSize = filesToDelete.Sum(static Size (file) => file.Size);
-
-                                var collections = CollectionDownloader.GetCollections(conn.Db, installation.Game.NexusModsGameId.Value);
-
-                                var overlay = new RemoveGameOverlayViewModel
+                                try
                                 {
-                                    GameName = installation.Game.DisplayName,
-                                    NumDownloads = filesToDelete.Length,
-                                    SumDownloadsSize = totalSize,
-                                    NumCollections = collections.Length,
-                                };
+                                    if (GetJobRunningForGameInstallation(installation).IsT2) return;
 
-                                var result = await overlayController.EnqueueAndWait(overlay);
-                                if (!result.ShouldRemoveGame) return;
+                                    var filesToDelete = libraryDataProviders.SelectMany(dataProvider => dataProvider.GetAllFiles(installation.Game.GameId)).ToArray();
+                                    var totalSize = filesToDelete.Sum(static Size (file) => file.Size);
 
-                                vm.State = GameWidgetState.RemovingGame;
-                                await Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, filesToDelete, collections));
-                                vm.State = GameWidgetState.DetectedGame;
+                                    var collections = CollectionDownloader.GetCollections(conn.Db, installation.Game.NexusModsGameId.Value);
 
-                                Tracking.AddEvent(Events.Game.RemoveGame, new EventMetadata(name: $"{installation.Game.DisplayName} - {installation.LocatorResult.Store}"));
-                                _refreshSignal.OnNext(Unit.Default);
+                                    var overlay = new RemoveGameOverlayViewModel
+                                    {
+                                        GameName = installation.Game.DisplayName,
+                                        NumDownloads = filesToDelete.Length,
+                                        SumDownloadsSize = totalSize,
+                                        NumCollections = collections.Length,
+                                    };
+
+                                    var result = await overlayController.EnqueueAndWait(overlay);
+                                    if (!result.ShouldRemoveGame) return;
+
+                                    vm.State = GameWidgetState.RemovingGame;
+                                    await Task.Run(async () => await RemoveGame(installation, shouldDeleteDownloads: result.ShouldDeleteDownloads, shouldCleanGameFolder: result.ShouldCleanGameFolder, filesToDelete, collections));
+                                    _gameRegistry.ClearCache();
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Error removing game");
+                                }
+                                finally
+                                {
+                                    vm.State = GameWidgetState.DetectedGame;
+                                    Tracking.AddEvent(Events.Game.RemoveGame, new EventMetadata(name: $"{installation.Game.DisplayName} - {installation.LocatorResult.Store}"));
+                                    _refreshSignal.OnNext(Unit.Default);
+                                }
                             });
 
                             vm.ViewGameCommand = ReactiveCommand.Create(() =>
@@ -298,8 +346,46 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                                 Tracking.AddEvent(Events.Game.ViewGame, new EventMetadata(name: $"{installation.Game.DisplayName} - {installation.LocatorResult.Store}"));
                             });
 
+                            vm.DismissCommand = ReactiveCommand.CreateFromTask(async () =>
+                            {
+                                try
+                                {
+                                    using var tx = conn.BeginTransaction();
+                                    var removed = false;
+
+                                    // For manually-added games: remove the DB entry so they won't re-appear
+                                    if (installation.LocatorResult.Store == GameStore.ManuallyAdded)
+                                    {
+                                        var pathStr = installation.Locations[LocationId.Game].Path.ToString();
+                                        foreach (var entry in ManuallyAddedGame.All(conn.Db).Where(x => string.Equals(x.Path, pathStr, StringComparison.OrdinalIgnoreCase)))
+                                        {
+                                            tx.Delete(entry.Id, recursive: true);
+                                            removed = true;
+                                        }
+                                    }
+
+                                    // Remove metadata (orphaned or not)
+                                    if (_gameRegistry.TryGetMetadata(installation, out var meta))
+                                    {
+                                        tx.Delete(meta.Id, recursive: true);
+                                        removed = true;
+                                    }
+
+                                    if (removed) await tx.Commit();
+                                    _gameRegistry.ClearCache();
+                                    _refreshSignal.OnNext(Unit.Default);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Error dismissing installation");
+                                }
+                            });
+
                             vm.IsManagedObservable = Loadout.ObserveAll(conn)
-                                .Filter(l => l.IsVisible() && l.InstallationInstance.Game.GameId == installation.Game.GameId && l.InstallationInstance.LocatorResult.Store == installation.LocatorResult.Store)
+                                .Filter(l => l.IsVisible() && 
+                                             l.InstallationInstance.Game.GameId == installation.Game.GameId && 
+                                             l.InstallationInstance.LocatorResult.Store == installation.LocatorResult.Store &&
+                                             string.Equals(l.InstallationInstance.Locations[LocationId.Game].Path.ToString(), installation.Locations[LocationId.Game].Path.ToString(), StringComparison.OrdinalIgnoreCase))
                                 .Count()
                                 .Select(c => c > 0);
 
@@ -361,9 +447,62 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         return OneOf<None, CreateLoadoutJob, UnmanageGameJob>.FromT0(new None());
     }
 
-    private async Task RemoveGame(GameInstallation installation, bool shouldDeleteDownloads, LibraryFile.ReadOnly[] filesToDelete, CollectionMetadata.ReadOnly[] collections)
+    private async Task RemoveGame(GameInstallation installation, bool shouldDeleteDownloads, bool shouldCleanGameFolder, LibraryFile.ReadOnly[] filesToDelete, CollectionMetadata.ReadOnly[] collections)
     {
-        await _syncService.UnManage(installation);
+        _logger.LogInformation("Removing game management for {Game} at {Path}", installation.Game.DisplayName, installation.Locations[LocationId.Game].Path);
+
+        // 1. Try to unmanage files if it has metadata and cleaning is requested
+        if (shouldCleanGameFolder && _gameRegistry.TryGetMetadata(installation, out _))
+        {
+            try 
+            {
+                _logger.LogInformation("Attempting to unmanage game files (CleanFolder=true)");
+                await _syncService.UnManage(installation, cleanGameFolder: true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "UnManage file operation failed. Continuing with database removal.");
+            }
+        }
+
+        // 2. Aggressive database cleanup
+        var db = _connection.Db;
+        using var tx = _connection.BeginTransaction();
+        var removedAny = false;
+
+        // Remove Manual entry
+        if (installation.LocatorResult.Store == GameStore.ManuallyAdded)
+        {
+            if (ulong.TryParse(installation.LocatorResult.StoreIdentifier, out var entityIdValue))
+            {
+                var entityId = EntityId.From(entityIdValue);
+                if (ManuallyAddedGame.Load(db, entityId).IsValid())
+                {
+                    _logger.LogInformation("Deleting ManuallyAddedGame entry: {Id}", entityId);
+                    tx.Delete(entityId, recursive: true);
+                    removedAny = true;
+                }
+            }
+            
+            // Path-based cleanup fallback
+            var pathStr = installation.Locations[LocationId.Game].Path.ToString();
+            foreach (var entry in ManuallyAddedGame.All(db).Where(x => string.Equals(x.Path, pathStr, StringComparison.OrdinalIgnoreCase)))
+            {
+                _logger.LogInformation("Deleting duplicate ManuallyAddedGame entry by path: {Id}", entry.Id);
+                tx.Delete(entry.Id, recursive: true);
+                removedAny = true;
+            }
+        }
+
+        // Remove Metadata if it still exists
+        if (_gameRegistry.TryGetMetadata(installation, out var metadata))
+        {
+            _logger.LogInformation("Deleting GameInstallMetadata: {Id}", metadata.Id);
+            tx.Delete(metadata.Id, recursive: true);
+            removedAny = true;
+        }
+
+        if (removedAny) await tx.Commit();
 
         if (!shouldDeleteDownloads) return;
         await _libraryService.RemoveLibraryItems(filesToDelete.Select(file => file.AsLibraryItem()));
@@ -456,11 +595,14 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         var markdownVm = _serviceProvider.GetRequiredService<IMarkdownRendererViewModel>();
         markdownVm.Contents = $"""
             We found {changeEntries.Length} files in the game folder that aren’t part of a clean install. To avoid conflicts with mods, **we recommend starting with a clean folder**.
+            
             #### Important
+            - **Your original game files will NEVER be deleted.**
+            - "Cleaning" only moves or removes files that were added by mods or other external tools.
+            
             If you keep existing files (not recommended):
             - The existing files will be placed in **External Changes**.
             - Files in External Changes **override any mods you install later**.
-            - If you stop managing this game or uninstall the app, those **files will be permanently removed**.
             """;
         
         var dialog = DialogFactory.CreateStandardDialog(

@@ -10,12 +10,13 @@ public class RemoveGameOverlayDesignViewModel : AOverlayViewModel<IRemoveGameOve
     public required Size SumDownloadsSize { get; init; } = Size.From(3435678);
     public required int NumCollections { get; init; } = 3;
     public BindableReactiveProperty<bool> ShouldDeleteDownloads { get; } = new(value: false);
+    public BindableReactiveProperty<bool> ShouldCleanGameFolder { get; } = new(value: false);
     public ReactiveCommand<Unit> CommandCancel { get; }
     public ReactiveCommand<Unit> CommandRemove { get; }
 
     public RemoveGameOverlayDesignViewModel()
     {
         CommandCancel = new ReactiveCommand(_ => Complete(result: RemoveGameOverlayResult.Cancel));
-        CommandRemove = new ReactiveCommand(_ => Complete(result: new RemoveGameOverlayResult(ShouldRemoveGame: true, ShouldDeleteDownloads: ShouldDeleteDownloads.Value)));
+        CommandRemove = new ReactiveCommand(_ => Complete(result: new RemoveGameOverlayResult(ShouldRemoveGame: true, ShouldDeleteDownloads: ShouldDeleteDownloads.Value, ShouldCleanGameFolder: ShouldCleanGameFolder.Value)));
     }
 }

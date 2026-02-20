@@ -83,10 +83,13 @@ internal class GameRegistry : IGameRegistry
                 }
             }
 
-            var installations = results.ToImmutableArray();
+            var installations = results
+                .GroupBy(x => (x.Game.GameId, x.LocatorResult.Store, x.Locations[LocationId.Game].Path.ToString().ToLowerInvariant()))
+                .Select(g => g.First())
+                .ToImmutableArray();
             _cachedInstallations = installations;
 
-            _logger.LogInformation("Found {Count} game installations", installations.Length);
+            _logger.LogInformation("Found {Count} game installations (deduplicated from {RawCount})", installations.Length, results.Count);
             return installations;
         }
     }
@@ -98,6 +101,7 @@ internal class GameRegistry : IGameRegistry
         {
             if (installation.Game.NexusModsGameId != metadata.GameId) continue;
             if (installation.LocatorResult.Store != metadata.Store) continue;
+            if (!string.Equals(installation.Locations[LocationId.Game].Path.ToString(), metadata.Path, StringComparison.OrdinalIgnoreCase)) continue;
 
             gameInstallation = installation;
             return true;
@@ -117,10 +121,13 @@ internal class GameRegistry : IGameRegistry
             return false;
         }
 
+        var path = installation.Locations[LocationId.Game].Path.ToString();
         var allMetadata = GameInstallMetadata.FindByGameId(_connection.Db, gameId.Value);
         foreach (var metadata in allMetadata)
         {
             if (metadata.Store != installation.LocatorResult.Store) continue;
+            if (!string.Equals(metadata.Path, path, StringComparison.OrdinalIgnoreCase)) continue;
+            
             result = metadata;
             return true;
         }

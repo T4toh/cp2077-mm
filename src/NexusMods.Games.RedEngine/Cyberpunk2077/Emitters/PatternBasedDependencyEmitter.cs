@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using DynamicData.Kernel;
@@ -6,9 +7,11 @@ using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.Diagnostics.Emitters;
 using NexusMods.Abstractions.Diagnostics.References;
 using NexusMods.Abstractions.Diagnostics.Values;
+using NexusMods.Hashing.xxHash3;
 
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Extensions;
+using NexusMods.Abstractions.Loadouts.Synchronizers;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.Abstractions.Telemetry;
@@ -62,7 +65,13 @@ public class PatternBasedDependencyEmitter : ILoadoutDiagnosticEmitter
         _gameDomain = mappingCache[Cyberpunk2077Game.NexusModsGameId.Value];
     }
 
-    public async IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public IAsyncEnumerable<Diagnostic> Diagnose(Loadout.ReadOnly loadout, CancellationToken cancellationToken)
+        => Diagnose(loadout, FrozenDictionary<GamePath, SyncNode>.Empty, cancellationToken);
+
+    public async IAsyncEnumerable<Diagnostic> Diagnose(
+        Loadout.ReadOnly loadout,
+        FrozenDictionary<GamePath, SyncNode> syncTree,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // TODO: use a sorted index scan here to speed this up
         
@@ -79,15 +88,25 @@ public class PatternBasedDependencyEmitter : ILoadoutDiagnosticEmitter
         // Just the paths, as a hashset for quick lookup
         var allPaths = allFiles.Select(f => (GamePath)f.TargetPath).ToHashSet();
         var enabledPaths = enabledFiles.Select(f => (GamePath)f.TargetPath).ToHashSet();
+
+        // Add files that actually exist on disk from the syncTree
+        foreach (var (path, node) in syncTree)
+        {
+            if (node.Disk.Hash != Hash.Zero && _dependencyFiles.Contains(path))
+            {
+                allPaths.Add(path);
+                enabledPaths.Add(path); // If it's on disk, we consider it "enabled" for dependency satisfaction
+            }
+        }
         
-        // The installed dependencies are those where all paths are present
+        // The installed dependencies are those where ANY of the valid paths are present (heuristic for Linux compatibility)
         var installedDependencies = _dependencies
-            .Where(dependency => dependency.Paths.All(path => allPaths.Contains(path)))
+            .Where(dependency => dependency.Paths.Any(path => allPaths.Contains(path)))
             .ToDictionary(pattern => pattern.Pattern.DependencyName);
         
-        // The enabled dependencies are those where all paths are present and the mod is enabled
+        // The enabled dependencies are those where ANY of the valid paths are present and the mod is enabled
         var enabledDependencies = _dependencies
-            .Where(dependency => dependency.Paths.All(path => enabledPaths.Contains(path)))
+            .Where(dependency => dependency.Paths.Any(path => enabledPaths.Contains(path)))
             .ToDictionary(pattern => pattern.Pattern.DependencyName);
         
         

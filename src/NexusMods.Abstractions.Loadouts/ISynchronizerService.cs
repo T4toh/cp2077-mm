@@ -51,5 +51,10 @@ public interface ISynchronizerService
     /// Returns an observable of the status of the synchronizer for a specific loadout.
     /// </summary>
     public Task<IObservable<LoadoutSynchronizerState>> StatusForLoadout(LoadoutId loadoutId);
+
+    /// <summary>
+    /// Force a rescan of the game folder to update the database state.
+    /// </summary>
+    public Task RescanFiles(GameInstallation installation);
 }
 

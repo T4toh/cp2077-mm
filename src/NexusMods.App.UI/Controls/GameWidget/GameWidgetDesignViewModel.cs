@@ -15,6 +15,8 @@ public class GameWidgetDesignViewModel : AViewModel<IGameWidgetViewModel>, IGame
     [Reactive] public GameInstallation? Installation { get; set; } = null!;
     public string Name { get; } = "Cyberpunk 2077";
     public string Version { get; set; }
+    public string Path { get; } = "/home/user/games/Cyberpunk 2077";
+    public string PathTooltip { get; } = "Path: /home/user/games/Cyberpunk 2077\nID: 12345";
     public string Store { get; set; }
     public IconValue GameStoreIcon { get; set; }
     public Bitmap Image { get; }
@@ -22,6 +24,7 @@ public class GameWidgetDesignViewModel : AViewModel<IGameWidgetViewModel>, IGame
     public ReactiveCommand<Unit, Unit> ViewGameCommand { get; set; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> RemoveAllLoadoutsCommand { get; set; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> DeepCleanCommand { get; set; } = ReactiveCommand.Create(() => { });
+    public ReactiveCommand<Unit, Unit> DismissCommand { get; set; } = ReactiveCommand.Create(() => { });
     public bool IsDeepCleanAvailable { get; } = true;
     
     public IObservable<bool> IsManagedObservable { get; set; } = Observable.Return(false);

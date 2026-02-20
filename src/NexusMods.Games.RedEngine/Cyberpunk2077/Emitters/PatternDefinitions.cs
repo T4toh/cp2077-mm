@@ -88,6 +88,8 @@ script, and a `Collabs` folder that allows other mods to extend its functionalit
             DependencyPaths =
             [
                 new GamePath(LocationId.Game, "bin/x64/winmm.dll"),
+                new GamePath(LocationId.Game, "bin/x64/version.dll"),
+                new GamePath(LocationId.Game, "bin/x64/d3d11.dll"),
                 new GamePath(LocationId.Game, "red4ext/RED4ext.dll"),
             ],
             ModId = ModId.From(2380),
@@ -169,6 +171,9 @@ detect that this mod is installed by looking for `ArchiveXL.dll` in the `red4ext
             DependencyPaths =
             [
                 new GamePath(LocationId.Game, "bin/x64/plugins/cyber_engine_tweaks.asi"),
+                new GamePath(LocationId.Game, "bin/x64/version.dll"),
+                new GamePath(LocationId.Game, "bin/x64/winmm.dll"),
+                new GamePath(LocationId.Game, "bin/x64/d3d11.dll"),
             ],
             ModId = ModId.From(107),
             DependantSearchPatterns = [

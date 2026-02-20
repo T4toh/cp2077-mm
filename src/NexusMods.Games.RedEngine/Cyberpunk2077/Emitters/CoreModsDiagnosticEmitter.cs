@@ -59,12 +59,24 @@ public class CoreModsDiagnosticEmitter : ILoadoutDiagnosticEmitter
         // Check if there are any .reds files in the loadout that go to r6/scripts
         bool hasScripts = syncTree.Keys.Any(p => p.LocationId == LocationId.Game && p.Path.ToString().StartsWith("r6/scripts", StringComparison.OrdinalIgnoreCase) && p.Path.ToString().EndsWith(".reds", StringComparison.OrdinalIgnoreCase));
         
-        // Check if r6/cache exists.
-        bool hasCache = syncTree.Keys.Any(p => p.LocationId == LocationId.Game && p.Path.ToString().StartsWith("r6/cache", StringComparison.OrdinalIgnoreCase));
-
-        if (hasScripts && !hasCache)
+        if (hasScripts)
         {
-            yield return Diagnostics.CreateRedscriptCompilationFailed("r6/logs/redscript.log");
+            bool hasCache;
+            if (syncTree.Count > 0)
+            {
+                hasCache = syncTree.Keys.Any(p => p.LocationId == LocationId.Game && p.Path.ToString().StartsWith("r6/cache", StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                // Background diagnostic fallback: check database for scanned disk state
+                hasCache = DiskStateEntry.FindByGame(loadout.Db, loadout.Installation)
+                    .Any(e => e.Path.Item3.ToString().StartsWith("r6/cache", StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!hasCache)
+            {
+                yield return Diagnostics.CreateRedscriptCompilationFailed("r6/logs/redscript.log");
+            }
         }
 
         await Task.Yield();

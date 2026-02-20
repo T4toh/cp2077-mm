@@ -132,6 +132,20 @@ public class SynchronizerService : ISynchronizerService
         }
     }
 
+    /// <inheritdoc />
+    public async Task RescanFiles(GameInstallation installation)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            await installation.GetGame().Synchronizer.ReindexState(installation);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
     private SynchronizerState GetOrAddLoadoutState(LoadoutId loadoutId)
     {
         lock (_lock)
