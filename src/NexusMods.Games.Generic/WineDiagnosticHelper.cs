@@ -102,6 +102,17 @@ WINEDLLOVERRIDES="{dllOverridesString}"
         else
         {
             sb.AppendLine($"""
+**If using Lutris:**
+* Open Lutris → right-click the game → Configure
+* Go to "System options" → "Environment variables"
+* Set `WINEDLLOVERRIDES` to:
+
+```
+{dllOverridesString}
+```
+
+**If using a custom Wine prefix (winecfg):**
+
 Update the `WINEDLLOVERRIDES` environment variable to be the following:
 
 ```

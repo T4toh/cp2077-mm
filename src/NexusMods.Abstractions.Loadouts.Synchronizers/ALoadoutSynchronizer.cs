@@ -211,7 +211,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     {
         Dictionary<GamePath, SyncNode> syncTree = new();
 
-        foreach (var tuple in WinningFilesQuery(Connection.Db, loadout))
+        var winningFiles = WinningFilesQuery(Connection.Db, loadout).ToList();
+        Logger.LogDebug("[SYNC] WinningFilesQuery returned {Count} files for loadout {LoadoutId}", winningFiles.Count, loadout.LoadoutId);
+        foreach (var tuple in winningFiles)
         {
             var itemType = ToItemType(tuple.ItemType);
 
@@ -362,6 +364,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             };
             pairs.Add(pathPartPair);
         }
+        Logger.LogDebug("[SYNC] GetDiskStateForGame returned {Count} entries", pairs.Count);
         return pairs;
     }
 
@@ -874,6 +877,16 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var itemIndex = 0;
         
         var deleteFileCount = groupings.Sum(static x => x.Value.Actions.HasFlag(Actions.DeleteFromDisk) ? 1 : 0);
+
+        if (deleteFileCount > 0)
+        {
+            Logger.LogWarning("[SYNC] About to delete {Count} files from disk:", deleteFileCount);
+            foreach (var (path, node) in groupings)
+            {
+                if (!node.Actions.HasFlag(Actions.DeleteFromDisk)) continue;
+                Logger.LogDebug("[SYNC] DELETE {Path} | sig={Sig}", path, node.Signature);
+            }
+        }
         
         // Delete files from disk
         foreach (var (path, node) in groupings)

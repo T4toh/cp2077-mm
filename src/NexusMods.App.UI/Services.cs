@@ -93,6 +93,7 @@ public static class Services
             .AddTransient<MainWindow>()
 
             // Services
+            .AddSingleton<ReactiveUI.IMessageBus>(_ => ReactiveUI.MessageBus.Current)
             .AddSingleton<IOverlayController, OverlayController>()
             .AddSingleton<IWindowNotificationService, WindowNotificationService>()
 

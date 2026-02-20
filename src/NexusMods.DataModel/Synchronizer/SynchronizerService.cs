@@ -277,7 +277,12 @@ public class SynchronizerService : ISynchronizerService
 
                     // Last DB revision is the same in the applied loadout
                     if (last.Id == rev.LoadoutId && revDbTx == last.Tx)
+                    {
+                        _logger.LogDebug("[STATUS] Shortcut Current: last.Tx={LastTx} revDbTx={RevDbTx}", last.Tx, revDbTx);
                         return LoadoutSynchronizerState.Current;
+                    }
+
+                    _logger.LogDebug("[STATUS] Calling ShouldSynchronize: last={LastId} rev={RevId} lastTx={LastTx} revDbTx={RevDbTx}", last.Id, rev.LoadoutId, last.Tx, revDbTx);
 
                     // Potentially long operation, run on thread pool
                     var diffFound = await Task.Run(async () =>

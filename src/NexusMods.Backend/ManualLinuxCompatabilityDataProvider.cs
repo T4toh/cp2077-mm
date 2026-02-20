@@ -42,6 +42,18 @@ public class ManualLinuxCompatabilityDataProvider : ILinuxCompatabilityDataProvi
 
     public async ValueTask<ImmutableArray<WineDllOverride>> GetWineDllOverrides(CancellationToken cancellationToken = default)
     {
+        // First, check the wine registry (set via winecfg or regedit)
+        var fromRegistry = await GetWineDllOverridesFromRegistry(cancellationToken);
+        if (!fromRegistry.IsEmpty) return fromRegistry;
+
+        // Fall back to Lutris game config YAMLs — Lutris sets WINEDLLOVERRIDES as an environment variable,
+        // not in the registry, so the registry check above returns nothing for Lutris-managed games.
+        var fromLutris = WineParser.ParseDllOverridesFromLutrisConfigs(_winePrefix.ToString());
+        return fromLutris;
+    }
+
+    private async ValueTask<ImmutableArray<WineDllOverride>> GetWineDllOverridesFromRegistry(CancellationToken cancellationToken)
+    {
         var userReg = _winePrefix.Combine("user.reg");
         if (!userReg.FileExists)
         {
