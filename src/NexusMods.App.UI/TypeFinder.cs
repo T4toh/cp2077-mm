@@ -14,6 +14,7 @@ using NexusMods.App.UI.Pages.MyGames;
 using NexusMods.App.UI.Pages.MyLoadouts;
 using NexusMods.App.UI.Pages.ObservableInfo;
 using NexusMods.App.UI.Pages.Settings;
+using NexusMods.App.UI.Pages.StorageManager;
 using NexusMods.App.UI.Pages.TextEdit;
 using NexusMods.App.UI.WorkspaceSystem;
 
@@ -43,6 +44,7 @@ internal class TypeFinder : ITypeFinder
         typeof(ProtocolRegistrationTestPageContext),
         typeof(DownloadsPageContext),
         typeof(EssentialModsPageContext),
+        typeof(StorageManagerPageContext),
 
         // workspace context
         typeof(EmptyContext),

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Sdk.Settings;
 using NexusMods.Abstractions.Diagnostics;
 using NexusMods.Abstractions.GC;
+using NexusMods.DataModel.Storage;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Sorting;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
@@ -102,6 +103,9 @@ public static class Services
         
         // GC
         coll.AddAllSingleton<IGarbageCollectorRunner, GarbageCollectorRunner>();
+        
+        // Storage analysis
+        coll.AddSingleton<IStorageAnalyzer, StorageAnalyzer>();
         
         
         coll.AddPersistedDbResourceModel();

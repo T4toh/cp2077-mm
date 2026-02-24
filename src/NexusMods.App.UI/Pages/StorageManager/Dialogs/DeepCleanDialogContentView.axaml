@@ -1,0 +1,47 @@
+<reactive:ReactiveUserControl x:TypeArguments="dialogs:IDeepCleanDialogContentViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:dialogs="clr-namespace:NexusMods.App.UI.Pages.StorageManager.Dialogs"
+    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+    mc:Ignorable="d" d:DesignWidth="440"
+    x:Class="NexusMods.App.UI.Pages.StorageManager.Dialogs.DeepCleanDialogContentView">
+
+    <StackPanel Spacing="12">
+
+        <!-- Warning icon + heading -->
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <icons:UnifiedIcon Value="{x:Static icons:IconValues.Alert}"
+                               Size="20"
+                               Foreground="{StaticResource WarningModerateBrush}" />
+            <TextBlock Theme="{StaticResource BodyMDSemiTheme}"
+                       Foreground="{StaticResource NeutralStrongBrush}"
+                       Text="This action cannot be undone." />
+        </StackPanel>
+
+        <!-- What gets deleted -->
+        <TextBlock Theme="{StaticResource BodySMNormalTheme}"
+                   Foreground="{StaticResource NeutralSubduedBrush}"
+                   TextWrapping="Wrap"
+                   Text="The following data will be permanently deleted:&#x0a;&#x0a;• All GameBackedUpFile entries from the database&#x0a;• All files in the Downloads folder&#x0a;• All CyberpunkBackups snapshots&#x0a;• Unused archive chunks (via Garbage Collection)" />
+
+        <Separator Margin="0,4" />
+
+        <!-- Super Clean checkbox -->
+        <CheckBox x:Name="NukeModeCheckBox" Cursor="Hand">
+            <StackPanel Spacing="2">
+                <TextBlock Theme="{StaticResource BodySMSemiTheme}"
+                           Foreground="{StaticResource NeutralStrongBrush}"
+                           Text="Super Clean — disable mods, clean game folder and delete ALL archives" />
+                <TextBlock Theme="{StaticResource BodySMNormalTheme}"
+                           Foreground="{StaticResource NeutralSubduedBrush}"
+                           TextWrapping="Wrap"
+                           Text="Also runs the game-folder Deep Clean (disables all mods in every profile and moves mod files to backup), then deletes every .nx archive. All mods will need to be re-downloaded." />
+            </StackPanel>
+        </CheckBox>
+
+    </StackPanel>
+
+</reactive:ReactiveUserControl>

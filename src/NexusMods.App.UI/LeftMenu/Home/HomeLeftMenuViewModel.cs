@@ -9,6 +9,7 @@ using NexusMods.App.UI.Pages.CollectionDownload;
 using NexusMods.App.UI.Pages.Downloads;
 using NexusMods.App.UI.Pages.MyGames;
 using NexusMods.App.UI.Pages.MyLoadouts;
+using NexusMods.App.UI.Pages.StorageManager;
 using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.WorkspaceSystem;
 using NexusMods.MnemonicDB.Abstractions;
@@ -32,6 +33,7 @@ public class HomeLeftMenuViewModel : AViewModel<IHomeLeftMenuViewModel>, IHomeLe
     public ILeftMenuItemViewModel LeftMenuItemMyLoadouts { get; }
     public ILeftMenuItemViewModel LeftMenuItemDownloads { get; }
     public ILeftMenuItemViewModel LeftMenuItemCollections { get; }
+    public ILeftMenuItemViewModel LeftMenuItemStorage { get; }
 
     public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuCollectionItems => _leftMenuCollectionItems;
     private ReadOnlyObservableCollection<ILeftMenuItemViewModel> _leftMenuCollectionItems = new([]);
@@ -103,6 +105,20 @@ public class HomeLeftMenuViewModel : AViewModel<IHomeLeftMenuViewModel>, IHomeLe
         {
             Text = new StringComponent("My Collections"), // User specifically asked for this name
             Icon = IconValues.CollectionsOutline,
+        };
+
+        LeftMenuItemStorage = new LeftMenuItemViewModel(
+            workspaceController,
+            WorkspaceId,
+            new PageData
+            {
+                FactoryId = StorageManagerPageFactory.StaticId,
+                Context = new StorageManagerPageContext(),
+            }
+        )
+        {
+            Text = new StringComponent("Storage Manager"),
+            Icon = IconValues.HardDrive,
         };
 
         this.WhenActivated(d =>

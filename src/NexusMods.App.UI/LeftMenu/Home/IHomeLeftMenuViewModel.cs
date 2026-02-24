@@ -13,5 +13,7 @@ public interface IHomeLeftMenuViewModel : ILeftMenuViewModel
 
     public ILeftMenuItemViewModel LeftMenuItemCollections { get; }
 
+    public ILeftMenuItemViewModel LeftMenuItemStorage { get; }
+
     public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuCollectionItems { get; }
 }
