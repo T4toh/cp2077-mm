@@ -729,8 +729,17 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
 
         if (toggleableItems.Length == 0) return;
 
-        // We only enable if all items are disabled, otherwise we disable
-        var shouldEnable = toggleableItems.All(loadoutItem => loadoutItem.IsDisabled);
+        // Enable if all groups are disabled, OR if all groups are "effectively disabled"
+        // (group itself not disabled but all its children are — corrupted state from DeepClean).
+        static bool IsEffectivelyDisabled(LoadoutItem.ReadOnly item)
+        {
+            if (item.IsDisabled) return true;
+            if (item.TryGetAsLoadoutItemGroup(out var grp))
+                return grp.Children.Any() && grp.Children.All(c => c.IsDisabled);
+            return false;
+        }
+
+        var shouldEnable = toggleableItems.All(IsEffectivelyDisabled);
 
         using var tx = connection.BeginTransaction();
 
@@ -739,6 +748,15 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
             if (shouldEnable)
             {
                 tx.Retract(id, LoadoutItem.Disabled, Null.Instance);
+                // Also clear Disabled from all children (in case they were individually disabled, e.g. by DeepClean)
+                if (id.TryGetAsLoadoutItemGroup(out var group))
+                {
+                    foreach (var child in group.Children)
+                    {
+                        if (child.IsDisabled)
+                            tx.Retract(child.Id, LoadoutItem.Disabled, Null.Instance);
+                    }
+                }
             }
             else
             {

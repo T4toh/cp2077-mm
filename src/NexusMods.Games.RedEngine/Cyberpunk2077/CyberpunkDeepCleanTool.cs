@@ -26,7 +26,10 @@ public class CyberpunkDeepCleanTool : ITool
     public string Name => "Deep Clean (Disable all mods)";
 
     // Paths to move to a timestamped backup directory (mirrors the bash script by manavortex).
-    // Note: the bash script has a bug where directories are skipped; this C# version handles both files and dirs.
+    // IMPORTANT: Only mod-specific paths are included here. The original bash script also moves
+    // engine/config/base, engine/config/galaxy, engine/config/platform/pc, r6/cache, r6/config,
+    // and r6/input — but those are base game files. Steam users can restore them via "Verify game
+    // files", but we have no Steam, so we leave them untouched.
     private static readonly string[] PathsToMove =
     [
         "archive/pc/mod",
@@ -36,17 +39,11 @@ public class CyberpunkDeepCleanTool : ITool
         "r6/tweaks",
         "red4ext",
         "engine/tools",
-        "engine/config/platform/pc",
         "bin/x64/d3d11.dll",
         "bin/x64/global.ini",
         "bin/x64/powrprof.dll",
         "bin/x64/winmm.dll",
         "bin/x64/version.dll",
-        "engine/config/base",
-        "engine/config/galaxy",
-        "r6/cache",
-        "r6/config",
-        "r6/input",
     ];
 
     private static readonly string[] PathsToDelete = ["V2077"];
@@ -56,9 +53,13 @@ public class CyberpunkDeepCleanTool : ITool
         var gamePath = loadout.InstallationInstance.Locations[LocationId.Game].Path;
         _logger.LogInformation("Starting deep clean for Cyberpunk 2077 at {Path}", gamePath);
 
-        // Step 1: Move mod files to a timestamped backup directory
+        // Step 1: Move mod files to a timestamped backup directory outside the game folder.
+        // Keeping backups outside the game folder prevents the sync from tracking or trying to restore them.
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        var backupDir = gamePath.Combine(RelativePath.FromUnsanitizedInput($"_MOD_REMOVER_BACKUP_{timestamp}"));
+        var backupsRoot = _fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME)
+            .Combine("NexusMods.App")
+            .Combine("CyberpunkBackups");
+        var backupDir = backupsRoot.Combine(RelativePath.FromUnsanitizedInput(timestamp));
         var backupCreated = false;
 
         foreach (var relativePath in PathsToMove)
@@ -118,22 +119,24 @@ public class CyberpunkDeepCleanTool : ITool
         else
             _logger.LogInformation("No mod files found to back up");
 
-        // Step 2: Disable all mods in the database so the app state matches the cleaned disk
+        // Step 2: Disable all mod groups in the database so the app state matches the cleaned disk.
+        // We only disable the group entities (not individual file items), because the SQL sync
+        // checks the group's disabled status to determine if files should be deployed.
         try
         {
             var db = loadout.Db;
             using var tx = db.Connection.BeginTransaction();
             var disabledCount = 0;
-            foreach (var item in LoadoutItem.FindByLoadout(db, loadout.Id))
+            foreach (var item in LoadoutItem.FindByLoadout(db, loadout.Id).OfTypeLoadoutItemGroup())
             {
-                if (item.Contains(LoadoutItem.Disabled)) continue;
+                if (item.AsLoadoutItem().Contains(LoadoutItem.Disabled)) continue;
                 tx.Add(item.Id, LoadoutItem.Disabled, NexusMods.MnemonicDB.Abstractions.ElementComparers.Null.Instance);
                 disabledCount++;
             }
             if (disabledCount > 0)
             {
                 await tx.Commit();
-                _logger.LogInformation("Disabled {Count} mods in the database", disabledCount);
+                _logger.LogInformation("Disabled {Count} mod groups in the database", disabledCount);
             }
         }
         catch (Exception ex)

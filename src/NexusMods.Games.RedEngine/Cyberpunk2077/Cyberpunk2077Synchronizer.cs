@@ -82,15 +82,12 @@ public class Cyberpunk2077Synchronizer : ALoadoutSynchronizer
     {
         base.ProcessSyncTree(syncTree);
         
-        // Final safety pass to ensure no huge vanilla archives are ever marked for backup.
+        // Final safety pass: filtered paths (vanilla content, backup dirs) must never be touched.
+        // Force DoNothing so ExtractToDisk / BackupFile / DeleteFromDisk don't fire on them.
         foreach (var path in syncTree.Keys.ToArray())
         {
             if (IsVanillaContentPath(path))
-            {
-                var node = syncTree[path];
-                node.Actions &= ~Actions.BackupFile;
-                syncTree[path] = node;
-            }
+                syncTree[path] = syncTree[path] with { Actions = Actions.DoNothing };
         }
 
         // Debug summary

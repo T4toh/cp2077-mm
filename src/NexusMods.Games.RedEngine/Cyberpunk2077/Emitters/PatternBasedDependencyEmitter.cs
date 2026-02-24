@@ -183,7 +183,8 @@ public class PatternBasedDependencyEmitter : ILoadoutDiagnosticEmitter
                            var groupPaths = group.Children.OfTypeLoadoutItemWithTargetPath().Select(p => (GamePath)p.TargetPath).ToHashSet();
                            return dependencyPaths.All(path => groupPaths.Contains(path));
                        }
-                   ).First();
+                   ).FirstOrDefault();
+               if (!disabledGroup.IsValid()) continue;
                if (row.MatchingSegment.HasValue)
                {
                    yield return Diagnostics.CreateDisabledGroupDependencyWithStringSegment(parent.ToReference(loadout), disabledGroup.ToReference(loadout), requiredMod,

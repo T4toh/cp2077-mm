@@ -164,8 +164,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
         foreach (var dir in directoriesToDelete)
         {
-            // Could have other empty directories as children, so we need to delete recursively
-            installation.Locations.ToAbsolutePath(dir).DeleteDirectory(recursive: true);
+            var absDir = installation.Locations.ToAbsolutePath(dir);
+            if (!absDir.DirectoryExists()) continue;
+            // Only delete if the directory is truly empty on disk (no files, no subdirectories).
+            // Directories excluded from tracking (e.g. archive/pc/content) may exist as siblings
+            // and would be destroyed by a recursive delete on the parent.
+            if (absDir.EnumerateFiles().Any()) continue;
+            if (absDir.EnumerateDirectories(recursive: false).Any()) continue;
+            absDir.DeleteDirectory(recursive: false);
         }
     }
 
@@ -212,7 +218,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         Dictionary<GamePath, SyncNode> syncTree = new();
 
         var winningFiles = WinningFilesQuery(Connection.Db, loadout).ToList();
-        Logger.LogDebug("[SYNC] WinningFilesQuery returned {Count} files for loadout {LoadoutId}", winningFiles.Count, loadout.LoadoutId);
+        Logger.LogDebug("[SYNC] WinningFiles query returned {Count} files (db tx={DbTx})", winningFiles.Count, Connection.Db.BasisTxId);
+
         foreach (var tuple in winningFiles)
         {
             var itemType = ToItemType(tuple.ItemType);
@@ -1052,7 +1059,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // Process the sync tree to get the actions populated in the nodes
         ProcessSyncTree(syncTree);
         
-        return syncTree.Any(n => n.Value.Actions != Actions.DoNothing);
+        return syncTree.Any(n => n.Value.Actions != Actions.DoNothing && n.Value.Actions != Actions.WarnOfUnableToExtract);
     }
     
     /// <inheritdoc />

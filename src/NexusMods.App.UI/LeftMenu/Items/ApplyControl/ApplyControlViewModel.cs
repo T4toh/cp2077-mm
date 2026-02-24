@@ -1,6 +1,7 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using DynamicData;
+using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Exceptions;
@@ -9,6 +10,7 @@ using NexusMods.App.UI.Controls.Navigation;
 using NexusMods.App.UI.Overlays;
 using NexusMods.App.UI.Overlays.Generic.MessageBox.Ok;
 using NexusMods.App.UI.Pages.Diff.ApplyDiff;
+using NexusMods.App.UI.Pages.LoadoutPage;
 using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
@@ -168,6 +170,37 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
             });
             
             _notificationService.ShowToast(Language.ToastNotification_Applied__0__successfully, ToastNotificationVariant.Success);
+            
+            // Close the ApplyDiff preview tab if it's open, or replace it with the loadout page
+            var windowManager = _serviceProvider.GetRequiredService<IWindowManager>();
+            var workspaceController = windowManager.ActiveWorkspaceController;
+            var workspace = workspaceController.ActiveWorkspace;
+            foreach (var panel in workspace.Panels)
+            {
+                var applyDiffTab = panel.Tabs.FirstOrDefault(tab =>
+                    tab.Contents.PageData.FactoryId == ApplyDiffPageFactory.StaticId);
+                if (applyDiffTab is null) continue;
+                
+                if (panel.Tabs.Count > 1)
+                {
+                    panel.CloseTab(applyDiffTab.Id);
+                }
+                else
+                {
+                    // Can't close the last tab in a panel; navigate to the loadout page instead
+                    var loadoutPageData = new PageData
+                    {
+                        FactoryId = LoadoutPageFactory.StaticId,
+                        Context = new LoadoutPageContext
+                        {
+                            LoadoutId = _loadoutId,
+                            GroupScope = Optional<CollectionGroupId>.None,
+                        },
+                    };
+                    workspaceController.OpenPage(workspace.Id, loadoutPageData,
+                        new OpenPageBehavior.ReplaceTab(panel.Id, applyDiffTab.Id));
+                }
+            }
         }
         catch (ExecutableInUseException)
         {
