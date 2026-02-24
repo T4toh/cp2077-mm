@@ -11,7 +11,6 @@ using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.App.UI.Controls;
 using NexusMods.App.UI.Controls.MarkdownRenderer;
 using NexusMods.App.UI.Controls.Navigation;
-using NexusMods.App.UI.Dialog.Enums;
 using NexusMods.App.UI.Extensions;
 using NexusMods.App.UI.Overlays;
 using NexusMods.App.UI.Pages.LibraryPage;
@@ -100,20 +99,6 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                 {
                     if (!await loginManager.EnsureLoggedIn("Download Collection", cancellationToken)) return;
 
-                    if (!loginManager.IsPremium)
-                    {
-                        var premiumCollectionDownloadsDialog = CollectionDialogs.PremiumCollectionDialog();
-
-                        var dialogResult = await windowManager.ShowDialog(premiumCollectionDownloadsDialog, DialogWindowType.Modal);
-
-                        if (dialogResult.ButtonId == ButtonDefinitionId.From("go-premium"))
-                        {
-                            osInterop.OpenUri(NexusModsUrlBuilder.UpgradeToPremiumUri);
-                        }
-
-                        return;
-                    }
-
                     await collectionDownloader.DownloadItems(_revision, itemType: CollectionDownloader.ItemType.Required, db: connection.Db,
                         cancellationToken: cancellationToken
                     );
@@ -126,16 +111,6 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
             .ToReactiveCommand<Unit>(
                 executeAsync: async (_, cancellationToken) =>
                 {
-                    if (!loginManager.IsPremium)
-                    {
-                        var premiumCollectionDownloadsDialog = CollectionDialogs.PremiumCollectionDialog();
-
-                        var dialogResult = await windowManager.ShowDialog(premiumCollectionDownloadsDialog, DialogWindowType.Modal);
-
-                        if (dialogResult.ButtonId == ButtonDefinitionId.From("go-premium")) osInterop.OpenUri(NexusModsUrlBuilder.UpgradeToPremiumUri);
-                        return;
-                    }
-
                     await collectionDownloader.DownloadItems(_revision, itemType: CollectionDownloader.ItemType.Optional, db: connection.Db,
                         cancellationToken: cancellationToken
                     );
@@ -387,10 +362,10 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                     .OffUi()
                     .SelectMany(revision => collectionDownloader.DownloadedItemCountObservable(revision, itemType: CollectionDownloader.ItemType.Optional));
 
-                loginManager.IsPremiumObservable
+                loginManager.IsLoggedInObservable
                     .Prepend(false)
                     .OnUI()
-                    .Subscribe(isPremium => CanDownloadAutomatically = isPremium)
+                    .Subscribe(isLoggedIn => CanDownloadAutomatically = isLoggedIn)
                     .AddTo(disposables);
 
                 var collectionGroupObservable = collectionDownloader.GetCollectionGroupObservable(_revision, _targetLoadout);
