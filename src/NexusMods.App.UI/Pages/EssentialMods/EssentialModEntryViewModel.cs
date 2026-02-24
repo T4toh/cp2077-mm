@@ -1,4 +1,5 @@
 using System.Reactive;
+using System.Reactive.Disposables;
 using NexusMods.Abstractions.Library;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.NexusModsLibrary.Models;
@@ -21,10 +22,12 @@ using NexusMods.Abstractions.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reactive.Threading.Tasks;
 using NexusMods.Abstractions.NexusModsLibrary;
+using NexusMods.Networking.GitHub;
+using DynamicData.Kernel;
 
 namespace NexusMods.App.UI.Pages.EssentialMods;
 
-public class EssentialModEntryViewModel : AViewModel<IEssentialModEntryViewModel>, IEssentialModEntryViewModel
+public class EssentialModEntryViewModel : AViewModel<IEssentialModEntryViewModel>, IEssentialModEntryViewModel, IActivatableViewModel
 {
     public string Name { get; }
     public string Description { get; }
@@ -40,9 +43,13 @@ public class EssentialModEntryViewModel : AViewModel<IEssentialModEntryViewModel
     private readonly IGraphQlClient _graphQlClient;
     private readonly ILibraryService _libraryService;
     private readonly ILoadoutManager _loadoutManager;
+    private readonly IGitHubApi _gitHubApi;
     private readonly LoadoutId _loadoutId;
     private readonly NexusModsGameId _nexusModsGameId;
     private readonly TemporaryFileManager _temporaryFileManager;
+    private readonly string _gitHubOrg;
+    private readonly string _gitHubRepo;
+    private readonly IMessageBus _messageBus;
 
     public EssentialModEntryViewModel(
         IServiceProvider serviceProvider,
@@ -50,7 +57,9 @@ public class EssentialModEntryViewModel : AViewModel<IEssentialModEntryViewModel
         NexusModsGameId nexusModsGameId,
         string name,
         ModId modId,
-        string description)
+        string description,
+        string gitHubOrg,
+        string gitHubRepo)
     {
         _serviceProvider = serviceProvider;
         _connection = serviceProvider.GetRequiredService<IConnection>();
@@ -58,19 +67,57 @@ public class EssentialModEntryViewModel : AViewModel<IEssentialModEntryViewModel
         _graphQlClient = serviceProvider.GetRequiredService<IGraphQlClient>();
         _libraryService = serviceProvider.GetRequiredService<ILibraryService>();
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
+        _gitHubApi = serviceProvider.GetRequiredService<IGitHubApi>();
         _temporaryFileManager = serviceProvider.GetRequiredService<TemporaryFileManager>();
+        _messageBus = serviceProvider.GetRequiredService<IMessageBus>();
         _loadoutId = loadoutId;
         _nexusModsGameId = nexusModsGameId;
+        _gitHubOrg = gitHubOrg;
+        _gitHubRepo = gitHubRepo;
 
         Name = name;
         ModId = modId;
         Description = description;
+
+        this.WhenActivated(d => 
+        {
+            LoadoutItem.ObserveAll(_connection)
+                .Subscribe(_ => UpdateStatus())
+                .DisposeWith(d);
+
+            NexusModsLibraryItem.ObserveAll(_connection)
+                .Subscribe(_ => UpdateStatus())
+                .DisposeWith(d);
+        });
 
         UpdateStatus();
 
         InstallCommand = ReactiveUI.ReactiveCommand.CreateFromTask(async () =>
         {
             if (Status == EssentialModStatus.Installed) return;
+
+            // Check if already in loadout but disabled
+            var db = _connection.Db;
+            var existingDisabledItem = LoadoutItem.FindByLoadout(db, _loadoutId)
+                .OfTypeLoadoutItemGroup()
+                .FirstOrOptional(g => 
+                {
+                    if (!g.Contains(LoadoutItem.Disabled)) return false;
+                    if (!LibraryLinkedLoadoutItem.TryGet(db, g.Id, out var linked)) return false;
+                    if (!NexusModsLibraryItem.TryGet(db, linked.Value.LibraryItemId.Value, out var nItem)) return false;
+                    return nItem.Value.ModPageMetadata.Uid.ModId == ModId;
+                });
+
+            if (existingDisabledItem.HasValue)
+            {
+                Status = EssentialModStatus.Installing;
+                using var tx = _connection.BeginTransaction();
+                tx.Retract(existingDisabledItem.Value.Id, LoadoutItem.Disabled, NexusMods.MnemonicDB.Abstractions.ElementComparers.Null.Instance);
+                await tx.Commit();
+                UpdateStatus();
+                _messageBus.SendMessage(System.Reactive.Unit.Default); // Signal refresh to the rest of the app
+                return;
+            }
 
             if (Status == EssentialModStatus.NotDownloaded)
             {
@@ -107,11 +154,12 @@ public class EssentialModEntryViewModel : AViewModel<IEssentialModEntryViewModel
     {
         var db = _connection.Db;
         
-        // Check if installed in loadout
+        // Check if installed in loadout AND not disabled
         var isInstalled = LoadoutItem.FindByLoadout(db, _loadoutId)
             .OfTypeLoadoutItemGroup()
             .Any(g => 
             {
+                if (g.Contains(LoadoutItem.Disabled)) return false;
                 if (!LibraryLinkedLoadoutItem.TryGet(db, g.Id, out var linked)) return false;
                 
                 if (!NexusModsLibraryItem.TryGet(db, linked.Value.LibraryItemId.Value, out var nItem)) return false;
@@ -133,25 +181,53 @@ public class EssentialModEntryViewModel : AViewModel<IEssentialModEntryViewModel
 
     private async Task DownloadAndInstall()
     {
-        // 1. Get mod files
+        // 1. Get mod files from Nexus to have metadata even if we download from elsewhere
         var filesResult = await _graphQlClient.QueryModFiles(ModId, _nexusModsGameId);
         var files = filesResult.AssertHasData();
         
         // 2. Pick the latest file (heuristic: highest date)
         var mainFile = files.OrderByDescending(f => f.Date).First();
-        
-        // 3. Download
-        await using var tempPath = _temporaryFileManager.CreateFile();
+        var fileId = FileUid.FromV2Api(mainFile.Uid).FileId;
         var modPage = await _nexusModsLibrary.GetOrAddModPage(ModId, _nexusModsGameId);
-        
-        // Try to parse Uid as long/uint
-        var fileIdValue = uint.Parse(mainFile.Uid.Split(':').Last());
-        var fileMetadata = await _nexusModsLibrary.GetOrAddFile(FileId.From(fileIdValue), modPage);
-        
+        var fileMetadata = await _nexusModsLibrary.GetOrAddFile(fileId, modPage);
+
+        try
+        {
+            await DownloadAndInstallFromNexus(fileMetadata);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            await DownloadFromGitHub(fileMetadata);
+        }
+    }
+
+    private async Task DownloadAndInstallFromNexus(NexusModsFileMetadata.ReadOnly fileMetadata)
+    {
+        await using var tempPath = _temporaryFileManager.CreateFile();
         var job = await _nexusModsLibrary.CreateDownloadJob(tempPath, fileMetadata);
         var libraryFile = await _libraryService.AddDownload(job);
         
-        // 4. Install
+        await _loadoutManager.InstallItem(libraryFile.AsLibraryItem(), _loadoutId);
+    }
+
+    private async Task DownloadFromGitHub(NexusModsFileMetadata.ReadOnly fileMetadata)
+    {
+        var release = await _gitHubApi.FetchLatestRelease(_gitHubOrg, _gitHubRepo);
+        if (release is null || release.Assets.Count == 0)
+            throw new InvalidOperationException($"No release or assets found for GitHub repository {_gitHubOrg}/{_gitHubRepo}");
+
+        // Heuristic: pick the first asset that is a zip or has no extension
+        var asset = release.Assets.FirstOrDefault(a => a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) 
+                    ?? release.Assets.First();
+
+        await using var tempPath = _temporaryFileManager.CreateFile();
+        var uri = new Uri(asset.BrowserDownloadUrl);
+        var downloadPage = new Uri($"https://github.com/{_gitHubOrg}/{_gitHubRepo}/releases/tag/{release.TagName}");
+        
+        var httpJob = NexusMods.Networking.HttpDownloader.HttpDownloadJob.Create(_serviceProvider, uri, downloadPage, tempPath);
+        var nexusJob = NexusMods.Networking.NexusWebApi.NexusModsDownloadJob.Create(_serviceProvider, httpJob, fileMetadata);
+        var libraryFile = await _libraryService.AddDownload(nexusJob);
+
         await _loadoutManager.InstallItem(libraryFile.AsLibraryItem(), _loadoutId);
     }
 

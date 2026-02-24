@@ -41,7 +41,7 @@
 
                 <!-- DetectedGame -->
                 <Grid x:Name="DetectedGameStackPanel"
-                      ColumnDefinitions="*, 6, Auto"
+                      ColumnDefinitions="*, 6, Auto, 6, Auto"
                       IsVisible="False">
 
                     <controls:StandardButton x:Name="AddGameButton"
@@ -62,6 +62,15 @@
                                              IsVisible="{CompiledBinding IsDeepCleanAvailable}"
                                              Command="{CompiledBinding DeepCleanCommand}"
                                              ToolTip.Tip="Deep Clean (Disable all mods)"/>
+
+                    <controls:StandardButton Grid.Column="4" x:Name="DismissButton"
+                                             LeftIcon="{x:Static icons:IconValues.DeleteForever}"
+                                             ShowLabel="False"
+                                             ShowIcon="Left"
+                                             Type="Tertiary"
+                                             Fill="Weak"
+                                             Command="{CompiledBinding DismissCommand}"
+                                             ToolTip.Tip="Remove / Dismiss this installation" />
                 </Grid>
 
                 <!-- AddingGame -->
@@ -133,6 +142,15 @@
                     TextTrimming="CharacterEllipsis"
                     TextWrapping="NoWrap"
                     x:Name="VersionTextBlock" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Left"
+                    TextTrimming="CharacterEllipsis"
+                    TextWrapping="NoWrap"
+                    FontSize="10"
+                    Opacity="0.6"
+                    Text="{CompiledBinding Path}"
+                    ToolTip.Tip="{CompiledBinding PathTooltip}" />
             </StackPanel>
             
         </Grid>

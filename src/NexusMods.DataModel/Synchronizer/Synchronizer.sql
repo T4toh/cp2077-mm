@@ -8,7 +8,7 @@ CREATE TYPE synchronizer.ItemType AS ENUM ('Loadout', 'Game', 'Deleted', 'Intrin
 CREATE OR REPLACE MACRO synchronizer.LoadoutGroups (db) AS TABLE
 SELECT
   loadout_item_group.*,
-  loadout_item_group.Disabled = FALSE
+  COALESCE(loadout_item_group.Disabled, FALSE) = FALSE
   AND COALESCE(collection_group.Disabled, FALSE) = FALSE AS IsEnabled
 FROM
   MDB_LOADOUTITEMGROUP (Db => db) loadout_item_group
@@ -23,8 +23,8 @@ SELECT
   loadout_item.TargetPath,
   loadout_file.Hash,
   loadout_file.Size,
-  loadout_item.Disabled = FALSE
-  AND loadout_item_group.Disabled = FALSE
+  COALESCE(loadout_item.Disabled, FALSE) = FALSE
+  AND COALESCE(loadout_item_group.Disabled, FALSE) = FALSE
   AND COALESCE(collection_group.Disabled, FALSE) = FALSE AS IsEnabled,
   deleted_file.Id IS NOT NULL AS IsDeleted
 FROM
@@ -86,7 +86,7 @@ WITH all_files AS
     1 Layer
   FROM synchronizer.WinningLeafLoadoutItem(db) loadout_item
   UNION
-  -- Override files on Layer 2
+  -- Override files on Layer 2 (always included regardless of IsEnabled to prevent accidental deletion)
   SELECT
     override_file.Loadout,
     override_file.Id,
@@ -96,7 +96,6 @@ WITH all_files AS
     (CASE WHEN override_file.IsDeleted THEN 'Deleted' ELSE 'Loadout' END)::synchronizer.ItemType ItemType,
     2 Layer
   FROM synchronizer.OverrideFiles(db) override_file
-    WHERE override_file.IsEnabled
   UNION
   -- Intrinsic files on Layer 3
   SELECT

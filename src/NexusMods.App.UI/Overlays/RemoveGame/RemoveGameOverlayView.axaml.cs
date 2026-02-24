@@ -22,6 +22,7 @@ public partial class RemoveGameOverlayView : ReactiveUserControl<IRemoveGameOver
                     TitleText.Text = string.Format(Language.RemoveGameOverlayView_Title, viewModel.GameName);
                     DescriptionText.Text = string.Format(Language.RemoveGameOverlayView_Description, viewModel.GameName);
                     ToggleDescription.Text = string.Format(Language.RemoveGameOverlayView_ToggleDescription, viewModel.NumDownloads.ToString("N0"), viewModel.NumCollections.ToString("N0"), viewModel.GameName);
+                    CleanFolderDescription.Text = "Also revert mod files in the game folder (optional — only enable if you are sure the game state is clean)";
                     ButtonCancel.Text = Language.RemoveGameOverlayView_CancelButton;
                 }).AddTo(disposables);
 
@@ -45,6 +46,9 @@ public partial class RemoveGameOverlayView : ReactiveUserControl<IRemoveGameOver
                 .AddTo(disposables);
 
             this.Bind(ViewModel, vm => vm.ShouldDeleteDownloads.Value, view => view.SwitchDeleteDownloads.IsChecked)
+                .AddTo(disposables);
+
+            this.Bind(ViewModel, vm => vm.ShouldCleanGameFolder.Value, view => view.SwitchCleanFolder.IsChecked)
                 .AddTo(disposables);
 
             this.BindCommand(ViewModel, vm => vm.CommandCancel, view => view.ButtonCancel)

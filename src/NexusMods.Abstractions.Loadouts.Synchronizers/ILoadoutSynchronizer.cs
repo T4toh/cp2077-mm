@@ -62,16 +62,23 @@ public interface ILoadoutSynchronizer
     public List<PathPartPair> GetPreviouslyAppliedDiskState(Sdk.Games.GameInstallMetadata.ReadOnly metadata)
     {
         List<PathPartPair> prevItems;
-        if (!metadata.Contains(Sdk.Games.GameInstallMetadata.LastSyncedLoadout))
-        {
-            prevItems = [];
-        }
-        else
+        if (metadata.Contains(Sdk.Games.GameInstallMetadata.LastSyncedLoadout))
         {
             var txId = Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransactionId.Get(metadata);
             var asOfDb = metadata.Db.Connection.AsOf(TxId.From(txId.Value));
             var oldMetadata = Sdk.Games.GameInstallMetadata.Load(asOfDb, metadata.Id);
             prevItems = GetDiskStateForGame(oldMetadata);
+        }
+        else if (metadata.Contains(Sdk.Games.GameInstallMetadata.InitialDiskStateTransaction))
+        {
+            var txId = Sdk.Games.GameInstallMetadata.InitialDiskStateTransactionId.Get(metadata);
+            var asOfDb = metadata.Db.Connection.AsOf(TxId.From(txId.Value));
+            var oldMetadata = Sdk.Games.GameInstallMetadata.Load(asOfDb, metadata.Id);
+            prevItems = GetDiskStateForGame(oldMetadata);
+        }
+        else
+        {
+            prevItems = [];
         }
         return prevItems;
     }

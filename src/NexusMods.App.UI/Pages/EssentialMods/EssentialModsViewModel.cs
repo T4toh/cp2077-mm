@@ -39,7 +39,9 @@ public class EssentialModsViewModel : APageViewModel<IEssentialModsViewModel>, I
                 nexusModsGameId,
                 mod.Name,
                 mod.ModId,
-                mod.Description));
+                mod.Description,
+                mod.GitHubOrg,
+                mod.GitHubRepo));
         }
 
         _essentialModsSource.Connect()

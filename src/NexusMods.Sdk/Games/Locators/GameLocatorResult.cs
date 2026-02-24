@@ -6,7 +6,7 @@ using NexusMods.Paths;
 namespace NexusMods.Sdk.Games;
 
 [PublicAPI]
-public class GameLocatorResult
+public record GameLocatorResult
 {
     /// <summary>
     /// The game that was located.

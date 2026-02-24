@@ -93,6 +93,7 @@ public static class Services
             .AddTransient<MainWindow>()
 
             // Services
+            .AddSingleton<ReactiveUI.IMessageBus>(_ => ReactiveUI.MessageBus.Current)
             .AddSingleton<IOverlayController, OverlayController>()
             .AddSingleton<IWindowNotificationService, WindowNotificationService>()
 
@@ -103,7 +104,7 @@ public static class Services
             .AddViewModel<CollectionCardDesignViewModel, ICollectionCardViewModel>()
 
             .AddViewModel<DevelopmentBuildBannerViewModel, IDevelopmentBuildBannerViewModel>()
-            .AddViewModel<GameWidgetViewModel, IGameWidgetViewModel>()
+            .AddTransient<IGameWidgetViewModel, GameWidgetViewModel>()
             .AddViewModel<MiniGameWidgetViewModel, IMiniGameWidgetViewModel>()
             .AddViewModel<ComingSoonMiniGameWidgetViewModel, IComingSoonMiniGameWidgetViewModel>()
             .AddViewModel<HomeLeftMenuViewModel, IHomeLeftMenuViewModel>()

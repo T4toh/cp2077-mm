@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Loadouts.Synchronizers;
+using NexusMods.Abstractions.Loadouts.Synchronizers.Rules;
 using NexusMods.Sdk.Settings;
 using NexusMods.Games.RedEngine.Cyberpunk2077.Emitters;
 using NexusMods.Sdk.Games;
@@ -37,6 +38,74 @@ public class Cyberpunk2077Synchronizer : ALoadoutSynchronizer
     
     private readonly RedModDeployTool _redModTool;
     
+    private static bool IsVanillaContentPath(GamePath path)
+    {
+        if (path.LocationId != LocationId.Game) return false;
+        var pathStr = path.Path.ToString().Replace('\\', '/').ToLowerInvariant();
+        
+        // Cyberpunk 2077 specific: archive/pc/content and archive/pc/ep1 contain 90GB of data.
+        // archive/pc/mod is where mods go, so we must NOT ignore that.
+        // We ignore everything else in archive/pc/ to be safe.
+        if (pathStr.StartsWith("archive/pc/") && !pathStr.StartsWith("archive/pc/mod"))
+            return true;
+
+        // Also ignore the deep clean backup folders just in case
+        if (pathStr.Contains("_mod_remover_backup_"))
+            return true;
+
+        return false;
+    }
+
+    // Return true to filter OUT (skip), false to include.
+    // We filter out vanilla content (90GB archives) and deep-clean backup dirs.
+    protected override IGamePathFilter GamePathFilter => GamePathFilters.Create(IsVanillaContentPath);
+    
+    public override bool IsIgnoredBackupPath(GamePath path)
+    {
+        if (_settings.DoFullGameBackup)
+            return false;
+        
+        if (path.LocationId != LocationId.Game)
+            return false;
+
+        if (IsVanillaContentPath(path))
+            return true;
+
+        var pathStr = path.Path.ToString().Replace('\\', '/').ToLowerInvariant();
+        if (pathStr.StartsWith("_mod_remover_backup_") || pathStr.Contains("/_mod_remover_backup_"))
+            return true;
+        
+        return IgnoredBackupFolders.Any(ignore => path.Path.InFolder(ignore.Path));
+    }
+
+    public override void ProcessSyncTree(Dictionary<GamePath, SyncNode> syncTree)
+    {
+        base.ProcessSyncTree(syncTree);
+        
+        // Final safety pass: filtered paths (vanilla content, backup dirs) must never be touched.
+        // Force DoNothing so ExtractToDisk / BackupFile / DeleteFromDisk don't fire on them.
+        foreach (var path in syncTree.Keys.ToArray())
+        {
+            if (IsVanillaContentPath(path))
+                syncTree[path] = syncTree[path] with { Actions = Actions.DoNothing };
+        }
+
+        // Debug summary
+        var groups = syncTree.GroupBy(x => x.Value.Actions).OrderByDescending(g => g.Count());
+        Logger.LogDebug("[SYNC] Tree summary ({Total} files):", syncTree.Count);
+        foreach (var g in groups)
+            Logger.LogDebug("[SYNC]   {Action} => {Count} files", g.Key, g.Count());
+    }
+
+    public override async Task ActionBackupNewFiles(GameInstallation installation, GameInstallMetadataId installMetadataId, Dictionary<GamePath, SyncNode> files)
+    {
+        var filteredFiles = files
+            .Where(x => !IsVanillaContentPath(x.Key))
+            .ToDictionary(x => x.Key, x => x.Value);
+        
+        await base.ActionBackupNewFiles(installation, installMetadataId, filteredFiles);
+    }
+
     protected internal Cyberpunk2077Synchronizer(IServiceProvider provider) : base(provider)
     {
         var settingsManager = provider.GetRequiredService<ISettingsManager>();
@@ -54,7 +123,9 @@ public class Cyberpunk2077Synchronizer : ALoadoutSynchronizer
 
     public override async Task<Loadout.ReadOnly> Synchronize(Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job)
     {
+        Logger.LogDebug("[SYNC] Cyberpunk2077Synchronizer.Synchronize START (pass 1)");
         loadout = await base.Synchronize(loadout, job);
+        Logger.LogDebug("[SYNC] Cyberpunk2077Synchronizer.Synchronize END (pass 1)");
         if (!MissingRedModEmitter.HasRedMods(loadout, out _, out var numRedModDirs)) return loadout;
         if (!MissingRedModEmitter.HasRedModToolInstalled(loadout, out _))
         {
@@ -63,19 +134,9 @@ public class Cyberpunk2077Synchronizer : ALoadoutSynchronizer
         }
 
         await _redModTool.Execute(loadout, CancellationToken.None);
-        return await base.Synchronize(loadout, job);
+        Logger.LogDebug("[SYNC] Cyberpunk2077Synchronizer.Synchronize START (pass 2, after RedMod)");
+        loadout = await base.Synchronize(loadout, job);
+        Logger.LogDebug("[SYNC] Cyberpunk2077Synchronizer.Synchronize END (pass 2)");
+        return loadout;
     }
-
-
-    public override bool IsIgnoredBackupPath(GamePath path)
-    {
-        if (_settings.DoFullGameBackup)
-            return false;
-        
-        if (path.LocationId != LocationId.Game)
-            return false;
-        
-        return IgnoredBackupFolders.Any(ignore => path.Path.InFolder(ignore.Path));
-    }
-
 }
