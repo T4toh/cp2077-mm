@@ -1,11 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Sdk.Settings;
-using NexusMods.Abstractions.Telemetry;
 using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.Settings;
 using NexusMods.Sdk;
-using NexusMods.Sdk.Tracking;
 using NexusMods.UI.Sdk;
 using R3;
 using ReactiveUI;
@@ -26,8 +24,6 @@ public class WelcomeOverlayViewModel : AOverlayViewModel<IWelcomeOverlayViewMode
     private readonly BindableReactiveProperty<bool> _isLoggedIn = new();
     public IReadOnlyBindableReactiveProperty<bool> IsLoggedIn => _isLoggedIn;
 
-    public BindableReactiveProperty<bool> AllowTelemetry { get; }
-
     public ReactiveCommand CommandClose { get; }
 
     public WelcomeOverlayViewModel(
@@ -36,8 +32,6 @@ public class WelcomeOverlayViewModel : AOverlayViewModel<IWelcomeOverlayViewMode
         ILoginManager loginManager,
         IWindowNotificationService notificationService)
     {
-        AllowTelemetry = new BindableReactiveProperty<bool>(value: settingsManager.Get<TrackingSettings>().EnableTracking);
-
         CommandOpenDiscord = new ReactiveCommand(_ => osInterop.OpenUri(ConstantLinks.DiscordUri));
         CommandOpenForum = new ReactiveCommand(_ => osInterop.OpenUri(ConstantLinks.ForumsUri));
         CommandOpenGitHub = new ReactiveCommand(_ => osInterop.OpenUri(ConstantLinks.GitHubUri));
@@ -61,11 +55,6 @@ public class WelcomeOverlayViewModel : AOverlayViewModel<IWelcomeOverlayViewMode
 
         CommandClose = new ReactiveCommand(_ =>
         {
-            settingsManager.Update<TrackingSettings>(settings => settings with
-            {
-                EnableTracking = AllowTelemetry.Value,
-            });
-
             base.Close();
         });
 
