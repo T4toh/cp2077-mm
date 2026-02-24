@@ -59,6 +59,8 @@ using NexusMods.App.UI.Pages.MyLoadouts;
 using NexusMods.App.UI.Pages.ObservableInfo;
 using NexusMods.App.UI.Pages.Settings;
 using NexusMods.App.UI.Pages.Sorting;
+using NexusMods.App.UI.Pages.StorageManager;
+using NexusMods.App.UI.Pages.StorageManager.Dialogs;
 using NexusMods.App.UI.Pages.TextEdit;
 using NexusMods.App.UI.Settings;
 using NexusMods.App.UI.Windows;
@@ -183,6 +185,10 @@ public static class Services
             .AddView<DiagnosticDetailsView, IDiagnosticDetailsViewModel>()
             .AddViewModel<DiagnosticDetailsViewModel, IDiagnosticDetailsViewModel>()
 
+            .AddView<StorageManagerPageView, IStorageManagerPageViewModel>()
+            .AddView<DeepCleanDialogContentView, IDeepCleanDialogContentViewModel>()
+            .AddViewModel<DeepCleanDialogContentViewModel, IDeepCleanDialogContentViewModel>()
+
             .AddView<MarkdownRendererView, IMarkdownRendererViewModel>()
             .AddViewModel<MarkdownRendererViewModel, IMarkdownRendererViewModel>()
             .AddView<ChangelogPageView, IChangelogPageViewModel>()
@@ -285,6 +291,7 @@ public static class Services
             .AddSingleton<IPageFactory, ProtocolRegistrationTestPageFactory>()
             .AddSingleton<IPageFactory, LoadoutGroupFilesPageFactory>()
             .AddSingleton<IPageFactory, EssentialModsPageFactory>()
+            .AddSingleton<IPageFactory, StorageManagerPageFactory>()
 
             // LeftMenu factories
             .AddSingleton<ILeftMenuFactory, HomeLeftMenuFactory>()

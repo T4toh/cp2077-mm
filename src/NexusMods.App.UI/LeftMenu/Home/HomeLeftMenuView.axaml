@@ -22,6 +22,7 @@
             <items:LeftMenuItemView x:Name="MyLoadoutsItem" />
             <items:LeftMenuItemView x:Name="DownloadsItem" />
             <items:LeftMenuItemView x:Name="CollectionsItem" />
+            <items:LeftMenuItemView x:Name="StorageItem" />
 
             <ItemsControl x:Name="CollectionItemsControl">
                 <ItemsControl.ItemTemplate>

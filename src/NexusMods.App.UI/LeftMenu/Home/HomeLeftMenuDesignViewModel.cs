@@ -35,6 +35,12 @@ public class HomeLeftMenuDesignViewModel : AViewModel<IHomeLeftMenuViewModel>, I
         Icon = IconValues.CollectionsOutline,
     };
 
+    public ILeftMenuItemViewModel LeftMenuItemStorage { get; } = new LeftMenuItemDesignViewModel
+    {
+        Text = new StringComponent("Storage Manager"),
+        Icon = IconValues.HardDrive,
+    };
+
     public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuCollectionItems { get; } = new(new ObservableCollection<ILeftMenuItemViewModel>());
 }
 

@@ -1,0 +1,154 @@
+<reactive:ReactiveUserControl
+    x:TypeArguments="local:IStorageManagerPageViewModel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:reactive="http://reactiveui.net"
+    xmlns:local="clr-namespace:NexusMods.App.UI.Pages.StorageManager"
+    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+    xmlns:pageHeader="clr-namespace:NexusMods.App.UI.Controls.PageHeader"
+    mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+    x:Class="NexusMods.App.UI.Pages.StorageManager.StorageManagerPageView">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MaxWidth="1024" />
+        </Grid.ColumnDefinitions>
+
+        <DockPanel Margin="24">
+
+            <pageHeader:PageHeader DockPanel.Dock="Top"
+                                   Title="Storage Manager"
+                                   Description="View disk usage and free up space by removing unused data."
+                                   Icon="{x:Static icons:IconValues.HardDrive}" />
+
+            <ScrollViewer Margin="0,24,0,0">
+                <StackPanel Spacing="16">
+
+                    <!-- Mod Archives -->
+                    <Border Classes="Card" Padding="16">
+                        <StackPanel Spacing="8">
+                            <TextBlock Theme="{StaticResource HeadingXSSemiTheme}"
+                                       Text="Mod Archives" />
+                            <TextBlock Theme="{StaticResource BodyLGNormalTheme}"
+                                       Foreground="{StaticResource NeutralSubduedBrush}"
+                                       Text="Compressed .nx archives containing all installed and library mods." />
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0"
+                                        VerticalAlignment="Center">
+                                <TextBlock Theme="{StaticResource BodyLGSemiTheme}"
+                                           VerticalAlignment="Center"
+                                           Text="Total size:" />
+                                <TextBlock x:Name="ArchivesSizeText"
+                                           Theme="{StaticResource BodyLGNormalTheme}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                                <Button x:Name="RunGcButton"
+                                        Classes="Primary"
+                                        Content="Run Garbage Collection" />
+                                <Button x:Name="RefreshButton"
+                                        Content="Refresh" />
+                            </StackPanel>
+                            <TextBlock Theme="{StaticResource BodySMNormalTheme}"
+                                       Foreground="{StaticResource NeutralSubduedBrush}"
+                                       TextWrapping="Wrap"
+                                       Text="Garbage collection repacks archives and removes chunks that are no longer referenced by any installed mod or library item. This is safe and non-destructive." />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Game Backups -->
+                    <Border Classes="Card" Padding="16">
+                        <StackPanel Spacing="8">
+                            <TextBlock Theme="{StaticResource HeadingXSSemiTheme}"
+                                       Text="Game File Backups" />
+                            <TextBlock Theme="{StaticResource BodyLGNormalTheme}"
+                                       Foreground="{StaticResource NeutralSubduedBrush}"
+                                       Text="Copies of original game files saved before mods overwrite them. Required for rollback / undo." />
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0"
+                                        VerticalAlignment="Center">
+                                <TextBlock Theme="{StaticResource BodyLGSemiTheme}"
+                                           VerticalAlignment="Center"
+                                           Text="Backed-up files:" />
+                                <TextBlock x:Name="BackedUpFilesCountText"
+                                           Theme="{StaticResource BodyLGNormalTheme}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Downloads -->
+                    <Border Classes="Card" Padding="16">
+                        <StackPanel Spacing="8">
+                            <TextBlock Theme="{StaticResource HeadingXSSemiTheme}"
+                                       Text="Downloads Folder" />
+                            <TextBlock Theme="{StaticResource BodyLGNormalTheme}"
+                                       Foreground="{StaticResource NeutralSubduedBrush}"
+                                       Text="Original downloaded mod files (.zip, .7z, .rar, etc.). These are kept so mods can be re-installed without re-downloading." />
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0"
+                                        VerticalAlignment="Center">
+                                <TextBlock Theme="{StaticResource BodyLGSemiTheme}"
+                                           VerticalAlignment="Center"
+                                           Text="Total size:" />
+                                <TextBlock x:Name="DownloadsFolderSizeText"
+                                           Theme="{StaticResource BodyLGNormalTheme}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Cyberpunk Backups -->
+                    <Border Classes="Card" Padding="16">
+                        <StackPanel Spacing="8">
+                            <TextBlock Theme="{StaticResource HeadingXSSemiTheme}"
+                                       Text="Cyberpunk Backups" />
+                            <TextBlock Theme="{StaticResource BodyLGNormalTheme}"
+                                       Foreground="{StaticResource NeutralSubduedBrush}"
+                                       Text="Timestamped snapshots of mod files moved out of the game folder by the Deep Clean tool. Safe to delete once you no longer need to recover them." />
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0"
+                                        VerticalAlignment="Center">
+                                <TextBlock Theme="{StaticResource BodyLGSemiTheme}"
+                                           VerticalAlignment="Center"
+                                           Text="Total size:" />
+                                <TextBlock x:Name="CyberpunkBackupsSizeText"
+                                           Theme="{StaticResource BodyLGNormalTheme}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Deep Clean -->
+                    <Border Classes="Card" Padding="16"
+                            BorderBrush="{StaticResource WarningSoftBrush}"
+                            BorderThickness="1">
+                        <StackPanel Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <icons:UnifiedIcon Value="{x:Static icons:IconValues.Alert}"
+                                                   Size="16"
+                                                   Foreground="{StaticResource WarningModerateBrush}" />
+                                <TextBlock Theme="{StaticResource HeadingXSSemiTheme}"
+                                           Text="Deep Clean" />
+                            </StackPanel>
+                            <TextBlock Theme="{StaticResource BodyLGNormalTheme}"
+                                       Foreground="{StaticResource NeutralSubduedBrush}"
+                                       TextWrapping="Wrap"
+                                       Text="Removes all game file backups from the database, deletes the Downloads folder and all CyberpunkBackups snapshots, then runs garbage collection. You will no longer be able to roll back mods or recover downloaded files. This action cannot be undone." />
+                            <Button x:Name="DeepCleanButton"
+                                    Classes="Danger"
+                                    Content="Deep Clean"
+                                    Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Busy indicator -->
+                    <ProgressBar x:Name="BusyIndicator"
+                                 IsIndeterminate="True"
+                                 IsVisible="False" />
+
+                </StackPanel>
+            </ScrollViewer>
+
+        </DockPanel>
+    </Grid>
+
+</reactive:ReactiveUserControl>
