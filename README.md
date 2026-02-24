@@ -17,6 +17,7 @@ Proporcionar un gestor de mods moderno, nativo para Linux, que resuelva las comp
 - **Gestión de Colecciones Global:** Ahora puedes navegar y descargar colecciones incluso si no tienes un juego gestionado o instalado.
 - **Escaneo de Descargas (Rescan):** Implementado un sistema de detección por MD5 que identifica archivos ya descargados en tu carpeta de `Downloads`, evitando descargas redundantes.
 - **Transparencia en Colecciones:** Nueva pestaña "Mod List" que permite ver el detalle de cada mod en una colección, sus hashes, enlaces originales y copiarlos al portapapeles.
+- **Descarga de Colecciones sin Premium:** Usuarios no-premium pueden iniciar la descarga de todos los mods de una colección con un solo click. En lugar del dialog bloqueante "necesitás premium", la app abre todos los enlaces NXM en el browser simultáneamente, eliminando la interacción manual mod por mod.
 - **Corrección de Archivos de Respaldo:** Los backups ahora mantienen sus extensiones originales (`.zip`, `.rar`, etc.) para asegurar que sean reconocibles por otras herramientas de compresión en Linux.
 - **Rutas Linux Nativas:** Uso correcto de `XDG_DATA_HOME` para almacenar configuraciones y archivos descargados.
 - **Soporte Lutris:** El parser de Wine detecta anulaciones de DLL configuradas en Lutris (`WINEDLLOVERRIDES`), mejorando la compatibilidad con instalaciones fuera de Steam.
@@ -30,7 +31,7 @@ Proporcionar un gestor de mods moderno, nativo para Linux, que resuelva las comp
 
 ## 🚀 Próximos Pasos (Checklist)
 
-- [ ] **Descarga Automatizada de Colecciones:** Integrar el flujo de descarga completa para que procese todos los mods de una colección de forma secuencial.
+- [x] **Descarga Automatizada de Colecciones:** Un click abre todos los mods de la colección en el browser simultáneamente (sin premium). Premium descarga in-app directamente.
 - [x] **Captura de Enlaces NXM:** Implementado mediante aislamiento de ID de aplicación, permitiendo registro independiente del protocolo nxm.
 - [ ] **Chequeo de Frameworks Específicos:** Verificación automática de la presencia y versión de mods base críticos:
     - [ ] REDmod
