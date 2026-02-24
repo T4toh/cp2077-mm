@@ -1,3 +1,4 @@
+using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.App.UI.Dialog.Enums;
 using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.Windows;
