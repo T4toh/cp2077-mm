@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Sdk.EventBus;
@@ -13,7 +12,6 @@ using NexusMods.Networking.NexusWebApi.Auth;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Library;
-using NexusMods.Sdk.Tracking;
 
 namespace NexusMods.CLI.Types.IpcHandlers;
 
@@ -110,7 +108,6 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
                 (NexusModsCollectionLibraryFile.CollectionRevisionNumber, revision)
             );
 
-            var sw = Stopwatch.StartNew();
             if (!list.Select(id => NexusModsCollectionLibraryFile.Load(db, id)).TryGetFirst(x => x.IsValid(), out var collectionFile))
             {
                 var downloadJob = nexusModsLibrary.CreateCollectionDownloadJob(destination, collectionUrl.Collection.Slug, collectionUrl.Revision, CancellationToken.None);
@@ -121,13 +118,6 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
             }
 
             var collectionRevision = await nexusModsLibrary.GetOrAddCollectionRevision(collectionFile, collectionUrl.Collection.Slug, collectionUrl.Revision, CancellationToken.None);
-            Events.CollectionsDownloadCompleted(
-                collectionId: collectionRevision.Collection.CollectionId.Value,
-                revisionId: collectionRevision.RevisionId.Value,
-                gameId: collectionRevision.Collection.GameId.Value,
-                modCount: collectionRevision.Downloads.Count,
-                duration: sw
-            );
 
             _eventBus.Send(new CliMessages.CollectionAddSucceeded(collectionRevision));
         }

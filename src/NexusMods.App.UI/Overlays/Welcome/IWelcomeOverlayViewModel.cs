@@ -13,7 +13,5 @@ public interface IWelcomeOverlayViewModel : IOverlayViewModel
     ReactiveCommand<Unit> CommandLogOut { get; }
     IReadOnlyBindableReactiveProperty<bool> IsLoggedIn { get; }
 
-    BindableReactiveProperty<bool> AllowTelemetry { get; }
-
     ReactiveCommand CommandClose { get; }
 }
