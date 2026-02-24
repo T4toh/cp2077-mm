@@ -37,7 +37,7 @@ public class CollectionInstallTests(ITestOutputHelper helper) : ACyberpunkIsolat
         _ = await loginManager.GetUserInfoAsync();
 
         loginManager.UserInfo.Should().NotBeNull(because: "this test requires a logged in user");
-        loginManager.IsPremium.Should().BeTrue(because: "this test requires premium to automatically download mods");
+        loginManager.IsPremium.Should().BeTrue(because: "this test requires premium to ensure the API download succeeds (non-premium users fall back to browser which doesn't work in tests)");
 
         await using var destination = TemporaryFileManager.CreateFile();
         var downloadJob = NexusModsLibrary.CreateCollectionDownloadJob(destination, CollectionSlug.From(slug), RevisionNumber.From((ulong)revisionNumber), CancellationToken.None);
