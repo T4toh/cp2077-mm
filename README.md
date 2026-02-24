@@ -10,7 +10,8 @@ Proporcionar un gestor de mods moderno, nativo para Linux, que resuelva las comp
 
 - **Aislamiento del Sistema:** Este fork utiliza su propio ID de aplicación (`com.nexusmods.app.cyberpunk`) y directorios de datos independientes (`~/.local/share/NexusMods.App.Cyberpunk`). Esto permite que conviva con la versión oficial sin romper bases de datos ni conflictos de protocolos.
 - **Descargas Compartidas:** A pesar del aislamiento, el fork comparte la carpeta de descargas con la versión oficial para ahorrar espacio en disco y evitar re-descargas.
-- **Limpiador Profundo (Deep Clean) Nativo:** Integrada una herramienta de limpieza que desactiva y respalda automáticamente todos los mods instalados manualmente o por otros gestores. Mueve carpetas críticas (`red4ext`, `plugins`, `r6/scripts`, `r6/tweaks`, etc.) a un directorio de backup con marca de tiempo dentro de la carpeta del juego.
+- **Limpiador Profundo (Deep Clean) Nativo:** Integrada una herramienta de limpieza que desactiva y respalda automáticamente todos los mods instalados manualmente o por otros gestores. Mueve carpetas críticas (`red4ext`, `plugins`, `r6/scripts`, `r6/tweaks`, etc.) a un directorio de backup con marca de tiempo en `~/.local/share/NexusMods.App/CyberpunkBackups/<timestamp>/`. El pipeline de sincronización ignora correctamente esas carpetas de backup para evitar que el sincronizador las toque.
+- **Sin Telemetría:** Eliminados completamente los tres sistemas de tracking del upstream (Matomo, Mixpanel y OpenTelemetry). La app no envía ningún dato a servidores externos.
 - **Foco Único:** Eliminado el soporte para GOG, EGS, Windows, macOS y otros juegos para reducir la complejidad y el tamaño del binario.
 - **Detección Manual de Juego:** Permite especificar manualmente la ruta de instalación de Cyberpunk 2077 y el prefijo de WINE (Proton), facilitando el soporte para instalaciones en discos secundarios o Steam Deck.
 - **Gestión de Colecciones Global:** Ahora puedes navegar y descargar colecciones incluso si no tienes un juego gestionado o instalado.
@@ -18,6 +19,7 @@ Proporcionar un gestor de mods moderno, nativo para Linux, que resuelva las comp
 - **Transparencia en Colecciones:** Nueva pestaña "Mod List" que permite ver el detalle de cada mod en una colección, sus hashes, enlaces originales y copiarlos al portapapeles.
 - **Corrección de Archivos de Respaldo:** Los backups ahora mantienen sus extensiones originales (`.zip`, `.rar`, etc.) para asegurar que sean reconocibles por otras herramientas de compresión en Linux.
 - **Rutas Linux Nativas:** Uso correcto de `XDG_DATA_HOME` para almacenar configuraciones y archivos descargados.
+- **Soporte Lutris:** El parser de Wine detecta anulaciones de DLL configuradas en Lutris (`WINEDLLOVERRIDES`), mejorando la compatibilidad con instalaciones fuera de Steam.
 
 ## 🛠 Arquitectura
 
