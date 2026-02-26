@@ -12,7 +12,10 @@ using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.Abstractions.NexusModsLibrary.Models;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.ElementComparers;
+using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Networking.NexusWebApi;
+using NexusMods.Hashing.xxHash3;
+using NexusMods.Paths;
 using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
@@ -95,7 +98,34 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         var isFullyDownloaded = CollectionDownloader.IsFullyDownloaded(items, db: Connection.Db);
         if (!isFullyDownloaded) throw new InvalidOperationException("The collection hasn't fully been downloaded!");
 
-        var root = await NexusModsLibrary.ParseCollectionJsonFile(SourceCollection, context.CancellationToken);
+        // Check if the collection package archive is still on disk.
+        // After a manual clean, the DB entry can survive but the NX archive gets deleted.
+        // Also handle the case where SourceCollection is invalid (library file missing when page was opened).
+        var collectionFileHash = SourceCollection.IsValid() ? SourceCollection.AsLibraryFile().Hash : Hash.Zero;
+        NexusModsCollectionLibraryFile.ReadOnly sourceCollection = SourceCollection;
+        if (!SourceCollection.IsValid() || !await FileStore.HaveFile(collectionFileHash))
+        {
+            Logger.LogWarning("Collection archive for '{Name}' is missing from disk. Removing stale entry and re-downloading automatically...", RevisionMetadata.Collection.Name);
+            // Remove the stale DB entry if it exists
+            if (SourceCollection.IsValid())
+            {
+                using var cleanupTx = Connection.BeginTransaction();
+                cleanupTx.Delete(SourceCollection.Id, recursive: true);
+                await cleanupTx.Commit();
+            }
+
+            // Re-download the collection package transparently
+            var tempFileManager = ServiceProvider.GetRequiredService<TemporaryFileManager>();
+            await using var destination = tempFileManager.CreateFile();
+            var downloadJob = NexusModsLibrary.CreateCollectionDownloadJob(destination, RevisionMetadata.Collection.Slug, RevisionMetadata.RevisionNumber, context.CancellationToken);
+            var libraryItem = await LibraryService.AddDownload(downloadJob);
+            if (!libraryItem.TryGetAsNexusModsCollectionLibraryFile(out sourceCollection))
+                throw new InvalidOperationException("Re-downloaded collection package is not a NexusModsCollectionLibraryFile");
+
+            Logger.LogInformation("Collection package for '{Name}' re-downloaded successfully.", RevisionMetadata.Collection.Name);
+        }
+
+        var root = await NexusModsLibrary.ParseCollectionJsonFile(sourceCollection, context.CancellationToken);
         var modsAndDownloads = GatherDownloads(items, root);
 
         NexusCollectionLoadoutGroup.ReadOnly collectionGroup;
@@ -131,6 +161,9 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             collectionGroup = groupResult.Remap(group);
         }
 
+        var wasGroupCreatedByThisJob = !Group.HasValue;
+        try
+        {
         var loadout = Loadout.Load(Connection.Db, TargetLoadout);
         var game = (loadout.InstallationInstance.Game as IGame)!;
         var fallbackInstaller = FallbackCollectionDownloadInstaller.Create(ServiceProvider, loadout, game);
@@ -149,15 +182,26 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         });
 
         var allRequiredItems = CollectionDownloader.GetItems(RevisionMetadata, CollectionDownloader.ItemType.Required);
-        var allRequiredItemsInstalled = allRequiredItems.All(item => CollectionDownloader
+
+        // Check via loadout DB instead of library status (more robust: library items may have been cleaned)
+        // The group is enabled if it has ANY child items installed in the loadout.
+        var hasAnyInstalledItems = Connection.Db.Datoms(LoadoutItem.Parent, collectionGroup.Id).Any();
+
+        // Fall back to library status check for required items if there are no direct children yet
+        var anyRequiredItemInstalled = hasAnyInstalledItems || allRequiredItems.Any(item => CollectionDownloader
             .GetStatus(item, collectionGroup.AsCollectionGroup(), db: Connection.Db)
             .IsInstalled(out _));
+
+        Logger.LogDebug("[INSTALL-COLLECTION] hasAnyInstalledItems={HasAny}, anyRequiredItemInstalled={AnyRequired} → group will be {State}",
+            hasAnyInstalledItems, anyRequiredItemInstalled, anyRequiredItemInstalled ? "ENABLED" : "DISABLED");
         {
             await LoadoutManager.ApplyCollectionDownloadRules(collectionGroup);
 
             using var tx = Connection.BeginTransaction();
 
-            if (allRequiredItemsInstalled)
+            // Enable group as soon as at least one item is installed (partial install is valid).
+            // Only keep disabled if nothing is installed yet.
+            if (anyRequiredItemInstalled)
             {
                 tx.Retract(collectionGroup.Id, LoadoutItem.Disabled, Null.Instance);
             }
@@ -171,6 +215,17 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         }
 
         return collectionGroup;
+        }
+        catch (Exception ex) when (wasGroupCreatedByThisJob)
+        {
+            Logger.LogError(ex, "Installation of `{CollectionName}/{RevisionNumber}` failed, rolling back created collection group", RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
+            using var cleanupTx = Connection.BeginTransaction();
+            var groupDatoms = Connection.Db.Datoms(NexusCollectionLoadoutGroup.Revision, RevisionMetadata);
+            foreach (var datom in groupDatoms)
+                cleanupTx.Delete(datom.E, recursive: true);
+            await cleanupTx.Commit();
+            throw;
+        }
     }
 
     private IJobTask<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly> InstallMod(

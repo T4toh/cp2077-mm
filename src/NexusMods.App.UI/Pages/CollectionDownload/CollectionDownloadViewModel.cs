@@ -5,7 +5,9 @@ using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.Abstractions.Loadouts;
+using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.Abstractions.NexusModsLibrary.Models;
+using NexusMods.Sdk.Library;
 using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.App.UI.Controls;
@@ -30,6 +32,7 @@ using NexusMods.Sdk.Loadouts;
 using NexusMods.UI.Sdk;
 using NexusMods.UI.Sdk.Dialog;
 using OneOf;
+using Microsoft.Extensions.Logging;
 using R3;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -49,6 +52,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
     private readonly IOverlayController _overlayController;
     private readonly IWindowNotificationService _notificationService;
     private readonly Optional<LoadoutId> _targetLoadout;
+    private readonly ILogger<CollectionDownloadViewModel> _logger;
 
     public CollectionDownloadTreeDataGridAdapter TreeDataGridAdapter { get; }
 
@@ -61,6 +65,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
         _serviceProvider = serviceProvider;
         _overlayController = serviceProvider.GetRequiredService<IOverlayController>();
         _notificationService = serviceProvider.GetRequiredService<IWindowNotificationService>();
+        _logger = serviceProvider.GetRequiredService<ILogger<CollectionDownloadViewModel>>();
 
         var connection = serviceProvider.GetRequiredService<IConnection>();
         var mappingCache = serviceProvider.GetRequiredService<IGameDomainToGameIdMappingCache>();
@@ -79,8 +84,21 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
         _collection = revisionMetadata.Collection;
         _targetLoadout = targetLoadout;
 
-        var libraryFile = collectionDownloader.GetLibraryFile(revisionMetadata);
-        var collectionJsonFile = nexusModsLibrary.GetCollectionJsonFile(libraryFile);
+        // Safely look up the library file — it may be missing if archives were deleted manually.
+        // The install job handles re-downloading if it's missing or its archive is gone.
+        NexusModsCollectionLibraryFile.ReadOnly libraryFile;
+        LibraryArchiveFileEntry.ReadOnly collectionJsonFile;
+        try
+        {
+            libraryFile = collectionDownloader.GetLibraryFile(revisionMetadata);
+            collectionJsonFile = nexusModsLibrary.GetCollectionJsonFile(libraryFile);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Collection library file missing for '{Name}'; install will trigger automatic re-download", revisionMetadata.Collection.Name);
+            libraryFile = default;
+            collectionJsonFile = default;
+        }
 
         TabTitle = _collection.Name;
         TabIcon = IconValues.CollectionsOutline;
@@ -90,6 +108,9 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
 
         RequiredDownloadsCount = CollectionDownloader.CountItems(_revision, CollectionDownloader.ItemType.Required);
         OptionalDownloadsCount = CollectionDownloader.CountItems(_revision, CollectionDownloader.ItemType.Optional);
+
+        _logger.LogDebug("[INSTALL-BTN] Collection '{Name}' - RequiredDownloadsCount={Required}, OptionalDownloadsCount={Optional}, TotalDownloads={Total}",
+            _collection.Name, RequiredDownloadsCount, OptionalDownloadsCount, _revision.Downloads.Count());
 
         var canInstall = R3.Observable.Return(_targetLoadout.HasValue);
 
@@ -123,12 +144,16 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
             .ToReactiveCommand<Unit>(
                 executeAsync: async (_, _) =>
                 {
+                    // Only install optional items that have actually been downloaded
+                    var downloadedItems = CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Optional)
+                        .Where(d => CollectionDownloader.GetStatus(d, connection.Db).IsDownloaded())
+                        .ToArray();
                     await InstallCollectionJob.Create(
                         serviceProvider,
                         _targetLoadout.Value,
                         source: libraryFile,
                         revisionMetadata,
-                        items: CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Optional)
+                        items: downloadedItems
                     );
                 },
                 awaitOperation: AwaitOperation.Drop,
@@ -139,7 +164,11 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
             .ToReactiveCommand<Unit>(
                 executeAsync: async (_, _) =>
                 {
-                    var items = CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Required);
+                    var installItemType = RequiredDownloadsCount > 0 ? CollectionDownloader.ItemType.Required : CollectionDownloader.ItemType.Optional;
+                    // For all-optional collections, only install items that have been downloaded
+                    var items = CollectionDownloader.GetItems(revisionMetadata, installItemType)
+                        .Where(d => CollectionDownloader.GetStatus(d, connection.Db).IsDownloaded())
+                        .ToArray();
                     var group = await InstallCollectionJob.Create(
                         serviceProvider,
                         _targetLoadout.Value,
@@ -240,6 +269,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
         CommandOpenJsonFile = new ReactiveCommand(
             execute: _ =>
             {
+                if (!collectionJsonFile.IsValid()) return;
                 var pageData = new PageData
                 {
                     FactoryId = TextEditorPageFactory.StaticId,
@@ -376,38 +406,46 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                     .IsCollectionInstalledObservable(_revision, collectionGroupObservable, CollectionDownloader.ItemType.Optional)
                     .Prepend(false);
 
-                numDownloadedRequiredItemsObservable.CombineLatest(isCollectionInstalledObservable)
+                numDownloadedRequiredItemsObservable.CombineLatest(isCollectionInstalledObservable, numDownloadedOptionalItemsObservable,
+                        (req, installed, opt) => (req, installed, opt))
                     .OnUI()
                     .Subscribe(tuple =>
                         {
-                            var (numDownloadedRequiredItems, isCollectionInstalled) = tuple;
-                            var hasDownloadedAllRequiredItems = numDownloadedRequiredItems == RequiredDownloadsCount;
+                            var (numDownloadedRequiredItems, isCollectionInstalled, numDownloadedOptionalItems) = tuple;
+                            // Allow install as long as at least one required item is downloaded.
+                            // For all-optional collections (RequiredDownloadsCount == 0), allow when at least 1 optional downloaded.
+                            var hasAnyDownloadedItems = RequiredDownloadsCount > 0
+                                ? numDownloadedRequiredItems > 0
+                                : numDownloadedOptionalItems > 0;
+
+                            _logger.LogDebug("[INSTALL-BTN] numDownloaded={Downloaded}, required={Required}, hasAll={HasAll}, isInstalled={IsInstalled} → canInstall={CanInstall}",
+                                numDownloadedRequiredItems, RequiredDownloadsCount, hasAnyDownloadedItems, isCollectionInstalled, hasAnyDownloadedItems);
 
                             CountDownloadedRequiredItems = numDownloadedRequiredItems;
-                            _canInstallRequiredItems.OnNext(!isCollectionInstalled && hasDownloadedAllRequiredItems);
-                            _canDownloadRequiredItems.OnNext(!hasDownloadedAllRequiredItems);
+                            _canInstallRequiredItems.OnNext(hasAnyDownloadedItems);
+                            _canDownloadRequiredItems.OnNext(RequiredDownloadsCount > 0 && numDownloadedRequiredItems < RequiredDownloadsCount);
 
-                            if (hasDownloadedAllRequiredItems)
+                            var allRequiredDownloaded = RequiredDownloadsCount > 0
+                                ? numDownloadedRequiredItems == RequiredDownloadsCount
+                                : numDownloadedOptionalItems > 0;
+
+                            if (allRequiredDownloaded && isCollectionInstalled)
                             {
-                                if (isCollectionInstalled)
-                                {
-                                    if (!IsInstalled.Value)
-                                    {
-                                        IsInstalled.Value = true;
-                                    }
-                                    
-                                    CollectionStatusText = Language.CollectionDownloadViewModel_CollectionDownloadViewModel_Ready_to_play___All_required_mods_installed;
-                                }
-                                else
-                                {
-                                    IsInstalled.Value = false;
-                                    CollectionStatusText = Language.CollectionDownloadViewModel_Ready_to_install;
-                                }
+                                if (!IsInstalled.Value) IsInstalled.Value = true;
+                                CollectionStatusText = Language.CollectionDownloadViewModel_CollectionDownloadViewModel_Ready_to_play___All_required_mods_installed;
+                            }
+                            else if (allRequiredDownloaded)
+                            {
+                                IsInstalled.Value = false;
+                                CollectionStatusText = Language.CollectionDownloadViewModel_Ready_to_install;
                             }
                             else
                             {
                                 IsInstalled.Value = false;
-                                CollectionStatusText = string.Format(Language.CollectionDownloadViewModel_Num_required_mods_downloaded, numDownloadedRequiredItems, RequiredDownloadsCount);
+                                if (RequiredDownloadsCount > 0)
+                                    CollectionStatusText = string.Format(Language.CollectionDownloadViewModel_Num_required_mods_downloaded, numDownloadedRequiredItems, RequiredDownloadsCount);
+                                else
+                                    CollectionStatusText = string.Format(Language.CollectionDownloadViewModel_Num_required_mods_downloaded, numDownloadedOptionalItems, OptionalDownloadsCount);
                             }
                         }
                     ).AddTo(disposables);
@@ -422,8 +460,9 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
 
                             CountDownloadedOptionalItems = numDownloadedOptionalItems;
                             HasInstalledAllOptionalItems.Value = hasInstalledAllOptionals;
-                            _canInstallOptionalItems.OnNext(hasDownloadedAllOptionalItems && !hasInstalledAllOptionals);
-                            _canDownloadOptionalItems.OnNext(!hasDownloadedAllOptionalItems);
+                            // Enable install-optional as soon as at least 1 optional is downloaded
+                            _canInstallOptionalItems.OnNext(numDownloadedOptionalItems > 0 && !hasInstalledAllOptionals);
+                            _canDownloadOptionalItems.OnNext(numDownloadedOptionalItems < OptionalDownloadsCount);
                         }
                     ).AddTo(disposables);
 
@@ -479,6 +518,9 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                         }
                     ).AddTo(disposables);
 
+                // Only parse the collection JSON if the archive is present (it may be missing after manual deletion)
+                if (collectionJsonFile.IsValid())
+                {
                 R3.Observable.Return(collectionJsonFile)
                     .ObserveOnThreadPool()
                     .SelectAwait((jsonFile, cancellationToken) => nexusModsLibrary.ParseCollectionJsonFile(jsonFile, cancellationToken))
@@ -511,6 +553,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                             self.OptionalModsInstructions = optionalModsInstructions;
                         }
                     ).AddTo(disposables);
+                }
             }
         );
     }

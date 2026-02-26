@@ -73,36 +73,16 @@ public partial class TopBarView : ReactiveUserControl<ITopBarViewModel>
                 this.BindCommand(ViewModel, vm => vm.OpenNexusModsProfileCommand, view => view.OpenNexusModsProfileMenuItem)
                     .DisposeWith(d);
 
-                this.BindCommand(ViewModel, vm => vm.OpenNexusModsPremiumCommand, view => view.OpenGetPremiumMenuItem)
-                    .DisposeWith(d);
-
-                this.BindCommand(ViewModel, vm => vm.OpenNexusModsPremiumCommand, view => view.FreeButton)
-                    .DisposeWith(d);
-
-                this.BindCommand(ViewModel, vm => vm.OpenNexusModsPremiumCommand, view => view.SupporterButton)
-                    .DisposeWith(d);
-
                 this.BindCommand(ViewModel, vm => vm.OpenNexusModsAccountSettingsCommand, view => view.OpenNexusModsAccountSettingsMenuItem)
                     .DisposeWith(d);
 
                 this.BindCommand(ViewModel, vm => vm.LogoutCommand, view => view.SignOutMenuItem)
                     .DisposeWith(d);
 
-                this.WhenAnyValue(
-                        view => view.ViewModel!.IsLoggedIn,
-                        view => view.ViewModel!.UserRole
-                    )
-                    .Subscribe(userinfo =>
-                        {
-                            var (isLoggedIn, userRole) = userinfo;
-
-                            PremiumTextBlock.IsVisible = isLoggedIn && userRole == UserRole.Premium;
-                            SupporterButton.IsVisible = isLoggedIn && userRole == UserRole.Supporter;
-                            FreeButton.IsVisible = isLoggedIn && userRole == UserRole.Free;
-                            OpenGetPremiumMenuItem.IsVisible = isLoggedIn && userRole != UserRole.Premium;
-                        }
-                    )
-                    .DisposeWith(d);
+                FreeButton.IsVisible = false;
+                SupporterButton.IsVisible = false;
+                PremiumTextBlock.IsVisible = false;
+                OpenGetPremiumMenuItem.IsVisible = false;
 
                 this.WhenValueChanged(x => x.ViewModel!.Username
                     )

@@ -179,9 +179,10 @@ public class CollectionDownloader
     }
 
     /// <summary>
-    /// Downloads a file from nexus mods for premium users or opens the download page in the browser.
+    /// Downloads a file from nexus mods. For premium users uses the API directly; for others
+    /// attempts a direct download via the website endpoint and falls back to the browser.
     /// </summary>
-    public async ValueTask Download(CollectionDownloadNexusMods.ReadOnly download, CancellationToken cancellationToken)
+    public async ValueTask Download(CollectionDownloadNexusMods.ReadOnly download, CancellationToken cancellationToken, bool openBrowserOnFailure = true)
     {
         var userInfo = await _loginManager.GetUserInfoAsync(cancellationToken);
         if (userInfo is null) return;
@@ -190,12 +191,42 @@ public class CollectionDownloader
         {
             await using var tempPath = _temporaryFileManager.CreateFile();
             var job = await _nexusModsLibrary.CreateDownloadJob(tempPath, download.FileMetadata, parentRevision: download.AsCollectionDownload().CollectionRevision, cancellationToken: cancellationToken);
-            await _libraryService.AddDownload(job);
+            var jobTask = _libraryService.AddDownload(job);
+            using (cancellationToken.Register(() => _jobMonitor.Cancel(jobTask)))
+                await jobTask;
         }
         else
         {
-            var domain = _mappingCache[download.FileUid.GameId];
-            _osInterop.OpenUri(NexusModsUrlBuilder.GetFileDownloadUri(domain, download.ModUid.ModId, download.FileUid.FileId, useNxmLink: true, campaign: NexusModsUrlBuilder.CampaignCollections));
+            // Try direct download via the website endpoint (works for logged-in free/supporter users)
+            try
+            {
+                await using var tempPath = _temporaryFileManager.CreateFile();
+                var job = await _nexusModsLibrary.CreateDownloadJob(tempPath, download.FileMetadata, parentRevision: download.AsCollectionDownload().CollectionRevision, cancellationToken: cancellationToken);
+                // Register cancellation to cancel the child job properly instead of using WaitAsync(token).
+                // WaitAsync(token) would unblock early and dispose the temp file while AddLibraryFileJob is still running.
+                var jobTask = _libraryService.AddDownload(job);
+                using (cancellationToken.Register(() => _jobMonitor.Cancel(jobTask)))
+                    await jobTask; // Wait for full completion (job will cancel itself quickly if token fires)
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                throw; // propagate cancellation — don't open browser, don't swallow
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Direct download failed for file {FileId}", download.FileUid.FileId);
+            }
+
+            if (openBrowserOnFailure)
+            {
+                var domain = _mappingCache[download.FileUid.GameId];
+                _osInterop.OpenUri(NexusModsUrlBuilder.GetFileDownloadUri(domain, download.ModUid.ModId, download.FileUid.FileId, useNxmLink: true, campaign: NexusModsUrlBuilder.CampaignCollections));
+            }
+            else
+            {
+                _logger.LogWarning("Direct download failed for file {FileId} in batch mode — skipping (retry by clicking Download All again)", download.FileUid.FileId);
+            }
         }
     }
 

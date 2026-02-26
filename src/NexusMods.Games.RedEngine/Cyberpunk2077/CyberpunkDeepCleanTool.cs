@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
+using NexusMods.Abstractions.Collections;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.MnemonicDB.Abstractions;
+using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
@@ -14,12 +16,14 @@ public class CyberpunkDeepCleanTool : ITool
     private readonly IFileSystem _fileSystem;
     private readonly ILogger<CyberpunkDeepCleanTool> _logger;
     private readonly ISynchronizerService _synchronizerService;
+    private readonly IConnection _connection;
 
-    public CyberpunkDeepCleanTool(IFileSystem fileSystem, ILogger<CyberpunkDeepCleanTool> logger, ISynchronizerService synchronizerService)
+    public CyberpunkDeepCleanTool(IFileSystem fileSystem, ILogger<CyberpunkDeepCleanTool> logger, ISynchronizerService synchronizerService, IConnection connection)
     {
         _fileSystem = fileSystem;
         _logger = logger;
         _synchronizerService = synchronizerService;
+        _connection = connection;
     }
 
     public IEnumerable<GameId> GameIds => [Cyberpunk2077Game.GameId];
@@ -119,32 +123,81 @@ public class CyberpunkDeepCleanTool : ITool
         else
             _logger.LogInformation("No mod files found to back up");
 
-        // Step 2: Disable all mod groups in the database so the app state matches the cleaned disk.
-        // We only disable the group entities (not individual file items), because the SQL sync
-        // checks the group's disabled status to determine if files should be deployed.
+        // Step 2: Delete previous backup folders created by earlier deep cleans.
+        // This keeps the CyberpunkBackups directory clean over time.
         try
         {
-            var db = loadout.Db;
-            using var tx = db.Connection.BeginTransaction();
-            var disabledCount = 0;
-            foreach (var item in LoadoutItem.FindByLoadout(db, loadout.Id).OfTypeLoadoutItemGroup())
+            if (backupsRoot.DirectoryExists())
             {
-                if (item.AsLoadoutItem().Contains(LoadoutItem.Disabled)) continue;
-                tx.Add(item.Id, LoadoutItem.Disabled, NexusMods.MnemonicDB.Abstractions.ElementComparers.Null.Instance);
-                disabledCount++;
-            }
-            if (disabledCount > 0)
-            {
-                await tx.Commit();
-                _logger.LogInformation("Disabled {Count} mod groups in the database", disabledCount);
+                var deletedBackups = 0;
+                foreach (var oldBackupDir in System.IO.Directory.GetDirectories(backupsRoot.ToString()))
+                {
+                    var dirName = System.IO.Path.GetFileName(oldBackupDir);
+                    // Skip the backup we just created
+                    if (dirName == timestamp) continue;
+                    try
+                    {
+                        System.IO.Directory.Delete(oldBackupDir, true);
+                        deletedBackups++;
+                        _logger.LogInformation("Deleted old backup: {Dir}", dirName);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to delete old backup: {Dir}", dirName);
+                    }
+                }
+                if (deletedBackups > 0)
+                    _logger.LogInformation("Deleted {Count} old backup folder(s)", deletedBackups);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to disable mods in the database");
+            _logger.LogError(ex, "Failed to clean old backups");
         }
 
-        // Step 3: Rescan the game folder so the app knows the disk state has changed.
+        // Step 3: Remove all mod groups and collections from the loadout database.
+        // This ensures the app state is fully reset, not just disabled.
+        // Library items and archives are preserved so mods can be re-installed without re-downloading.
+        try
+        {
+            var db = _connection.Db;
+            using var tx = _connection.BeginTransaction();
+            var removedCount = 0;
+
+            // Find all top-level LoadoutItemGroups (direct children of the loadout, not nested mod groups)
+            // and delete them recursively. This removes:
+            //   - Regular mod groups (LoadoutItemGroup)
+            //   - Collection groups (NexusCollectionLoadoutGroup via CollectionGroup → LoadoutItemGroup)
+            //   - Their nested mod groups and all LoadoutFiles within
+            foreach (var item in LoadoutItem.FindByLoadout(db, loadout.Id).OfTypeLoadoutItemGroup())
+            {
+                // Only delete top-level groups (those directly under the Loadout, not nested under another group)
+                var loadoutItem = item.AsLoadoutItem();
+                if (loadoutItem.Contains(LoadoutItem.Parent)) continue; // skip nested groups
+
+                // Skip the overrides group — it tracks vanilla game files that shouldn't be removed
+                if (new[] { item }.OfTypeLoadoutOverridesGroup().Any()) continue;
+
+                tx.Delete(item.Id, recursive: true);
+                removedCount++;
+            }
+
+            if (removedCount > 0)
+            {
+                await tx.Commit();
+                _logger.LogInformation("Removed {Count} top-level mod group(s) from the loadout database", removedCount);
+            }
+            else
+            {
+                _logger.LogInformation("No mod groups found to remove from the database");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove mods from the database");
+        }
+
+        // Step 4: Rescan the game folder so the app knows the disk state has changed.
         // This avoids the app trying to re-apply (or delete) files it no longer tracks.
         _logger.LogInformation("Rescanning game folder to update disk state...");
         await _synchronizerService.RescanFiles(loadout.InstallationInstance);

@@ -15,7 +15,7 @@ public class DownloadSettings : ISettings
     // 
     // So we round that up to a nice 16 concurrency level.
     // Should be good.
-    public int MaxParallelDownloads { get; set; } = Math.Max(Environment.ProcessorCount, 16);
+    public int MaxParallelDownloads { get; set; } = 5;
 
     public static ISettingsBuilder Configure(ISettingsBuilder settingsBuilder)
     {

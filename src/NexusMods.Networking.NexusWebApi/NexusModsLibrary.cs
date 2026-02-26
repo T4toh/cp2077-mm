@@ -147,13 +147,23 @@ public partial class NexusModsLibrary
         }
         else
         {
-            // NOTE(erri120): premium-only API
-            links = await _apiClient.DownloadLinksAsync(
-                file.ModPage.GameDomain.ToString(),
-                file.ModPage.Uid.ModId,
-                file.Uid.FileId,
-                token: cancellationToken
-            );
+            // NOTE(erri120): premium-only API; fall back to website endpoint for logged-in non-premium users
+            try
+            {
+                links = await _apiClient.DownloadLinksAsync(
+                    file.ModPage.GameDomain.ToString(),
+                    file.ModPage.Uid.ModId,
+                    file.Uid.FileId,
+                    token: cancellationToken
+                );
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                // Not premium — try the website's GenerateDownloadUrl endpoint (works for supporters/free)
+                var directUrl = await _apiClient.GenerateDirectDownloadUrlAsync(file.Uid.FileId, file.ModPage.Uid.GameId, cancellationToken);
+                if (directUrl is not null) return directUrl;
+                throw;
+            }
         }
 
         // NOTE(erri120): The first download link is the preferred download location as

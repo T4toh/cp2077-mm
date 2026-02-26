@@ -142,7 +142,7 @@ public sealed class JobContext<TJobDefinition, TJobResult> : IJobWithResult<TJob
 
     public Task WaitAsync(CancellationToken cancellationToken = default)
     {
-        return _tcs.Task;
+        return cancellationToken.CanBeCanceled ? _tcs.Task.WaitAsync(cancellationToken) : _tcs.Task;
     }
     
     /// <inheritdoc />
@@ -162,7 +162,7 @@ public sealed class JobContext<TJobDefinition, TJobResult> : IJobWithResult<TJob
     
     public Task<TJobResult> WaitForResult(CancellationToken cancellationToken = default)
     {
-        return _tcs.Task;
+        return cancellationToken.CanBeCanceled ? _tcs.Task.WaitAsync(cancellationToken) : _tcs.Task;
     }
     
     internal void Cancel() 
