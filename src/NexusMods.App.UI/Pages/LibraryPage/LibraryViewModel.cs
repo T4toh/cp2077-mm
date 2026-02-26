@@ -153,14 +153,14 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
         );
 
         // Create an observable that determines when UpdateAll can execute
-        var canUpdateAll = this.WhenAnyValue(vm => vm.IsUpdatingAll)
+        var canUpdateAll = this.WhenAnyValue(vm => vm.IsUpdatingAll, vm => vm.HasAnyUpdatesAvailable)
             .ToObservable()
-            .Select(isUpdating => !isUpdating);
+            .Select(tuple => !tuple.Item1 && tuple.Item2);
 
         UpdateAllCommand = canUpdateAll.ToReactiveCommand<Unit>(
             executeAsync: (_, cancellationToken) => UpdateAllItems(cancellationToken),
             awaitOperation: AwaitOperation.Sequential,
-            initialCanExecute: true,
+            initialCanExecute: false,
             configureAwait: false
         );
 
@@ -343,15 +343,7 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
 
     private async ValueTask HandleUpdateAndReplaceMessage(UpdateAndReplaceMessage updateAndReplaceMessage, CancellationToken cancellationToken)
     {
-        var isPremium = _loginManager.IsPremium;
-        if (!isPremium)
-        {
-            await UpdateAndReplaceForMultiModPagesFreeOnly(cancellationToken, [updateAndReplaceMessage.Updates]);
-        }
-        else
-        {
-            await UpdateAndReplaceForMultiModPagesPremiumOnly(cancellationToken, [updateAndReplaceMessage.Updates]);
-        }
+        await UpdateAndReplaceForMultiModPagesPremiumOnly(cancellationToken, [updateAndReplaceMessage.Updates]);
     }
 
     private async ValueTask UpdateAndReplaceForMultiModPagesFreeOnly(CancellationToken cancellationToken, IEnumerable<ModUpdatesOnModPage> updatesOnPageCollection)
@@ -646,41 +638,7 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
     private async ValueTask HandleUpdateAndKeepOldMessage(UpdateAndKeepOldMessage updateAndKeepOldMessage, CancellationToken cancellationToken)
     {
         var updatesOnPage = updateAndKeepOldMessage.Updates;
-        
-        // Note(sewer)
-        // If the user is a free user, they have to go to the website due to API restrictions.
-        // For premium, we can start a download directly.
-        var isPremium = _loginManager.IsPremium;
-        if (!isPremium)
-        {
-            /*
-               // Note(sewer): The commented code here is the correct behaviour
-               // as intended per the phase one design. We temporarily need to alter
-               // this behaviour due to the TreeDataGrid bug. When TreeDataGrid
-               // is fixed, we can revert.
-
-               // If there are multiple mods, we expand the row
-               var treeNode = updateMessage.TreeNode;
-               if (updatesOnPage.NumberOfModFilesToUpdate > 1)
-               {
-                   treeNode.IsExpanded = true; // 👈 TreeDataGrid bug. Doesn't handle PropertyChanged right.
-               }
-               else
-               {
-                   // Otherwise send them to the download page!!
-                   var latestFile = updatesOnPage.NewestFile();
-                   var modFileUrl = NexusModsUrlBuilder.CreateModFileDownloadUri(latestFile.Uid.FileId, latestFile.Uid.GameId);
-                   var osInterop = _serviceProvider.GetRequiredService<IOSInterop>();
-                   await osInterop.OpenUrl(modFileUrl, cancellationToken: cancellationToken);
-               }
-            */
-
-            UpdateAndKeepOldFree([updatesOnPage]);
-        }
-        else
-        {
-            await UpdateAndKeepOldPremium([updatesOnPage], cancellationToken);
-        }
+        await UpdateAndKeepOldPremium([updatesOnPage], cancellationToken);
     }
 
     private void UpdateAndKeepOldFree(IEnumerable<ModUpdatesOnModPage> updatesOnPages)
@@ -955,10 +913,7 @@ After asking design, we're choosing to simply open the mod page for now.
 
     private ValueTask UpdateSelectedItems(CancellationToken cancellationToken)
     {
-        // TEMPORARY: Use conditional default behavior based on Premium status to avoid unwanted dialog for free users
-        // Original: return UpdateSelectedItemsInternal(useUpdateAndReplace: true, cancellationToken);
-        var isPremium = _loginManager.IsPremium;
-        return UpdateSelectedItemsInternal(useUpdateAndReplace: isPremium, cancellationToken);
+        return UpdateSelectedItemsInternal(useUpdateAndReplace: true, cancellationToken);
     }
 
     private ValueTask UpdateAndKeepOldSelectedItems(CancellationToken cancellationToken)
@@ -991,20 +946,10 @@ After asking design, we're choosing to simply open the mod page for now.
         // 1 selection with an update (otherwise they wouldn't be able to call this)
         if (withUpdatesOnPage.Count > 0)
         {
-            var isPremium = _loginManager.IsPremium;
             if (useUpdateAndReplace)
-            {
-                if (!isPremium)
-                    await UpdateAndReplaceForMultiModPagesFreeOnly(cancellationToken, withUpdatesOnPage);
-                else
-                    await UpdateAndReplaceForMultiModPagesPremiumOnly(cancellationToken, withUpdatesOnPage);
-            }
+                await UpdateAndReplaceForMultiModPagesPremiumOnly(cancellationToken, withUpdatesOnPage);
             else
-            {
-                if (!isPremium) UpdateAndKeepOldFree(withUpdatesOnPage);
-                else
-                    await UpdateAndKeepOldPremium(withUpdatesOnPage, cancellationToken);
-            }
+                await UpdateAndKeepOldPremium(withUpdatesOnPage, cancellationToken);
         }
     }
 
@@ -1013,15 +958,6 @@ After asking design, we're choosing to simply open the mod page for now.
         IsUpdatingAll = true;
         try
         {
-            var isPremium = _loginManager.IsPremium;
-
-            if (!isPremium)
-            {
-                var osInterop = _serviceProvider.GetRequiredService<IOSInterop>();
-                await PremiumDialog.ShowUpdatePremiumDialog(WindowManager, osInterop);
-                return;
-            }
-
             // Filter mod pages to only those for the current game
             var currentGameId = _loadout.InstallationInstance.Game.NexusModsGameId;
             var modPagesWithUpdates = _modUpdateService.GetAllModPagesWithUpdates()

@@ -81,4 +81,11 @@ public interface INexusApiClient
     /// <param name="token">Token used to cancel the task.</param>
     /// <exception cref="ArgumentOutOfRangeException"></exception>
     Task<Response<ModUpdate[]>> ModUpdatesAsync(string domain, PastTime time, CancellationToken token = default);
+
+    /// <summary>
+    /// Attempts to generate a direct CDN download URL for a file via the Nexus website endpoint.
+    /// Works for logged-in users (free/supporter/premium).
+    /// Returns <see langword="null"/> when the server refuses (e.g., not logged in, throttled).
+    /// </summary>
+    Task<Uri?> GenerateDirectDownloadUrlAsync(FileId fileId, NexusModsGameId gameId, CancellationToken cancellationToken = default);
 }

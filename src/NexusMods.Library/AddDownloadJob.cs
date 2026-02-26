@@ -1,12 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Downloads;
+using NexusMods.Abstractions.FileExtractor;
 using NexusMods.Abstractions.HttpDownloads;
 using NexusMods.Abstractions.Library.Jobs;
 using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Networking.HttpDownloader;
 using NexusMods.Paths;
+using NexusMods.Sdk.FileExtractor;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Library;
 
@@ -37,6 +39,11 @@ internal class AddDownloadJob : IJobDefinitionWithStart<AddDownloadJob, LibraryF
         // This throws if download cancelled, will be caught downstream.
         await DownloadJob;
 
+        // Fail immediately if the download produced an empty file (silent download failure)
+        var downloadedPath = DownloadJob.Result;
+        if (downloadedPath.FileExists && downloadedPath.FileInfo.Size == Size.Zero)
+            throw new InvalidOperationException($"La descarga del archivo '{downloadedPath.FileName}' resultó en un archivo vacío (0 bytes). Es posible que la URL haya expirado o el servidor haya rechazado la petición.");
+
         // Preserve a copy of the original downloaded file
         await PreserveOriginalFile(context.CancellationToken);
 
@@ -63,7 +70,7 @@ internal class AddDownloadJob : IJobDefinitionWithStart<AddDownloadJob, LibraryF
             if (!downloadsFolder.DirectoryExists())
                 downloadsFolder.CreateDirectory();
 
-            var destFileName = GetMeaningfulFileName(downloadedFilePath);
+            var destFileName = await GetMeaningfulFileNameAsync(downloadedFilePath, ct);
             var destPath = downloadsFolder.Combine(destFileName);
 
             // Avoid overwriting existing files
@@ -92,9 +99,9 @@ internal class AddDownloadJob : IJobDefinitionWithStart<AddDownloadJob, LibraryF
 
     /// <summary>
     /// Tries to get a meaningful filename from NexusMods metadata, the download URI,
-    /// or falls back to the temp file name.
+    /// or falls back to the temp file name. Detects file type via magic bytes if extension is missing.
     /// </summary>
-    private string GetMeaningfulFileName(AbsolutePath tempFilePath)
+    private async Task<string> GetMeaningfulFileNameAsync(AbsolutePath tempFilePath, CancellationToken ct)
     {
         var filename = string.Empty;
 
@@ -163,6 +170,34 @@ internal class AddDownloadJob : IJobDefinitionWithStart<AddDownloadJob, LibraryF
         {
             if (!Path.HasExtension(filename))
                 filename += extStr;
+        }
+
+        // If still no extension, detect via magic bytes
+        if (!Path.HasExtension(filename) && tempFilePath.FileExists && tempFilePath.FileInfo.Size > Size.Zero)
+        {
+            try
+            {
+                var factory = ServiceProvider.GetService<ISignatureCheckerFactory>();
+                if (factory != null)
+                {
+                    var checker = factory.Create(FileType._7Z, FileType.ZIP, FileType.RAR, FileType.RAR_NEW, FileType.RAR_OLD);
+                    await using var stream = tempFilePath.Read();
+                    var types = await checker.MatchesAsync(stream);
+                    var detectedExt = types.Count > 0 ? types[0] switch
+                    {
+                        FileType._7Z => ".7z",
+                        FileType.ZIP => ".zip",
+                        FileType.RAR or FileType.RAR_NEW or FileType.RAR_OLD => ".rar",
+                        _ => (string?)null
+                    } : null;
+                    if (detectedExt != null)
+                        filename += detectedExt;
+                }
+            }
+            catch
+            {
+                // Ignore detection errors - cosmetic only
+            }
         }
 
         return filename;

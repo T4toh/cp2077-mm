@@ -111,15 +111,37 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                 this.OneWayBind(ViewModel, vm => vm.OverallRating, view => view.OverallRating.Text, p => p.Value.ToString("P0"))
                     .DisposeWith(d);
 
-                this.OneWayBind(ViewModel, vm => vm.RequiredDownloadsCount, view => view.RequiredDownloadsCount.Text,
-                        v => v.ToString("N0")
-                    )
-                    .DisposeWith(d);
 
-                this.OneWayBind(ViewModel, vm => vm.OptionalDownloadsCount, view => view.OptionalDownloadsCount.Text,
-                        v => v.ToString("N0")
+                this.WhenAnyValue(
+                    view => view.ViewModel!.CountDownloadedRequiredItems,
+                    view => view.ViewModel!.CountDownloadedOptionalItems,
+                    view => view.ViewModel!.IsInstalled.Value,
+                    view => view.ViewModel!.HasInstalledAllOptionalItems.Value
                     )
-                    .DisposeWith(d);
+                    .CombineLatest(ViewModel!.TreeDataGridAdapter.Filter.AsSystemObservable(), (a, b) => (a.Item1, a.Item2, a.Item3, a.Item4, b))
+                    .Subscribe(tuple =>
+                    {
+                        var (countDownloadedRequiredItems, countDownloadedOptionalItems, isInstalled, hasInstalledAllOptionals, filter) = tuple;
+                        var hasDownloadedAllRequiredItems = countDownloadedRequiredItems == ViewModel!.RequiredDownloadsCount;
+                        var hasAtLeastOneOptional = countDownloadedOptionalItems > 0;
+
+                        // Update tab header badges: show "X/Y" when not fully downloaded
+                        RequiredDownloadsCount.Text = (countDownloadedRequiredItems == ViewModel!.RequiredDownloadsCount || ViewModel!.RequiredDownloadsCount == 0)
+                            ? ViewModel!.RequiredDownloadsCount.ToString("N0")
+                            : $"{countDownloadedRequiredItems}/{ViewModel!.RequiredDownloadsCount}";
+                        OptionalDownloadsCount.Text = (countDownloadedOptionalItems == ViewModel!.OptionalDownloadsCount || ViewModel!.OptionalDownloadsCount == 0)
+                            ? ViewModel!.OptionalDownloadsCount.ToString("N0")
+                            : $"{countDownloadedOptionalItems}/{ViewModel!.OptionalDownloadsCount}";
+                
+                        ButtonViewCollection.IsVisible = isInstalled;
+                
+                        ButtonDownloadRequiredItems.IsVisible = !hasDownloadedAllRequiredItems;
+                        ButtonInstallRequiredItems.IsVisible = !isInstalled && hasDownloadedAllRequiredItems;
+                
+                        ButtonDownloadOptionalItems.IsVisible = filter == CollectionDownloadsFilter.OnlyOptional && countDownloadedOptionalItems < ViewModel!.OptionalDownloadsCount;
+                        // Show install-optional button as soon as at least 1 optional is downloaded
+                        ButtonInstallOptionalItems.IsVisible = filter == CollectionDownloadsFilter.OnlyOptional && hasAtLeastOneOptional && !hasInstalledAllOptionals;
+                    }).DisposeWith(d);
 
                 this.OneWayBind(ViewModel, vm => vm.RevisionNumber, view => view.Revision.Text,
                         revision => $"Revision {revision}"
@@ -166,28 +188,6 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                     }).DisposeWith(d);
                 
                 this.WhenAnyValue(
-                    view => view.ViewModel!.CountDownloadedRequiredItems,
-                    view => view.ViewModel!.CountDownloadedOptionalItems,
-                    view => view.ViewModel!.IsInstalled.Value,
-                    view => view.ViewModel!.HasInstalledAllOptionalItems.Value
-                    )
-                    .CombineLatest(ViewModel!.TreeDataGridAdapter.Filter.AsSystemObservable(), (a, b) => (a.Item1, a.Item2, a.Item3, a.Item4, b))
-                    .Subscribe(tuple =>
-                    {
-                        var (countDownloadedRequiredItems, countDownloadedOptionalItems, isInstalled, hasInstalledAllOptionals, filter) = tuple;
-                        var hasDownloadedAllRequiredItems = countDownloadedRequiredItems == ViewModel!.RequiredDownloadsCount;
-                        var hasDownloadedAllOptionalItems = countDownloadedOptionalItems == ViewModel!.OptionalDownloadsCount;
-                
-                        ButtonViewCollection.IsVisible = isInstalled;
-                
-                        ButtonDownloadRequiredItems.IsVisible = !hasDownloadedAllRequiredItems;
-                        ButtonInstallRequiredItems.IsVisible = !isInstalled && hasDownloadedAllRequiredItems;
-                
-                        ButtonDownloadOptionalItems.IsVisible = filter == CollectionDownloadsFilter.OnlyOptional && !hasDownloadedAllOptionalItems;
-                        ButtonInstallOptionalItems.IsVisible = filter == CollectionDownloadsFilter.OnlyOptional && hasDownloadedAllOptionalItems && !hasInstalledAllOptionals;
-                    }).DisposeWith(d);
-                
-                this.WhenAnyValue(
                         view => view.ViewModel!.OptionalDownloadsCount,
                         view => view.ViewModel!.InstructionsRenderer)
                     .Subscribe(tuple =>
@@ -221,13 +221,7 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                     )
                     .DisposeWith(d);
                 
-                this.WhenAnyValue(view => view.ViewModel!.CanDownloadAutomatically)
-                    .Subscribe(canDownloadAutomatically =>
-                    {
-                        ButtonDownloadRequiredItems.RequiresPremium = !canDownloadAutomatically;
-                        ButtonDownloadOptionalItems.RequiresPremium = !canDownloadAutomatically;
-                        
-                    }).DisposeWith(d);
+
                 
                 
                 this.WhenAnyValue(

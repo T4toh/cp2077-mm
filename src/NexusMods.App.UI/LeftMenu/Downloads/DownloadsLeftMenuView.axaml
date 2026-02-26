@@ -15,16 +15,6 @@
     <ScrollViewer>
         <StackPanel Margin="12,0,12,12" x:Name="LeftMenuStack">
             <items:LeftMenuItemView x:Name="AllDownloadsItem" />
-
-            <!-- per-game downloads section -->
-            <ItemsControl x:Name="PerGameDownloadsItemsControl">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Spacing="{StaticResource Spacing-0.5}" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-            </ItemsControl>
-
         </StackPanel>
     </ScrollViewer>
 
