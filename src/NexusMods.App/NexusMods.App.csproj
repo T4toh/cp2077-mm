@@ -3,7 +3,7 @@
         <!-- Target WinExe so that a console isn't automatically created on Windows -->
         <OutputType>WinExe</OutputType>
         <ApplicationIcon>icon.ico</ApplicationIcon>
-        <AssemblyName>NexusMods.App.Cyberpunk</AssemblyName>
+        <AssemblyName>Cyberpunk2077.Mod.Manager</AssemblyName>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
