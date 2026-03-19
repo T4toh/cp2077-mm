@@ -11,7 +11,7 @@ public class TestsFor_0001_ConvertTimestamps(ITestOutputHelper helper) : ALegacy
     [Fact]
     public async Task OldTimestampsAreInRange()
     {
-        await using var tempConnection = await ConnectionFor("SDV.4_11_2024.rocksdb.zip");
+        await using var tempConnection = await ConnectionFor("Migration-5.rocksdb.zip");
 
         var txTimes = tempConnection.Connection.Db.Datoms(Transaction.Timestamp)
             .Resolved(tempConnection.Connection)

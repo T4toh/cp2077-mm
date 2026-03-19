@@ -2,7 +2,9 @@ using FluentAssertions;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.MnemonicDB.Abstractions.IndexSegments;
 using NexusMods.MnemonicDB.Abstractions.Query;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit.Abstractions;
 using Xunit.DependencyInjection;
 
@@ -20,10 +22,15 @@ public class TestsFor_0004_RemoveGameFiles(ITestOutputHelper helper) : ALegacyDa
     {
         await using var tempConnection = await ConnectionFor(databaseName);
         var db = tempConnection.Connection.Db;
+        var gameRegistry = tempConnection.Connection.ServiceProvider.GetRequiredService<IGameRegistry>();
+
         foreach (var loadout in Loadout.All(db))
         {
-            if (databaseName != "SDV.2_5_2025.rocksdb.zip") 
-                loadout.Contains(Loadout.LocatorIds).Should().BeTrue("Loadout should contain LocatorIds");
+            // Loadouts for unregistered games (e.g. removed StardewValley) are skipped by migration
+            if (!gameRegistry.TryGetGameInstallation(loadout, out _))
+                continue;
+
+            loadout.Contains(Loadout.LocatorIds).Should().BeTrue("Loadout should contain LocatorIds");
             loadout.Contains(Loadout.GameVersion).Should().BeTrue("Loadout should contain GameVersion");
         }
 

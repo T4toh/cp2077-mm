@@ -7,15 +7,15 @@ namespace NexusMods.Networking.ModUpdates.Tests;
 public class FuzzySearchTests
 {
     [Theory]
-    // Reference Example: SkyUI (underscores and version in middle)
+    // Underscores and version in middle
     [InlineData("SkyUI_5_2_SE", "5.2SE", "skyui se")]
-    // Reference Example: Skyrim 202X (version after name)
+    // Version after name
     [InlineData("Skyrim 202X 9.0 - Architecture PART 1", "9.0", "skyrim 202x - architecture part 1")]
-    // Reference Example: Quality World Map (file version with suffix)
+    // File version with suffix
     [InlineData("9.0 A Quality World Map - Paper", "9.0P", "a quality world map - paper")]
-    // Reference Example: Maestros of Synth (extension stripping)
+    // Extension stripping
     [InlineData("Maestros of Synth.zip", "", "maestros of synth")]
-    // USSEP style with underscores and extension
+    // Underscores and extension
     [InlineData("Unofficial_Skyrim_Special_Edition_Patch.rar", "", "unofficial skyrim special edition patch")]
     // Multiple spaces normalization
     [InlineData("Mod    Name  with   multiple    spaces", "", "mod name with multiple spaces")]

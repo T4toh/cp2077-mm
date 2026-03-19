@@ -72,17 +72,18 @@ public class ExternalChangesTests : ACyberpunkIsolatedGameTest<ExternalChangesTe
         
         await ExtractV2ToGameFolder(gameFolder);
 
+        // Create a new loadout first, then add the extra file and sync
+        var loadoutA = await CreateLoadout();
+        
+        // Check the game version
+        loadoutA.GameVersion.Should().Be("1.1.Stubbed");
+
+        // Add an extra file after loadout creation so it's detected as an external change
         var extraFileName = gameFolder / "someFolder/SomeRandomFile.dds";
         extraFileName.Parent.CreateDirectory();
         await extraFileName.WriteAllTextAsync("Some content");
 
-        
-        // Create a new loadout
-        var loadoutA = await CreateLoadout();
         loadoutA = await Synchronizer.Synchronize(loadoutA);
-        
-        // Check the game version
-        loadoutA.GameVersion.Should().Be("1.1.Stubbed");
 
         // Check that the extra file is in the overrides folder and there should only be one such file
         var extraFileGamePath = loadoutA.InstallationInstance.Locations.ToGamePath(extraFileName);

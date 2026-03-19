@@ -14,6 +14,7 @@ namespace NexusMods.DataModel.SchemaVersions.Migrations;
 internal class _0004_RemoveGameFiles : ITransactionalMigration
 {
     private readonly IFileHashesService _fileHashesService;
+    private readonly IGameRegistry _gameRegistry;
     private HashSet<Symbol> _gameGroupAttrs = [];
     private HashSet<IAttribute> _resolvedGroupAttrs = [];
     public static (MigrationId Id, string Name) IdAndName => MigrationId.ParseNameAndId(nameof(_0004_RemoveGameFiles));
@@ -21,9 +22,10 @@ internal class _0004_RemoveGameFiles : ITransactionalMigration
     /// <summary>
     /// DI Constructor
     /// </summary>
-    public _0004_RemoveGameFiles(IFileHashesService fileHashService)
+    public _0004_RemoveGameFiles(IFileHashesService fileHashService, IGameRegistry gameRegistry)
     {
         _fileHashesService = fileHashService;
+        _gameRegistry = gameRegistry;
     }
     
     public async Task Prepare(IDb db)
@@ -44,6 +46,10 @@ internal class _0004_RemoveGameFiles : ITransactionalMigration
             // This doesn't seem likely, that we'd have this without this migration being run, but we'll check anyway
             if (loadout.Contains(Loadout.LocatorIds))
                 continue;
+
+            // Skip loadouts for games that are not registered (e.g. removed games like StardewValley)
+            if (!_gameRegistry.TryGetGameInstallation(loadout, out var installation))
+                continue;
             
             // Get groups attached to the loadout that have the game files group attributes
             var gameFilesGroups = LoadoutItem.FindByLoadout(loadout.Db, loadout)
@@ -56,7 +62,7 @@ internal class _0004_RemoveGameFiles : ITransactionalMigration
                 .OfTypeLoadoutFile()
                 .Select(file => ((GamePath)file.AsLoadoutItemWithTargetPath().TargetPath, file.Hash));
 
-            var suggestVersionDefinitions = _fileHashesService.SuggestVersionData(loadout.InstallationInstance, files);
+            var suggestVersionDefinitions = _fileHashesService.SuggestVersionData(installation, files);
             if (!suggestVersionDefinitions.HasValue) throw new Exception("Could not find locatorIds for version, this should never happen");
 
             var (locatorIds, vanityVersion) = suggestVersionDefinitions.Value;
