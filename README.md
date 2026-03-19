@@ -114,19 +114,15 @@ Detecta también carpetas redundantes en mods (ej. `Cyberpunk 2077/bin/...` dupl
 - [x] Deep Clean + Storage Manager
 - [x] Remoción total de telemetría
 - [x] Rebrand a "Cyberpunk 2077 Mod Manager"
+- [x] Limpieza de código muerto (directorios vacíos, NuGet huérfanos, tiendas removidas, UI de feedback, ComingSoon, settings muertos, premium gates, páginas de debug bajo `#if DEBUG`)
 
-### 🧹 Limpieza de Código Muerto
+### 🧪 Tests Pendientes de Revisión
 
-Eliminar código heredado del upstream multi-juego/multi-plataforma que ya no se usa:
+Los siguientes tests fallan desde antes de la limpieza y necesitan ser revisados o eliminados:
 
-- [ ] **Proyectos vacíos:** Borrar directorios de juegos removidos (StardewValley, Larian, CreationEngine, Bannerlord) y abstracciones vacías (Telemetry, GOG, EpicGameStore) — solo contienen `bin/obj`
-- [ ] **NuGet huérfanos:** Sacar de `Directory.Packages.props` los paquetes sin consumidores: `Mutagen.Bethesda.Skyrim`, `Mutagen.Bethesda.Fallout4`, `Bannerlord.*`, `FetchBannerlordVersion`, `SkiaSharp.NativeAssets.macOS`, `SkiaSharp.NativeAssets.Win32`
-- [ ] **Código de tiendas removidas:** Limpiar ramas GOG/EGS en `GameStore.cs`, `StoreIdentifiers.cs`, `GameWidgetViewModel.cs`, `RunGameTool.cs`, `WineDiagnosticHelper.cs`, `MissingRedModEmitter.cs` (links GOG/EGS muertos)
-- [ ] **UI de feedback:** Remover `GiveFeedbackCommand` del `DevelopmentBuildBanner` y `MiniGameWidget` (abre Google Forms del upstream)
-- [ ] **ComingSoon widget:** Eliminar `MiniGameWidget/ComingSoon/` (mostraba juegos "próximamente" que ya no aplican)
-- [ ] **Settings muertos:** Remover `EnableXboxGamePass` de `GameLocatorSettings.cs`
-- [ ] **Premium gates:** Limpiar `DialogPremiumCollectionDownloads` y badge `RequiresPremium` del `StandardButton` (las descargas ya son free)
-- [ ] **Páginas de debug:** Ocultar `DebugControls`, `ObservableInfo`, `ProtocolRegistration` detrás de `#if DEBUG` o un toggle
+- [ ] **SchemaVersions:** `SchemaFingerprintHasntChanged` y otros 10 tests — el schema fingerprint del `.verified.md` está desactualizado
+- [ ] **Synchronizer:** 5 tests fallan (`EmptyChildFoldersDontDeleteNonEmptyParents`, `EmptyFoldersAreRemovedWhenSwitchingLoadouts`, `SynchronizerAddAndDisableMods`, `ExistingFilesEndUpInOverrides`, `SynchronizerIntegrationTests`)
+- [ ] **RedEngine:** `FilesAreMappedToCorrectFolders` falla en el caso "All Common Prefixes"
 
 ### 🔄 Consolidación de Vistas de Descarga
 

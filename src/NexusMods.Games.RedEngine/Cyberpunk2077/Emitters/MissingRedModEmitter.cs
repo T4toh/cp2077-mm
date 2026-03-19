@@ -14,8 +14,6 @@ public class MissingRedModEmitter : ILoadoutDiagnosticEmitter
 {
     public static readonly NamedLink RedmodGenericLink = new("official website", new Uri("https://www.cyberpunk.net/en/modding-support"));
     public static readonly NamedLink RedmodSteamLink = new("Steam", new Uri("steam://store/2060310"));
-    public static readonly NamedLink RedmodGOGLink = new("GOG Galaxy", new Uri("goggalaxy://openStoreUrl/embed.gog.com/game/cyberpunk_2077_redmod"));
-    public static readonly NamedLink RedmodEGSLink = new("the Epic Games Store", new Uri("com.epicgames.launcher://store/p/cyberpunk-2077"));
 
     internal static bool HasRedMods(Loadout.ReadOnly loadout, out AbsolutePath redModInstallFolder, out int numRedModDirs)
     {
@@ -50,15 +48,7 @@ public class MissingRedModEmitter : ILoadoutDiagnosticEmitter
 
         var store = loadout.Installation.Store;
 
-        NamedLink link;
-        if (store == GameStore.GOG)
-            link = RedmodGOGLink;
-        else if (store == GameStore.Steam)
-            link = RedmodSteamLink;
-        else if (store == GameStore.EGS)
-            link = RedmodEGSLink;
-        else
-            link = RedmodGenericLink;
+        var link = store == GameStore.Steam ? RedmodSteamLink : RedmodGenericLink;
 
         yield return Diagnostics.CreateMissingRedModDependency(
             RedmodLink: link,

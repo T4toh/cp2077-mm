@@ -9,10 +9,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:reactiveUi="http://reactiveui.net"
-    xmlns:developmentBuildBanner="clr-namespace:NexusMods.App.UI.Controls.DevelopmentBuildBanner"
-    xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
-    xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
-    xmlns:resources="clr-namespace:NexusMods.App.UI.Resources">
+    xmlns:developmentBuildBanner="clr-namespace:NexusMods.App.UI.Controls.DevelopmentBuildBanner">
 
     <Design.DataContext>
         <developmentBuildBanner:DevelopmentBuildBannerDesignViewModel />
@@ -36,17 +33,6 @@
                 Theme="{StaticResource BodyMDSemiTheme}"
                 Foreground="{StaticResource NeutralSubduedBrush}"
                 VerticalAlignment="Center" />
-            
-            <!-- feedback button -->
-            <controls:StandardButton x:Name="GiveFeedbackButton"
-                                     Text="Give Feedback"
-                                     Type="Secondary"
-                                     Fill="Strong"
-                                     Size="Small"
-                                     LeftIcon="{x:Static icons:IconValues.ThumbsUpDownOutline}"
-                                     ShowIcon="Left"
-                                     ToolTip.Tip="{x:Static resources:Language.TopBar_GiveFeedback_ToolTip}"
-                                     Margin="8,0,0,0"/>
         </StackPanel>
 
     </Border>

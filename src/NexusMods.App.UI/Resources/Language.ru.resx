@@ -853,9 +853,6 @@
   <data name="TopBar_Back_ToolTip" xml:space="preserve">
     <value>Назад</value>
   </data>
-  <data name="TopBar_GiveFeedback_ToolTip" xml:space="preserve">
-    <value>Нажмите, чтобы оставить отзыв и помочь нам улучшиться.</value>
-  </data>
   <data name="TopBarActions__LOG_IN_ToolTip" xml:space="preserve">
     <value>Подключить вашу учетную запись Nexus Mods</value>
   </data>

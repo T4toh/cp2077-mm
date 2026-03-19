@@ -11,19 +11,9 @@ public class VersionContribDefinition
     public required string Name { get; set; } 
 
     /// <summary>
-    /// Gog build ids for this version
-    /// </summary>
-    public string[] GOG { get; set; } = [];
-    
-    /// <summary>
     /// Steam manifest ids for this version
     /// </summary>
     public string[] Steam { get; set; } = [];
-    
-    /// <summary>
-    /// Epic Games Store build ids for this version
-    /// </summary>
-    public string[] Epic { get; set; } = [];
 }
 
 

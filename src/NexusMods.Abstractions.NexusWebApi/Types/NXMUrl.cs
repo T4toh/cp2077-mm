@@ -86,10 +86,6 @@ public class NXMUrl
         {
             result = new NXMOAuthUrl(uri);
         }
-        else if (uri.Host == "gog-auth")
-        {
-            result = new NXMGogAuthUrl(uri);
-        }
         else if (uri.Host == "protocol-test")
         {
             result = new NXMProtocolRegistrationCheck(uri);

@@ -773,9 +773,6 @@ Değişiklikleri uygulamak veya oyunu yeniden başlatmak için lütfen önce oyu
     <data name="TopBar_Back_ToolTip" xml:space="preserve">
         <value>Geri</value>
     </data>
-    <data name="TopBar_GiveFeedback_ToolTip" xml:space="preserve">
-        <value>Geri bildirim vermek ve geliştirmemize yardımcı olmak için tıklayın.</value>
-    </data>
     <data name="TopBarActions__LOG_IN_ToolTip" xml:space="preserve">
         <value>Nexus Mods hesabınızı bağlayın</value>
     </data>

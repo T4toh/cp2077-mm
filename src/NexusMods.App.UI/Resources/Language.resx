@@ -809,9 +809,6 @@ To apply changes or launch the game again, please close the game first.</value>
     <data name="TopBar_Back_ToolTip" xml:space="preserve">
         <value>Back</value>
     </data>
-    <data name="TopBar_GiveFeedback_ToolTip" xml:space="preserve">
-        <value>Click to give feedback and help us improve.</value>
-    </data>
     <data name="TopBarActions__LOG_IN_ToolTip" xml:space="preserve">
         <value>Connect your Nexus Mods account</value>
     </data>
@@ -1118,18 +1115,6 @@ Keep the downloaded files in your library in case you want to retry the installa
     </data>
     <data name="PremiumDialog_UpdateManuallyButton" xml:space="preserve">
         <value>Update mods manually</value>
-    </data>
-    <data name="DialogPremiumCollection_DialogTitle" xml:space="preserve">
-        <value>Unlock 1-click collections with Premium</value>
-    </data>
-    <data name="DialogPremiumCollection_UpgradeToPremium" xml:space="preserve">
-        <value>Unlock Auto-download</value>
-    </data>
-    <data name="DialogPremiumCollection_LearnMore" xml:space="preserve">
-        <value>Learn more</value>
-    </data>
-    <data name="DialogPremiumCollection_Cancel" xml:space="preserve">
-        <value>Continue with manual install</value>
     </data>
     
     <data name="PremiumDialog_GoPremiumButton" xml:space="preserve">

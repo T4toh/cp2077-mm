@@ -18,8 +18,4 @@ public enum NXMUrlType : byte
     /// callback for oauth login
     /// </summary>
     OAuth,
-    /// <summary>
-    /// allback for GOG authentication
-    /// </summary>
-    GogAuth,
 }

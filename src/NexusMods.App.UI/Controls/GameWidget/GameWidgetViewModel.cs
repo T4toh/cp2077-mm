@@ -117,16 +117,6 @@ public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidget
     {
         if (store == GameStore.Steam)
             return IconValues.Steam;
-        else if (store == GameStore.GOG)
-            return IconValues.GOG;
-        else if (store == GameStore.EGS)
-            return IconValues.Epic;
-        else if (store == GameStore.Origin)
-            return IconValues.Ubisoft;
-        else if (store == GameStore.EADesktop)
-            return IconValues.EA;
-        else if (store == GameStore.XboxGamePass)
-            return IconValues.Xbox;
 
         return IconValues.Help;
     }

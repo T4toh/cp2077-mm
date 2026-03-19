@@ -85,19 +85,6 @@ Use [winetricks](https://github.com/Winetricks/winetricks) to install the follow
 WINEDLLOVERRIDES="{dllOverridesString}" %command%
 ```                  
 """);
-        } else if (locatorResultMetadata.Store == GameStore.GOG)
-        {
-            sb.AppendLine($"""
-* Open the Heroic Games Launcher
-* Right-click the game
-* Click on "Settings"
-* Go to the "Advanced" tab
-* Update the environment variables:
-
-```
-WINEDLLOVERRIDES="{dllOverridesString}"
-```
-""");
         }
         else
         {

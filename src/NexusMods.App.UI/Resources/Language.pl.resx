@@ -756,9 +756,6 @@
 	<data name="TopBar_Back_ToolTip" xml:space="preserve">
 		<value>Kliknij, aby przejść wstecz</value>
 	</data>
-	<data name="TopBar_GiveFeedback_ToolTip" xml:space="preserve">
-		<value>Kliknij, aby przekazać opinię i pomóc nam w ulepszaniu aplikacji</value>
-	</data>
 	<data name="TopBarActions__LOG_IN_ToolTip" xml:space="preserve">
 		<value>Kliknij, aby połączyć swoje konto Nexus Mods</value>
 	</data>
@@ -1103,18 +1100,6 @@ Zachować pobrane pliki w bibliotece na wypadek późniejszej próby instalacji?
     </data>
     <data name="Library_DeleteItem_Text" xml:space="preserve">
         <value>Usuń</value>
-    </data>
-    <data name="DialogPremiumCollection_LearnMore" xml:space="preserve">
-        <value>Dowiedz się więcej</value>
-    </data>
-    <data name="DialogPremiumCollection_UpgradeToPremium" xml:space="preserve">
-        <value>Odblokuj autopobieranie</value>
-    </data>
-    <data name="DialogPremiumCollection_DialogTitle" xml:space="preserve">
-        <value>Odblokuj kolekcje jednym kliknięciem z Premium</value>
-    </data>
-    <data name="DialogPremiumCollection_Cancel" xml:space="preserve">
-        <value>Kontynuuj ręczną instalację</value>
     </data>
     <data name="CollectionStatus_Listed" xml:space="preserve">
         <value>Widoczna</value>

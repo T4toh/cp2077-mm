@@ -4,7 +4,6 @@ using Avalonia.Media.Imaging;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Games;
 using NexusMods.App.UI.Helpers;
-using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.UI.Sdk;
 using ReactiveUI;
@@ -15,9 +14,7 @@ namespace NexusMods.App.UI.Controls.MiniGameWidget.Standard;
 
 public class MiniGameWidgetViewModel : AViewModel<IMiniGameWidgetViewModel>, IMiniGameWidgetViewModel
 {
-    private static readonly Uri MissingGamesUri = new("https://nexus-mods.github.io/NexusMods.App/users/games/CompatibleGames/");
-
-    public MiniGameWidgetViewModel(ILogger<MiniGameWidgetViewModel> logger, IOSInterop osInterop)
+    public MiniGameWidgetViewModel(ILogger<MiniGameWidgetViewModel> logger)
     {
         _image = this
             .WhenAnyValue(vm => vm.Game)
@@ -28,8 +25,6 @@ public class MiniGameWidgetViewModel : AViewModel<IMiniGameWidgetViewModel>, IMi
             .AsSystemObservable()
             .WhereNotNull()
             .ToProperty(this, vm => vm.Image, scheduler: RxApp.MainThreadScheduler);
-
-        GiveFeedbackCommand = ReactiveUI.ReactiveCommand.Create(() => osInterop.OpenUri(MissingGamesUri));
 
         this.WhenActivated(disposables =>
             {
@@ -47,7 +42,5 @@ public class MiniGameWidgetViewModel : AViewModel<IMiniGameWidgetViewModel>, IMi
     [Reactive] public string Name { get; set; } = "";
     public bool IsFound { get; set; }
     public Bitmap Image => _image.Value;
-    public ReactiveUI.ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> GiveFeedbackCommand { get; }
-
     private readonly ObservableAsPropertyHelper<Bitmap> _image;
 }

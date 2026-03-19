@@ -1,12 +1,8 @@
-﻿using System.Reactive;
-using NexusMods.UI.Sdk;
-using ReactiveUI;
+﻿using NexusMods.UI.Sdk;
 
 namespace NexusMods.App.UI.Controls.DevelopmentBuildBanner;
 
 public class DevelopmentBuildBannerDesignViewModel : AViewModel<IDevelopmentBuildBannerViewModel>, IDevelopmentBuildBannerViewModel
 {
-    public ReactiveCommand<Unit, Unit> GiveFeedbackCommand { get; } = ReactiveCommand.Create(() => { });
-
     public DevelopmentBuildBannerDesignViewModel() { }
 }

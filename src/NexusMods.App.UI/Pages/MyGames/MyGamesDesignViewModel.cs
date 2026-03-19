@@ -11,7 +11,6 @@ namespace NexusMods.App.UI.Pages.MyGames;
 
 public class MyGamesDesignViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewModel
 {
-    public ReactiveCommand<Unit, Unit> GiveFeedbackCommand => Initializers.DisabledReactiveCommand;
     public ReactiveCommand<Unit, Unit> OpenRoadmapCommand => Initializers.DisabledReactiveCommand;
     public ReactiveCommand<Unit, Unit> AddGameManuallyCommand => Initializers.DisabledReactiveCommand;
     public ReactiveCommand<Unit, Unit> RefreshGamesCommand => Initializers.DisabledReactiveCommand;

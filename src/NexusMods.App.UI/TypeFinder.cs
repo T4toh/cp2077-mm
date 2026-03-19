@@ -2,7 +2,9 @@ using NexusMods.Abstractions.Serialization.ExpressionGenerator;
 using NexusMods.App.UI.Pages;
 using NexusMods.App.UI.Pages.Changelog;
 using NexusMods.App.UI.Pages.CollectionDownload;
+#if DEBUG
 using NexusMods.App.UI.Pages.DebugControls;
+#endif
 using NexusMods.App.UI.Pages.Diagnostics;
 using NexusMods.App.UI.Pages.Diff.ApplyDiff;
 using NexusMods.App.UI.Pages.Downloads;
@@ -12,7 +14,9 @@ using NexusMods.App.UI.Pages.LoadoutGroupFilesPage;
 using NexusMods.App.UI.Pages.LoadoutPage;
 using NexusMods.App.UI.Pages.MyGames;
 using NexusMods.App.UI.Pages.MyLoadouts;
+#if DEBUG
 using NexusMods.App.UI.Pages.ObservableInfo;
+#endif
 using NexusMods.App.UI.Pages.Settings;
 using NexusMods.App.UI.Pages.StorageManager;
 using NexusMods.App.UI.Pages.TextEdit;
@@ -41,7 +45,9 @@ internal class TypeFinder : ITypeFinder
         typeof(LibraryPageContext),
         typeof(LoadoutPageContext),
         typeof(CollectionLoadoutPageContext),
+#if DEBUG
         typeof(ProtocolRegistrationTestPageContext),
+#endif
         typeof(DownloadsPageContext),
         typeof(EssentialModsPageContext),
         typeof(StorageManagerPageContext),
@@ -52,8 +58,11 @@ internal class TypeFinder : ITypeFinder
         typeof(LoadoutContext),
         typeof(DownloadsContext),
         typeof(CollectionDownloadPageContext),
+#if DEBUG
+        typeof(ProtocolRegistrationTestPageContext),
         typeof(ObservableInfoPageContext),
         typeof(DebugControlsPageContext),
+#endif
 
         // other
         typeof(WindowData),

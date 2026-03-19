@@ -874,9 +874,6 @@ Para aplicar mudanças ou iniciar o jogo novamente, feche o jogo primeiro.</valu
   <data name="TopBar_Back_ToolTip" xml:space="preserve">
     <value>Voltar</value>
   </data>
-  <data name="TopBar_GiveFeedback_ToolTip" xml:space="preserve">
-    <value>Clique para dar seu feedback e nos ajudar a melhorar.</value>
-  </data>
   <data name="TopBarActions__LOG_IN_ToolTip" xml:space="preserve">
     <value>Conecte sua conta de mods nexus</value>
   </data>
