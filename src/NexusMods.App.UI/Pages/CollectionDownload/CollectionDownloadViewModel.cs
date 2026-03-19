@@ -739,6 +739,8 @@ public class CollectionDownloadTreeDataGridAdapter :
             viewHierarchical ? ITreeDataGridItemModel<CompositeItemModel<EntityId>, EntityId>.CreateExpanderColumn(nameColumn) : nameColumn,
             ColumnCreator.Create<EntityId, LibraryColumns.ItemVersion>(),
             ColumnCreator.Create<EntityId, SharedColumns.ItemSize>(),
+            ColumnCreator.Create<EntityId, CollectionColumns.DownloadProgress>(),
+            ColumnCreator.Create<EntityId, CollectionColumns.DownloadSpeed>(),
             ColumnCreator.Create<EntityId, CollectionColumns.Actions>(),
         ];
     }

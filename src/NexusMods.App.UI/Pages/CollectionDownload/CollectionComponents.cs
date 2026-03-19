@@ -10,6 +10,9 @@ using NexusMods.Sdk.Jobs;
 using NexusMods.UI.Sdk;
 using R3;
 
+using SizeProgressComponent = NexusMods.App.UI.Controls.SharedProgressComponents.SizeProgressComponent;
+using SpeedComponent = NexusMods.App.UI.Controls.SharedProgressComponents.SpeedComponent;
+
 namespace NexusMods.App.UI.Pages.CollectionDownload;
 using CollectionDownloadEntity = NexusMods.Abstractions.NexusModsLibrary.Models.CollectionDownload;
 
@@ -49,6 +52,64 @@ public static class CollectionColumns
         public static readonly ComponentKey InstallComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(CollectionColumns) + "_" + "Install");
 
         public static string GetColumnHeader() => "Actions";
+        public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
+    }
+
+    /// <summary>
+    /// DOWNLOAD PROGRESS COLUMN
+    /// - Maps to: SharedProgressComponents.SizeProgressComponent
+    /// - Shows "15.6 MB of 56 MB" when downloading, fallback when idle
+    /// - Dynamically added/removed via AddObservable based on active download state
+    /// </summary>
+    [UsedImplicitly]
+    public sealed class DownloadProgress : ICompositeColumnDefinition<DownloadProgress>
+    {
+        public static int Compare<TKey>(CompositeItemModel<TKey> a, CompositeItemModel<TKey> b) where TKey : notnull
+        {
+            var aValue = a.GetOptional<SizeProgressComponent>(ComponentKey);
+            var bValue = b.GetOptional<SizeProgressComponent>(ComponentKey);
+            return (aValue.HasValue, bValue.HasValue) switch
+            {
+                (true, true) => aValue.Value.CompareTo(bValue.Value),
+                (true, false) => 1,
+                (false, true) => -1,
+                (false, false) => 0,
+            };
+        }
+
+        public const string ColumnTemplateResourceKey = nameof(CollectionColumns) + "_" + nameof(DownloadProgress);
+        public static readonly ComponentKey ComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SizeProgressComponent));
+
+        public static string GetColumnHeader() => "Progress";
+        public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
+    }
+
+    /// <summary>
+    /// DOWNLOAD SPEED COLUMN
+    /// - Maps to: SharedProgressComponents.SpeedComponent
+    /// - Shows "5.2 MB/s" when downloading, fallback when idle
+    /// - Dynamically added/removed via AddObservable based on active download state
+    /// </summary>
+    [UsedImplicitly]
+    public sealed class DownloadSpeed : ICompositeColumnDefinition<DownloadSpeed>
+    {
+        public static int Compare<TKey>(CompositeItemModel<TKey> a, CompositeItemModel<TKey> b) where TKey : notnull
+        {
+            var aValue = a.GetOptional<SpeedComponent>(ComponentKey);
+            var bValue = b.GetOptional<SpeedComponent>(ComponentKey);
+            return (aValue.HasValue, bValue.HasValue) switch
+            {
+                (true, true) => aValue.Value.CompareTo(bValue.Value),
+                (true, false) => 1,
+                (false, true) => -1,
+                (false, false) => 0,
+            };
+        }
+
+        public const string ColumnTemplateResourceKey = nameof(CollectionColumns) + "_" + nameof(DownloadSpeed);
+        public static readonly ComponentKey ComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(SpeedComponent));
+
+        public static string GetColumnHeader() => "Speed";
         public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
     }
 }

@@ -106,5 +106,53 @@
         </controls:MultiComponentControl>
     </DataTemplate>
 
+    <!-- Download Progress column -->
+    <DataTemplate x:Key="{x:Static local:CollectionColumns+DownloadProgress.ColumnTemplateResourceKey}">
+        <DataTemplate.DataType>
+            <x:Type TypeName="controls:CompositeItemModel" x:TypeArguments="abstractions:EntityId" />
+        </DataTemplate.DataType>
+
+        <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+            <controls:ComponentControl.ComponentTemplate>
+                <controls:ComponentTemplate x:TypeArguments="controls:SharedProgressComponents+SizeProgressComponent"
+                                            ComponentKey="{x:Static local:CollectionColumns+DownloadProgress.ComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type controls:SharedProgressComponents+SizeProgressComponent}">
+                            <TextBlock Text="{CompiledBinding DisplayText.Value}" />
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+            </controls:ComponentControl.ComponentTemplate>
+
+            <controls:ComponentControl.Fallback>
+                <TextBlock Text="—" />
+            </controls:ComponentControl.Fallback>
+        </controls:ComponentControl>
+    </DataTemplate>
+
+    <!-- Download Speed column -->
+    <DataTemplate x:Key="{x:Static local:CollectionColumns+DownloadSpeed.ColumnTemplateResourceKey}">
+        <DataTemplate.DataType>
+            <x:Type TypeName="controls:CompositeItemModel" x:TypeArguments="abstractions:EntityId" />
+        </DataTemplate.DataType>
+
+        <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+            <controls:ComponentControl.ComponentTemplate>
+                <controls:ComponentTemplate x:TypeArguments="controls:SharedProgressComponents+SpeedComponent"
+                                            ComponentKey="{x:Static local:CollectionColumns+DownloadSpeed.ComponentKey}">
+                    <controls:ComponentTemplate.DataTemplate>
+                        <DataTemplate DataType="{x:Type controls:SharedProgressComponents+SpeedComponent}">
+                            <TextBlock Text="{CompiledBinding DisplayText.Value}" />
+                        </DataTemplate>
+                    </controls:ComponentTemplate.DataTemplate>
+                </controls:ComponentTemplate>
+            </controls:ComponentControl.ComponentTemplate>
+
+            <controls:ComponentControl.Fallback>
+                <TextBlock Text="—" />
+            </controls:ComponentControl.Fallback>
+        </controls:ComponentControl>
+    </DataTemplate>
+
 </ResourceDictionary>
 

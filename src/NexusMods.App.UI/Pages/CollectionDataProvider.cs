@@ -4,6 +4,7 @@ using Avalonia.Media.Imaging;
 using DynamicData;
 using DynamicData.Kernel;
 using Microsoft.Extensions.DependencyInjection;
+using NexusMods.Abstractions.Downloads;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.NexusModsLibrary.Models;
 using NexusMods.Sdk.Resources;
@@ -15,6 +16,7 @@ using NexusMods.Collections;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.Query;
 using NexusMods.Networking.NexusWebApi;
+using NexusMods.Paths;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Loadouts;
 using R3;
@@ -32,6 +34,7 @@ public class CollectionDataProvider
 {
     private readonly IConnection _connection;
     private readonly IJobMonitor _jobMonitor;
+    private readonly IDownloadsService _downloadsService;
     private readonly CollectionDownloader _collectionDownloader;
     private readonly IResourceLoader<EntityId, Bitmap> _thumbnailLoader;
 
@@ -39,6 +42,7 @@ public class CollectionDataProvider
     {
         _connection = serviceProvider.GetRequiredService<IConnection>();
         _jobMonitor = serviceProvider.GetRequiredService<IJobMonitor>();
+        _downloadsService = serviceProvider.GetRequiredService<IDownloadsService>();
         _collectionDownloader = serviceProvider.GetRequiredService<CollectionDownloader>();
         _thumbnailLoader = ImagePipelines.GetModPageThumbnailPipeline(serviceProvider);
     }
@@ -123,6 +127,9 @@ public class CollectionDataProvider
         );
 
         AddInstallAction(itemModel, download.AsCollectionDownload(), statusObservable, groupObservable.ToObservable());
+
+        // Add progress and speed components that appear when a matching download is active
+        AddDownloadProgressComponents(itemModel, download.FileMetadata.Id);
 
         return itemModel;
     }
@@ -263,5 +270,44 @@ public class CollectionDataProvider
             .ToObservable()
             .Prepend(() => JobStatus.None)
             .ObserveOnUIThreadDispatcher();
+    }
+
+    /// <summary>
+    /// Adds SizeProgressComponent and SpeedComponent that dynamically appear when a matching
+    /// download is active in IDownloadsService. Components are removed when the download completes.
+    /// </summary>
+    private void AddDownloadProgressComponents(CompositeItemModel<EntityId> itemModel, EntityId fileMetadataId)
+    {
+        DownloadInfo? captured = null;
+
+        var hasActiveDownload = _downloadsService.ActiveDownloads
+            .Filter(d => d.FileMetadataId.Value == fileMetadataId)
+            .QueryWhenChanged(q =>
+            {
+                var match = q.Items.FirstOrDefault();
+                captured = match;
+                return match is not null;
+            })
+            .ToObservable()
+            .Prepend(() => false)
+            .ObserveOnUIThreadDispatcher();
+
+        itemModel.AddObservable(
+            key: CollectionColumns.DownloadProgress.ComponentKey,
+            shouldAddObservable: hasActiveDownload,
+            componentFactory: () => new SharedProgressComponents.SizeProgressComponent(
+                initialDownloaded: captured!.DownloadedBytes.Value,
+                initialTotal: captured!.FileSize.Value,
+                downloadedObservable: captured!.DownloadedBytes.AsObservable(),
+                totalObservable: captured!.FileSize.AsObservable())
+        );
+
+        itemModel.AddObservable(
+            key: CollectionColumns.DownloadSpeed.ComponentKey,
+            shouldAddObservable: hasActiveDownload,
+            componentFactory: () => new SharedProgressComponents.SpeedComponent(
+                initialTransferRate: captured!.TransferRate.Value,
+                transferRateObservable: captured!.TransferRate.AsObservable())
+        );
     }
 }
