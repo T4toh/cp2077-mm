@@ -24,6 +24,8 @@ using System.Reactive.Threading.Tasks;
 using NexusMods.Abstractions.NexusModsLibrary;
 using NexusMods.Networking.GitHub;
 using DynamicData.Kernel;
+using Microsoft.Extensions.Logging;
+using NexusMods.Sdk.FileStore;
 
 namespace NexusMods.App.UI.Pages.EssentialMods;
 
@@ -50,6 +52,8 @@ public class EssentialModEntryViewModel : AViewModel<IEssentialModEntryViewModel
     private readonly string _gitHubOrg;
     private readonly string _gitHubRepo;
     private readonly IMessageBus _messageBus;
+    private readonly IFileStore _fileStore;
+    private readonly ILogger<EssentialModEntryViewModel> _logger;
 
     public EssentialModEntryViewModel(
         IServiceProvider serviceProvider,
@@ -70,6 +74,8 @@ public class EssentialModEntryViewModel : AViewModel<IEssentialModEntryViewModel
         _gitHubApi = serviceProvider.GetRequiredService<IGitHubApi>();
         _temporaryFileManager = serviceProvider.GetRequiredService<TemporaryFileManager>();
         _messageBus = serviceProvider.GetRequiredService<IMessageBus>();
+        _fileStore = serviceProvider.GetRequiredService<IFileStore>();
+        _logger = serviceProvider.GetRequiredService<ILogger<EssentialModEntryViewModel>>();
         _loadoutId = loadoutId;
         _nexusModsGameId = nexusModsGameId;
         _gitHubOrg = gitHubOrg;
@@ -81,6 +87,9 @@ public class EssentialModEntryViewModel : AViewModel<IEssentialModEntryViewModel
 
         this.WhenActivated(d => 
         {
+            // Re-query status on activation so state is fresh after navigating away and back
+            UpdateStatus();
+
             LoadoutItem.ObserveAll(_connection)
                 .Subscribe(_ => UpdateStatus())
                 .DisposeWith(d);
@@ -236,7 +245,47 @@ public class EssentialModEntryViewModel : AViewModel<IEssentialModEntryViewModel
         var db = _connection.Db;
         var nexusItem = NexusModsLibraryItem.All(db)
             .First(x => x.ModPageMetadata.Uid.ModId == ModId);
-            
+
+        // Verify the file contents are actually backed up in the store.
+        // If BackupFiles was never called (e.g. due to a prior crash) the loadout
+        // will be created but no files will ever be extracted to disk ("Unable to extract").
+        if (!await AreLibraryFilesInStore(db, nexusItem))
+        {
+            _logger.LogWarning(
+                "Essential mod {Name} (ModId={ModId}) is in library but files are missing from store; re-downloading",
+                Name, ModId);
+            try
+            {
+                await DownloadAndInstallFromNexus(nexusItem.FileMetadata);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                await DownloadFromGitHub(nexusItem.FileMetadata);
+            }
+            return;
+        }
+
         await _loadoutManager.InstallItem(nexusItem.AsLibraryItem(), _loadoutId);
+    }
+
+    private async Task<bool> AreLibraryFilesInStore(IDb db, NexusModsLibraryItem.ReadOnly nexusItem)
+    {
+        var libraryFile = LibraryFile.Load(db, nexusItem.Id);
+        if (!libraryFile.IsValid()) return false;
+
+        if (libraryFile.TryGetAsLibraryArchive(out var archive))
+        {
+            var children = archive.Children.ToList();
+            if (children.Count == 0) return false;
+            foreach (var child in children)
+            {
+                if (!await _fileStore.HaveFile(child.AsLibraryFile().Hash))
+                    return false;
+            }
+            return true;
+        }
+
+        // Single (non-archive) file: check its own hash
+        return await _fileStore.HaveFile(libraryFile.Hash);
     }
 }
