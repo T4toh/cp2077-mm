@@ -64,8 +64,32 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
     {
         if (!ParentGroupId.HasValue)
         {
-            var collection = Loadout.Load(Connection.Db, LoadoutId).MutableCollections().First().CollectionId;
-            ParentGroupId = LoadoutItemGroupId.From(collection);
+            var loadoutReadOnly = Loadout.Load(Connection.Db, LoadoutId);
+            var mutableCollection = loadoutReadOnly.MutableCollections().FirstOrDefault();
+            if (mutableCollection == default)
+            {
+                Logger.LogWarning("No mutable collection found in loadout {LoadoutId}; creating a default 'My Mods' group", LoadoutId);
+                using var createTx = Connection.BeginTransaction();
+                _ = new CollectionGroup.New(createTx, out var newGroupId)
+                {
+                    IsReadOnly = false,
+                    LoadoutItemGroup = new LoadoutItemGroup.New(createTx, newGroupId)
+                    {
+                        IsGroup = true,
+                        LoadoutItem = new LoadoutItem.New(createTx, newGroupId)
+                        {
+                            Name = "My Mods",
+                            LoadoutId = LoadoutId,
+                        },
+                    },
+                };
+                var createResult = await createTx.Commit();
+                ParentGroupId = LoadoutItemGroupId.From(createResult[newGroupId]);
+            }
+            else
+            {
+                ParentGroupId = LoadoutItemGroupId.From(mutableCollection.CollectionId);
+            }
         }
 
         await context.YieldAsync();

@@ -93,6 +93,8 @@ public interface ICollectionDownloadViewModel : IPageViewModelInterface
     /// </summary>
     string CollectionStatusText { get; }
 
+    string InstallRequiredItemsText { get; }
+
     bool CanDownloadAutomatically { get; }
 
     BindableReactiveProperty<bool> IsInstalled { get; }

@@ -139,8 +139,11 @@ public partial class CollectionDownloadView : ReactiveUserControl<ICollectionDow
                         ButtonInstallRequiredItems.IsVisible = !isInstalled && hasDownloadedAllRequiredItems;
                 
                         ButtonDownloadOptionalItems.IsVisible = filter == CollectionDownloadsFilter.OnlyOptional && countDownloadedOptionalItems < ViewModel!.OptionalDownloadsCount;
-                        // Show install-optional button as soon as at least 1 optional is downloaded
-                        ButtonInstallOptionalItems.IsVisible = filter == CollectionDownloadsFilter.OnlyOptional && hasAtLeastOneOptional && !hasInstalledAllOptionals;
+                        // Show install-optional button on the optional tab (always) or on the required tab
+                        // once required items have been installed, so users don't need to manually switch tabs.
+                        var showInstallOptional = hasAtLeastOneOptional && !hasInstalledAllOptionals;
+                        ButtonInstallOptionalItems.IsVisible = showInstallOptional &&
+                            (filter == CollectionDownloadsFilter.OnlyOptional || isInstalled);
                     }).DisposeWith(d);
 
                 this.OneWayBind(ViewModel, vm => vm.RevisionNumber, view => view.Revision.Text,

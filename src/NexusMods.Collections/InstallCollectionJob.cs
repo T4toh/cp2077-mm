@@ -129,9 +129,16 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         var modsAndDownloads = GatherDownloads(items, root);
 
         NexusCollectionLoadoutGroup.ReadOnly collectionGroup;
-        if (Group.HasValue)
+        // Re-check with the latest DB snapshot to prevent creating a duplicate group when
+        // Group was resolved from a stale DB at job construction time (e.g., required install
+        // just committed but connection.Db hadn't updated yet).
+        var latestGroup = Group.HasValue
+            ? Group
+            : CollectionDownloader.GetCollectionGroup(RevisionMetadata, TargetLoadout, Connection.Db);
+
+        if (latestGroup.HasValue)
         {
-            collectionGroup = Group.Value;
+            collectionGroup = latestGroup.Value;
         }
         else
         {
@@ -140,7 +147,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             {
                 CollectionId = RevisionMetadata.Collection,
                 RevisionId = RevisionMetadata,
-                LibraryFileId = SourceCollection,
+                LibraryFileId = sourceCollection,
                 CollectionGroup = new CollectionGroup.New(tx, id)
                 {
                     IsReadOnly = true,
@@ -161,25 +168,27 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             collectionGroup = groupResult.Remap(group);
         }
 
-        var wasGroupCreatedByThisJob = !Group.HasValue;
+        var wasGroupCreatedByThisJob = !latestGroup.HasValue;
         try
         {
         var loadout = Loadout.Load(Connection.Db, TargetLoadout);
         var game = (loadout.InstallationInstance.Game as IGame)!;
         var fallbackInstaller = FallbackCollectionDownloadInstaller.Create(ServiceProvider, loadout, game);
 
-        await Parallel.ForEachAsync(modsAndDownloads, context.CancellationToken, async (modAndDownload, _) =>
+        foreach (var modAndDownload in modsAndDownloads)
         {
+            context.CancellationToken.ThrowIfCancellationRequested();
+
             try
             {
                 Logger.LogDebug("Installing `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
-                await InstallMod(modAndDownload, collectionGroup, fallbackInstaller, game.GetFallbackCollectionInstallDirectory(loadout.InstallationInstance));
+                await InstallMod(modAndDownload, collectionGroup, fallbackInstaller, game.GetFallbackCollectionInstallDirectory(loadout.InstallationInstance), sourceCollection);
             }
             catch (Exception e)
             {
                 Logger.LogError(e, "Failed to install `{DownloadName}` (index={Index}) into `{CollectionName}/{RevisionNumber}`", modAndDownload.Mod.Name, modAndDownload.Download.ArrayIndex, RevisionMetadata.Collection.Name, RevisionMetadata.RevisionNumber);
             }
-        });
+        }
 
         var allRequiredItems = CollectionDownloader.GetItems(RevisionMetadata, CollectionDownloader.ItemType.Required);
 
@@ -195,7 +204,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         Logger.LogDebug("[INSTALL-COLLECTION] hasAnyInstalledItems={HasAny}, anyRequiredItemInstalled={AnyRequired} → group will be {State}",
             hasAnyInstalledItems, anyRequiredItemInstalled, anyRequiredItemInstalled ? "ENABLED" : "DISABLED");
         {
-            await LoadoutManager.ApplyCollectionDownloadRules(collectionGroup);
+            await LoadoutManager.ApplyCollectionDownloadRules(collectionGroup, TargetLoadout);
 
             using var tx = Connection.BeginTransaction();
 
@@ -232,7 +241,8 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         ModAndDownload modAndDownload,
         NexusCollectionLoadoutGroup.ReadOnly collectionGroup,
         ILibraryItemInstaller? fallbackInstaller,
-        Optional<GamePath> fallbackCollectionInstallDirectory)
+        Optional<GamePath> fallbackCollectionInstallDirectory,
+        NexusModsCollectionLibraryFile.ReadOnly sourceCollection)
     {
         var monitor = ServiceProvider.GetRequiredService<IJobMonitor>();
 
@@ -243,7 +253,7 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             CollectionMod = modAndDownload.Mod,
             Group = collectionGroup.AsCollectionGroup(),
             TargetLoadout = TargetLoadout,
-            SourceCollection = SourceCollection,
+            SourceCollection = sourceCollection,
 
             ServiceProvider = ServiceProvider,
             Connection = Connection,

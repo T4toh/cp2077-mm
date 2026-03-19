@@ -865,6 +865,9 @@ To apply changes or launch the game again, please close the game first.</value>
     <data name="CollectionDownloadViewModel_InstallCollection" xml:space="preserve">
         <value>Install Collection</value>
     </data>
+    <data name="CollectionDownloadViewModel_InstallRequired" xml:space="preserve">
+        <value>Install required</value>
+    </data>
     <data name="CollectionDownloadViewModel_ViewCollection" xml:space="preserve">
         <value>View Installed Collection</value>
     </data>

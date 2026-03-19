@@ -76,7 +76,7 @@
                                          Type="Secondary"
                                          Fill="Strong" />
                 <controls:StandardButton x:Name="ButtonInstallRequiredItems"
-                                         Text="{x:Static resources:Language.CollectionDownloadViewModel_InstallCollection}"
+                                         Text="{Binding InstallRequiredItemsText}"
                                          Size="Toolbar"
                                          Type="Primary"
                                          Fill="Strong" />
