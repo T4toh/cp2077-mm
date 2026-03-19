@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Fork de NexusMods.App enfocado exclusivamente en **Cyberpunk 2077** vía **Steam en Linux**. Construido con C#/.NET 10 y Avalonia UI. Gestiona instalación de mods, orden de carga, conflictos de archivos y sincronización con el directorio del juego.
+Fork of NexusMods.App focused exclusively on **Cyberpunk 2077** via **Steam on Linux**. Built with C#/.NET 10 and Avalonia UI. Manages mod installation, load order, file conflicts, and game directory synchronization.
 
-El repositorio upstream fue discontinuado. Este fork eliminó soporte para otros juegos (Stardew Valley, BG3, Skyrim/Fallout, M&B Bannerlord), tiendas (GOG, Epic Games Store, Xbox) y plataformas (Windows, macOS).
+The upstream repository was discontinued. This fork removed support for other games (Stardew Valley, BG3, Skyrim/Fallout, M&B Bannerlord), stores (GOG, Epic Games Store, Xbox), and platforms (Windows, macOS). The app has been rebranded as **Cyberpunk 2077 Mod Manager** (`com.cyberpunk2077.modmanager`).
 
 ## Build & Run Commands
 
@@ -20,36 +20,66 @@ dotnet test --filter "FullyQualifiedName~SomeTestClass.SomeMethod"  # Run a sing
 dotnet test tests/Games/NexusMods.Games.RedEngine.Tests  # Run RedEngine (CP2077) tests
 
 dotnet build -p:UseSystemExtractor=true  # Use system 7z for extraction
+
+./dev.sh                               # Interactive menu (Spanish) with build/test/AppImage options
 ```
 
 Test traits used for filtering: `RequiresNetworking`, `FlakeyTest`, `RequiresApiKey`.
 
 ## Architecture
 
-### Solution Structure
+### Solution Structure (81 projects: 49 src + 29 test + 3 other)
 
 The solution (`NexusMods.App.sln`) is organized into layers:
 
-- **`NexusMods.App`** — Entry point (WinExe). Wires up DI, starts Avalonia UI or CLI.
+- **`NexusMods.App`** — Entry point. Wires up DI, starts Avalonia UI or CLI. PupNet config: `com.cyberpunk2077.modmanager`.
 - **`NexusMods.App.UI`** — Avalonia views and ViewModels (MVVM with ReactiveUI/R3).
 - **`NexusMods.App.Cli`** — CLI commands using `[Verb]`/`[Option]`/`[Injected]` attributes.
-- **`NexusMods.Backend`** — Core services: Linux interop, file extraction, Steam game locator.
-- **`NexusMods.DataModel`** — MnemonicDB-based persistence, synchronizer service, loadout manager.
-- **`NexusMods.Library`** — Mod library management (add/remove/install from library).
-- **`NexusMods.Collections`** — Nexus Mods collection download and installation.
-- **`NexusMods.Sdk`** — Shared utilities and settings infrastructure.
-- **`NexusMods.Abstractions.*`** — Interfaces and contracts for all subsystems.
-- **`NexusMods.Games.RedEngine`** — Cyberpunk 2077 implementation (the only supported game).
+- **`NexusMods.Backend`** — Core services: Linux interop, file extraction, game locators (Steam + manual), `SignatureChecker` (magic bytes).
+- **`NexusMods.DataModel`** — MnemonicDB-based persistence, synchronizer service, loadout manager, `StorageAnalyzer` (Deep Clean + storage management).
+- **`NexusMods.Library`** — Mod library management (add/remove/install from library). Empty file detection on download.
+- **`NexusMods.Collections`** — Nexus Mods collection download and installation. MD5 rescan, free-user download via curl.
+- **`NexusMods.Sdk`** — Shared utilities, `WineParser` (Lutris/WINEDLLOVERRIDES), `Md5Value`, settings infrastructure.
+- **`NexusMods.Abstractions.*`** — Interfaces and contracts for all subsystems (21 projects).
+- **`NexusMods.Games.RedEngine`** — Cyberpunk 2077 implementation (the only supported game). Includes `EssentialMods`, `CyberpunkDeepCleanTool`, diagnostic emitters (core mods, redundant folders, Wine prefix, REDmod, pattern-based dependencies).
 - **`NexusMods.Games.FileHashes`** — File hash database for game version detection (Steam only).
 - **`NexusMods.Networking.Steam`** — Steam store integration (the only supported store).
-- **`NexusMods.Networking.NexusWebApi`** — Nexus Mods API integration.
+- **`NexusMods.Networking.NexusWebApi`** — Nexus Mods API integration + `FirefoxCookieReader` for cookie-based downloads.
 - **`NexusMods.Networking.HttpDownloader`** — HTTP download infrastructure.
+- **`NexusMods.Games.Generic`**, **`FOMOD`**, **`AdvancedInstaller`** — Generic mod support and guided installer frameworks (shared infrastructure, not game-specific).
 
 ### Supported Game & Store
 
 - **Game:** Cyberpunk 2077 (`NexusMods.Games.RedEngine`) — Steam App ID `1091500`
-- **Store:** Steam on Linux only. Game locator: `SteamLocator`.
+- **Store:** Steam on Linux only. Game locators: `SteamLocator` + `ManuallyAddedLocator`.
 - **OS Interop:** `LinuxInterop` only (no Windows/macOS).
+- **App ID:** `com.cyberpunk2077.modmanager`
+- **Data Directory:** `~/.local/share/NexusMods.App.Cyberpunk/` (isolated from official app)
+- **Downloads:** Shared with official NexusMods.App to avoid re-downloads.
+
+### Fork-Specific Features
+
+These are custom features not present in upstream:
+
+1. **Cookie-based free downloads** (`FirefoxCookieReader.cs`, `NexusApiClient.cs`): Reads Firefox session cookies and invokes `curl` to bypass Cloudflare TLS fingerprinting. Allows free/supporter users to download collection mods without premium API.
+
+2. **Deep Clean tool** (`CyberpunkDeepCleanTool.cs`, `StorageAnalyzer.cs`): Moves mod directories to timestamped backup in `CyberpunkBackups/`, cleans old backups, removes mod groups from DB, rescans game folder. Accessed via Storage Manager page.
+
+3. **Storage Manager** (`IStorageAnalyzer`): Exposes `DeleteAllBackedUpFilesAsync`, `RunDeepCleanOnAllLoadoutsAsync`, `DeleteArchivesAsync`, `DeletePhysicalFilesAsync` for granular storage cleanup.
+
+4. **Essential mods diagnostics** (`EssentialMods.cs`, `CoreModsDiagnosticEmitter.cs`): Tracks 7 essential CP2077 mods (Redscript, RED4ext, CET, ArchiveXL, TweakXL, Codeware, Equipment-EX). Diagnostic emitters check for missing mods, redundant folder structures, Wine prefix requirements, and pattern-based dependencies.
+
+5. **MD5 rescan** (`CollectionDownloader.cs`): Scans downloads folder to match existing files by MD5 hash, avoiding re-downloads.
+
+6. **Telemetry removal**: Matomo, Mixpanel, and OpenTelemetry completely removed. Empty project stubs remain in directory but have no implementation.
+
+7. **App isolation**: Custom app ID, independent data directory, independent NXM protocol handler. Shared downloads folder.
+
+8. **Wine/Lutris support** (`WineParser.cs`, `WinePrefixRequirementsEmitter.cs`): Parses Lutris YAML configs, detects DLL overrides, reads winetricks.log.
+
+9. **Manual game locator** (`ManuallyAddedLocator.cs`): User can specify game path and Wine prefix manually.
+
+10. **Magic bytes file detection** (`SignatureChecker.cs`): Detects archive types (7z/zip/rar) by file headers when server doesn't provide extension.
 
 ### Dependency Injection Pattern
 
@@ -142,6 +172,7 @@ Defined in `NexusMods.App.Cli` using attributes:
 - UTF-8, LF line endings, 4-space indentation (see `.editorconfig`)
 - Centralized NuGet versions in `Directory.Packages.props`
 - Global analyzer rules in `.globalconfig`: un-awaited tasks are errors (`CS4014`), missing switch cases are errors (`CS8509`)
+- Log messages and some UI strings are in Spanish (this is a personal fork)
 
 ## What Was Removed (vs upstream)
 
@@ -149,5 +180,6 @@ Defined in `NexusMods.App.Cli` using attributes:
 - **Stores:** Networking.GOG, Networking.EpicGameStore, Abstractions.GOG, Abstractions.EpicGameStore
 - **Locators:** GOGLocator, EGSLocator, XboxLocator, HeroicGOGLocator, WinePrefixWrappingLocator
 - **OS interop:** WindowsInterop, MacOSInterop (only LinuxInterop remains)
+- **Telemetry:** Matomo, Mixpanel, OpenTelemetry (completely removed, empty stubs remain)
 - **CI:** `build-windows-pupnet.yaml`, `signing-test.yaml`, Windows jobs in `release.yaml`
 - **FileHashes:** GOG/EGS model definitions, attributes, and data import logic (only Steam remains)
