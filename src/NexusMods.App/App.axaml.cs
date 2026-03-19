@@ -29,7 +29,9 @@ public class App : Application
 
     public App()
     {
-        throw new UnreachableException("We don't use the Runtime Loader, so this should never be called.");
+        throw new UnreachableException(
+            "We don't use the Runtime Loader, so this should never be called."
+        );
     }
 
     public override void Initialize()
@@ -48,7 +50,10 @@ public class App : Application
         Thread.CurrentThread.CurrentUICulture = uiCulture;
 
         Locator.CurrentMutable.UnregisterCurrent(typeof(IViewLocator));
-        Locator.CurrentMutable.Register(() => _provider.GetRequiredService<InjectedViewLocator>(), typeof(IViewLocator));
+        Locator.CurrentMutable.Register(
+            () => _provider.GetRequiredService<InjectedViewLocator>(),
+            typeof(IViewLocator)
+        );
 
         Locator.CurrentMutable.UseMicrosoftExtensionsLoggingWithWrappingFullLogger(loggerFactory);
 

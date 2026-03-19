@@ -99,7 +99,7 @@ public interface ILoadoutManager
     /// <summary>
     /// Applies the collection download rules for an installed collection.
     /// </summary>
-    ValueTask ApplyCollectionDownloadRules(NexusCollectionLoadoutGroupId collectionId);
+    ValueTask ApplyCollectionDownloadRules(NexusCollectionLoadoutGroupId collectionId, LoadoutId loadoutId);
 
     /// <summary>
     /// Removes all groups and installs the new library item.

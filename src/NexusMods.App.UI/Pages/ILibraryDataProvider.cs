@@ -113,6 +113,7 @@ public static class LibraryDataProviderHelper
             .Transform(item => item.Parent.AsLoadoutItem())
             .ChangeKey(coll => coll.Id)
             .Distinct()
+            .Filter(collection => collection.IsValid())
             .Transform(collection => collection.Name)
             .SortBy(static name => name)
             .RemoveKey()

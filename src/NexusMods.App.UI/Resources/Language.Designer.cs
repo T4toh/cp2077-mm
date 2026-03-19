@@ -365,6 +365,15 @@ namespace NexusMods.App.UI.Resources {
                 return ResourceManager.GetString("CollectionDownloadViewModel_InstallCollection", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Install required.
+        /// </summary>
+        public static string CollectionDownloadViewModel_InstallRequired {
+            get {
+                return ResourceManager.GetString("CollectionDownloadViewModel_InstallRequired", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to Install all optional.

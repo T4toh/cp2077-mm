@@ -108,6 +108,9 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
 
         RequiredDownloadsCount = CollectionDownloader.CountItems(_revision, CollectionDownloader.ItemType.Required);
         OptionalDownloadsCount = CollectionDownloader.CountItems(_revision, CollectionDownloader.ItemType.Optional);
+        InstallRequiredItemsText = RequiredDownloadsCount > 0 && OptionalDownloadsCount > 0
+            ? Language.CollectionDownloadViewModel_InstallRequired
+            : Language.CollectionDownloadViewModel_InstallCollection;
 
         _logger.LogDebug("[INSTALL-BTN] Collection '{Name}' - RequiredDownloadsCount={Required}, OptionalDownloadsCount={Optional}, TotalDownloads={Total}",
             _collection.Name, RequiredDownloadsCount, OptionalDownloadsCount, _revision.Downloads.Count());
@@ -460,11 +463,18 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
 
                             CountDownloadedOptionalItems = numDownloadedOptionalItems;
                             HasInstalledAllOptionalItems.Value = hasInstalledAllOptionals;
-                            // Enable install-optional as soon as at least 1 optional is downloaded
-                            _canInstallOptionalItems.OnNext(numDownloadedOptionalItems > 0 && !hasInstalledAllOptionals);
+                            // Disable install button while downloads are in progress to avoid partial installs.
+                            _canInstallOptionalItems.OnNext(numDownloadedOptionalItems > 0 && !hasInstalledAllOptionals && !_isDownloadingOptionalItems.Value);
                             _canDownloadOptionalItems.OnNext(numDownloadedOptionalItems < OptionalDownloadsCount);
                         }
                     ).AddTo(disposables);
+
+                // Re-evaluate install-optional canExecute whenever download state changes.
+                _isDownloadingOptionalItems
+                    .Subscribe(isDownloading =>
+                    {
+                        _canInstallOptionalItems.OnNext(CountDownloadedOptionalItems > 0 && !(bool)HasInstalledAllOptionalItems.Value && !isDownloading);
+                    }).AddTo(disposables);
 
                 ImagePipelines.CreateObservable(_collection.Id, tileImagePipeline)
                     .ObserveOnUIThreadDispatcher()
@@ -616,6 +626,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
 
     public int RequiredDownloadsCount { get; }
     public int OptionalDownloadsCount { get; }
+    public string InstallRequiredItemsText { get; }
     [Reactive] public int CountDownloadedOptionalItems { get; private set; }
     [Reactive] public int CountDownloadedRequiredItems { get; private set; }
 

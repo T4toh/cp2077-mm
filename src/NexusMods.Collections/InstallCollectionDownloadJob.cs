@@ -126,6 +126,13 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
         PatchedFile[] patchedFiles = [];
 
+        var itemStatus = CollectionDownloader.GetStatus(Item, Group, Connection.Db);
+        if (itemStatus.IsNotDownloaded())
+        {
+            Logger.LogWarning("Item '{Name}' (index={Index}) is not downloaded — skipping install", Item.Name, Item.ArrayIndex);
+            throw new InvalidOperationException($"Item '{Item.Name}' (index={Item.ArrayIndex}) is not downloaded and cannot be installed. Download it first.");
+        }
+
         var libraryFile = GetLibraryFile(Item, Connection.Db);
         if (CollectionMod.Patches.Count > 0)
         {

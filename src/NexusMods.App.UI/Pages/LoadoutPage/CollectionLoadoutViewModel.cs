@@ -51,6 +51,9 @@ public class CollectionLoadoutViewModel : APageViewModel<ICollectionLoadoutViewM
         var userAvatarPipeline = ImagePipelines.GetUserAvatarPipeline(serviceProvider);
         
         var nexusCollectionGroup = NexusCollectionLoadoutGroup.Load(connection.Db, pageContext.GroupId);
+        if (!nexusCollectionGroup.IsValid())
+            throw new InvalidOperationException($"CollectionLoadoutPage: NexusCollectionLoadoutGroup entity {pageContext.GroupId} is no longer valid (it may have been deleted). This tab will be closed.");
+
         var group = nexusCollectionGroup.AsCollectionGroup();
         TabIcon = IconValues.CollectionsOutline;
         TabTitle = group.AsLoadoutItemGroup().AsLoadoutItem().Name;

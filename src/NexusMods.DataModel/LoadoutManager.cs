@@ -576,7 +576,7 @@ internal partial class LoadoutManager : ILoadoutManager
         await tx.Commit();
     }
 
-    public async ValueTask ApplyCollectionDownloadRules(NexusCollectionLoadoutGroupId collectionId)
+    public async ValueTask ApplyCollectionDownloadRules(NexusCollectionLoadoutGroupId collectionId, LoadoutId loadoutId)
     {
         var items = _connection.Query<EntityId>($"SELECT Id FROM MDB_NexusCollectionItemLoadoutGroup(Db => {_connection}) WHERE Parent = {collectionId.Value}").ToList();
 
@@ -608,7 +608,6 @@ internal partial class LoadoutManager : ILoadoutManager
 
         using var tx = _connection.BeginTransaction();
 
-        var loadoutId = LoadoutItem.Load(_connection.Db, collectionId).LoadoutId;
         tx.Add(new ApplyCollectionRulesTxFunc(loadoutId, sortedItems));
         await tx.Commit();
     }

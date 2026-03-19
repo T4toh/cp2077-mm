@@ -662,15 +662,25 @@ public class CollectionDownloader
             .ObserveDatoms(NexusCollectionLoadoutGroup.Revision, revision)
             .QueryWhenChanged(query =>
             {
+                // Multiple groups with the same revision can exist if a job was created from a stale DB
+                // snapshot and created a duplicate before finding the existing one. Prefer the group that
+                // has installed children (i.e., the one from the required install), falling back to any valid one.
+                CollectionGroup.ReadOnly? fallback = null;
                 foreach (var datom in query.Items)
                 {
                     var group = CollectionGroup.Load(_connection.Db, datom.E);
                     if (!group.IsValid()) continue;
                     if (group.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId != targetLoadout.Value) continue;
-                    return Optional<CollectionGroup.ReadOnly>.Create(group);
+
+                    var hasChildren = _connection.Db.Datoms(LoadoutItem.Parent, group.Id).Any();
+                    if (hasChildren) return Optional<CollectionGroup.ReadOnly>.Create(group);
+
+                    fallback ??= group;
                 }
 
-                return Optional<CollectionGroup.ReadOnly>.None;
+                return fallback.HasValue
+                    ? Optional<CollectionGroup.ReadOnly>.Create(fallback.Value)
+                    : Optional<CollectionGroup.ReadOnly>.None;
             })
             .Prepend(GetCollectionGroup(revision, targetLoadout, _connection.Db).Convert(static x => x.AsCollectionGroup()));
     }

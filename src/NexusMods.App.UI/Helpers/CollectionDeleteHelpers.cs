@@ -39,10 +39,12 @@ public static class CollectionDeleteHelpers
         
         var loadoutId = group.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId;
         
-        // Editable collection can only be deleted if they are not the last one
+        // Editable collection can be deleted if it is not the last collection in the loadout
+        // (We count all collections, not just editable, so that a cloned Nexus collection
+        // can be deleted even if it is the only editable one, as long as the original still exists.)
         return CollectionGroup
             .ObserveAll(connection)
-            .FilterImmutable(g => g.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadoutId && !g.IsReadOnly)
+            .FilterImmutable(g => g.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadoutId)
             .QueryWhenChanged(query => query.Count)
             .ToObservable()
             .Select(count => count > 1)

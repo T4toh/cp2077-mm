@@ -239,6 +239,16 @@ public class NexusApiClient : INexusApiClient
                     return cdnUri;
             }
         }
+        else if (root.ValueKind == System.Text.Json.JsonValueKind.Array && root.GetArrayLength() == 0)
+        {
+            // Nexus Mods returns [] when the session cookies are expired or the account lacks download permission.
+            // The user needs to log in to nexusmods.com in Firefox to refresh the session.
+            _logger.LogWarning(
+                "Nexus Mods returned an empty download list for file {FileId} — Firefox session cookies may be expired. " +
+                "Please log in to nexusmods.com in Firefox and try again.",
+                fileId);
+            return null;
+        }
         else if (root.ValueKind == System.Text.Json.JsonValueKind.Object)
         {
             if (root.TryGetProperty("url", out var urlEl) || root.TryGetProperty("URI", out urlEl))
