@@ -13,7 +13,7 @@
     <Design.DataContext>
         <download:SpineDownloadButtonDesignerViewModel/>
     </Design.DataContext>
-    <Button Classes="SpineDownloadButton Idle" x:Name="ParentButton">
+    <Button Classes="SpineDownloadButton Idle" x:Name="ParentButton" IsHitTestVisible="False" Focusable="False">
         <ToolTip.Tip>
             <TextBlock x:Name="ToolTipTextBlock"/>
         </ToolTip.Tip>

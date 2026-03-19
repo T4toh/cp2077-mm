@@ -23,18 +23,6 @@ public class HomeLeftMenuDesignViewModel : AViewModel<IHomeLeftMenuViewModel>, I
         Icon = IconValues.Package,
     };
 
-    public ILeftMenuItemViewModel LeftMenuItemDownloads { get; } = new LeftMenuItemDesignViewModel
-    {
-        Text = new StringComponent(Language.Downloads_WorkspaceTitle),
-        Icon = IconValues.Download,
-    };
-
-    public ILeftMenuItemViewModel LeftMenuItemCollections { get; } = new LeftMenuItemDesignViewModel
-    {
-        Text = new StringComponent("My Collections"),
-        Icon = IconValues.CollectionsOutline,
-    };
-
     public ILeftMenuItemViewModel LeftMenuItemStorage { get; } = new LeftMenuItemDesignViewModel
     {
         Text = new StringComponent("Storage Manager"),

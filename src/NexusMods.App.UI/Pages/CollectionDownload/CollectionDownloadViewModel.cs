@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Reactive.Linq;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Media.Imaging;
@@ -19,6 +20,7 @@ using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.App.UI.Pages.LoadoutPage;
 using NexusMods.App.UI.Pages.TextEdit;
 using NexusMods.App.UI.Resources;
+using NexusMods.App.UI.Settings;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
 using NexusMods.Collections;
@@ -686,7 +688,17 @@ public class CollectionDownloadTreeDataGridAdapter :
     public CollectionDownloadTreeDataGridAdapter(
         IServiceProvider serviceProvider,
         CollectionRevisionMetadata.ReadOnly revisionMetadata,
-        Optional<LoadoutId> targetLoadout) : base(serviceProvider)
+        Optional<LoadoutId> targetLoadout) : base(serviceProvider, new TreeDataGridSortingOptions
+        {
+            UseSortingStatePersistence = true,
+            SettingsScopeKey = "CollectionDownloadTreeDataGrid",
+            DefaultSortingState = new TreeDataGridSortingStateSettings
+            {
+                SortedColumnKey = CollectionColumns.DownloadProgress.ColumnTemplateResourceKey,
+                SortDirection = ListSortDirection.Descending,
+                SchemaRevision = 1,
+            },
+        })
     {
         _revisionMetadata = revisionMetadata;
         _targetLoadout = targetLoadout;
@@ -739,7 +751,7 @@ public class CollectionDownloadTreeDataGridAdapter :
             viewHierarchical ? ITreeDataGridItemModel<CompositeItemModel<EntityId>, EntityId>.CreateExpanderColumn(nameColumn) : nameColumn,
             ColumnCreator.Create<EntityId, LibraryColumns.ItemVersion>(),
             ColumnCreator.Create<EntityId, SharedColumns.ItemSize>(),
-            ColumnCreator.Create<EntityId, CollectionColumns.DownloadProgress>(),
+            ColumnCreator.Create<EntityId, CollectionColumns.DownloadProgress>(sortDirection: ListSortDirection.Descending),
             ColumnCreator.Create<EntityId, CollectionColumns.DownloadSpeed>(),
             ColumnCreator.Create<EntityId, CollectionColumns.Actions>(),
         ];

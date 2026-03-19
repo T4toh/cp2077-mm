@@ -15,17 +15,9 @@ public partial class SpineDownloadButtonView : ReactiveUserControl<ISpineDownloa
 
         this.WhenActivated(d =>
         {
-            this.WhenAnyValue(view => view.ViewModel!.Click)
-                .BindToUi(this, view => view.ParentButton.Command)
-                .DisposeWith(d);
-
             this.WhenAnyValue(view => view.ViewModel!.Progress)
                 .Select(p => p.HasValue)
                 .BindToClasses(ParentButton, Progress, Idle)
-                .DisposeWith(d);
-
-            this.WhenAnyValue(view => view.ViewModel!.IsActive)
-                .BindToActive(ParentButton)
                 .DisposeWith(d);
 
             this.WhenAnyValue(view => view.ViewModel!.Progress)
