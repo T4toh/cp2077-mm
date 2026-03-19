@@ -30,7 +30,7 @@ public enum CollectionDownloadsFilter
     OnlyOptional,
 }
 
-public class CollectionDataProvider
+public class CollectionDataProvider : ICollectionDataProvider
 {
     private readonly IConnection _connection;
     private readonly IJobMonitor _jobMonitor;

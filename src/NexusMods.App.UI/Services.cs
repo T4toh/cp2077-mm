@@ -322,7 +322,7 @@ public static class Services
 
             // Other
             .AddSingleton<InjectedViewLocator>()
-            .AddSingleton<CollectionDataProvider>()
+            .AddSingleton<ICollectionDataProvider, CollectionDataProvider>()
             .AddSingleton<ILibraryDataProvider, LocalFileDataProvider>()
             .AddSingleton<ILoadoutDataProvider, LocalFileDataProvider>()
             .AddSingleton<ILibraryDataProvider, ManuallyCreatedArchiveDataProvider>()

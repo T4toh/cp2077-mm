@@ -677,7 +677,7 @@ public class CollectionDownloadTreeDataGridAdapter :
 {
     private readonly CollectionRevisionMetadata.ReadOnly _revisionMetadata;
     private readonly Optional<LoadoutId> _targetLoadout;
-    private readonly CollectionDataProvider _collectionDataProvider;
+    private readonly ICollectionDataProvider _collectionDataProvider;
 
     public R3.ReactiveProperty<CollectionDownloadsFilter> Filter { get; } = new(value: CollectionDownloadsFilter.OnlyRequired);
 
@@ -690,7 +690,7 @@ public class CollectionDownloadTreeDataGridAdapter :
     {
         _revisionMetadata = revisionMetadata;
         _targetLoadout = targetLoadout;
-        _collectionDataProvider = serviceProvider.GetRequiredService<CollectionDataProvider>();
+        _collectionDataProvider = serviceProvider.GetRequiredService<ICollectionDataProvider>();
     }
 
     protected override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> GetRootsObservable(bool viewHierarchical)
