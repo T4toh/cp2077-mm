@@ -70,11 +70,7 @@ public class RunGameTool<T> : IRunGameTool
                 return;
             }
 
-            if (locatorResult.Store == GameStore.GOG)
-            {
-                await RunThroughHeroic("gog", locatorResult.StoreIdentifier, cancellationToken, commandLineArgs);
-                return;
-            }
+
         }
 
         var names = new HashSet<string>
@@ -201,18 +197,6 @@ public class RunGameTool<T> : IRunGameTool
         if (reaper is null) return;
 
         await reaper.WaitForExitAsync(cancellationToken);
-    }
-
-    private async Task RunThroughHeroic(string type, string productId, CancellationToken cancellationToken, string[] commandLineArgs)
-    {
-        Debug.Assert(OSInformation.Shared.IsLinux);
-
-        // TODO: track process
-        if (commandLineArgs.Length > 0)
-            _logger.LogError("Heroic does not currently support command line arguments: https://github.com/Nexus-Mods/NexusMods.App/issues/2264 . " +
-                             $"Args {string.Join(',', commandLineArgs)} were specified but will be ignored.");
-
-        _osInterop.OpenUri(new Uri($"heroic://launch/{type}/{productId}"));
     }
 
     private async ValueTask<Process?> WaitForProcessToStart(

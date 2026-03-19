@@ -11,7 +11,6 @@ using NexusMods.App.UI.Controls.LoadoutBadge;
 using NexusMods.App.UI.Controls.LoadoutCard;
 using NexusMods.App.UI.Controls.MarkdownRenderer;
 using NexusMods.App.UI.Controls.MiniGameWidget;
-using NexusMods.App.UI.Controls.MiniGameWidget.ComingSoon;
 using NexusMods.App.UI.Controls.MiniGameWidget.Standard;
 using NexusMods.App.UI.Controls.Settings.Section;
 using NexusMods.App.UI.Controls.Settings.SettingEntries;
@@ -40,8 +39,9 @@ using NexusMods.App.UI.Overlays.Updater;
 using NexusMods.App.UI.Pages;
 using NexusMods.App.UI.Pages.Changelog;
 using NexusMods.App.UI.Pages.CollectionDownload;
-using NexusMods.App.UI.Pages.CollectionDownload.Dialogs.PremiumDownloads;
+#if DEBUG
 using NexusMods.App.UI.Pages.DebugControls;
+#endif
 using NexusMods.App.UI.Pages.Diagnostics;
 using NexusMods.App.UI.Pages.Diff.ApplyDiff;
 using NexusMods.App.UI.Pages.Downloads;
@@ -56,7 +56,9 @@ using NexusMods.App.UI.Pages.LoadoutPage.Dialogs.ShareCollection;
 using NexusMods.App.UI.Pages.MyGames;
 using NexusMods.App.UI.Pages.MyGames.WinePrefix;
 using NexusMods.App.UI.Pages.MyLoadouts;
+#if DEBUG
 using NexusMods.App.UI.Pages.ObservableInfo;
+#endif
 using NexusMods.App.UI.Pages.Settings;
 using NexusMods.App.UI.Pages.Sorting;
 using NexusMods.App.UI.Pages.StorageManager;
@@ -108,7 +110,6 @@ public static class Services
             .AddViewModel<DevelopmentBuildBannerViewModel, IDevelopmentBuildBannerViewModel>()
             .AddTransient<IGameWidgetViewModel, GameWidgetViewModel>()
             .AddViewModel<MiniGameWidgetViewModel, IMiniGameWidgetViewModel>()
-            .AddViewModel<ComingSoonMiniGameWidgetViewModel, IComingSoonMiniGameWidgetViewModel>()
             .AddViewModel<HomeLeftMenuViewModel, IHomeLeftMenuViewModel>()
             .AddViewModel<IconButtonViewModel, IIconButtonViewModel>()
             .AddViewModel<LeftMenuItemViewModel, ILeftMenuItemViewModel>()
@@ -134,7 +135,6 @@ public static class Services
             .AddView<DevelopmentBuildBannerView, IDevelopmentBuildBannerViewModel>()
             .AddView<GameWidget, IGameWidgetViewModel>()
             .AddView<MiniGameWidget, IMiniGameWidgetViewModel>()
-            .AddView<ComingSoonMiniGameWidget, IComingSoonMiniGameWidgetViewModel>()
             .AddView<HomeLeftMenuView, IHomeLeftMenuViewModel>()
             .AddView<IconButton, IIconButtonViewModel>()
             .AddView<LeftMenuItemView, ILeftMenuItemViewModel>()
@@ -215,11 +215,13 @@ public static class Services
             .AddView<CollectionLoadoutView, ICollectionLoadoutViewModel>()
             .AddViewModel<CollectionLoadoutViewModel, ICollectionLoadoutViewModel>()
 
+#if DEBUG
             .AddView<ObservableInfoPageView, IObservableInfoPageViewModel>()
             .AddViewModel<ObservableInfoPageViewModel, IObservableInfoPageViewModel>()
             
             .AddView<DebugControlsPageView, IDebugControlsPageViewModel>()
             .AddViewModel<DebugControlsPageViewModel, IDebugControlsPageViewModel>()
+#endif
 
             .AddView<ManualDownloadRequiredOverlayView, IManualDownloadRequiredOverlayViewModel>()
             .AddViewModel<ManualDownloadRequiredOverlayViewModel, IManualDownloadRequiredOverlayViewModel>()
@@ -241,11 +243,11 @@ public static class Services
             .AddView<DialogCollectionPublishedView, IDialogCollectionPublishedViewModel>()
             .AddViewModel<DialogCollectionPublishedViewModel, IDialogCollectionPublishedViewModel>()
             
-            .AddView<DialogPremiumCollectionDownloadsView, IDialogPremiumCollectionDownloadsViewModel>()
-            .AddViewModel<DialogPremiumCollectionDownloadsViewModel, IDialogPremiumCollectionDownloadsViewModel>()
 
+#if DEBUG
             .AddView<ProtocolRegistrationTestPageView, IProtocolRegistrationTestPageViewModel>()
             .AddViewModel<ProtocolRegistrationTestPageViewModel, IProtocolRegistrationTestPageViewModel>()
+#endif
 
             .AddView<LoadoutGroupFilesView, ILoadoutGroupFilesViewModel>()
             .AddViewModel<LoadoutGroupFilesViewModel, ILoadoutGroupFilesViewModel>()
@@ -286,9 +288,11 @@ public static class Services
             .AddSingleton<IPageFactory, LoadoutPageFactory>()
             .AddSingleton<IPageFactory, CollectionDownloadPageFactory>()
             .AddSingleton<IPageFactory, CollectionLoadoutPageFactory>()
+#if DEBUG
             .AddSingleton<IPageFactory, ObservableInfoPageFactory>()
             .AddSingleton<IPageFactory, DebugControlsPageFactory>()
             .AddSingleton<IPageFactory, ProtocolRegistrationTestPageFactory>()
+#endif
             .AddSingleton<IPageFactory, LoadoutGroupFilesPageFactory>()
             .AddSingleton<IPageFactory, EssentialModsPageFactory>()
             .AddSingleton<IPageFactory, StorageManagerPageFactory>()

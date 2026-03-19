@@ -1,5 +1,4 @@
-﻿using System.Reactive.Disposables;
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.ReactiveUI;
 using JetBrains.Annotations;
 using NexusMods.Sdk;
@@ -32,12 +31,7 @@ public partial class DevelopmentBuildBannerView : ReactiveUserControl<IDevelopme
     {
         InitializeComponent();
 
-        this.WhenActivated(d =>
-            {
-                this.BindCommand(ViewModel, vm => vm.GiveFeedbackCommand, view => view.GiveFeedbackButton)
-                    .DisposeWith(d);
-            }
-        );
+        this.WhenActivated(_ => { });
         
         var appName = ApplicationConstants.IsDebug ? "DEVELOPMENT USE ONLY" : "Preview";
 

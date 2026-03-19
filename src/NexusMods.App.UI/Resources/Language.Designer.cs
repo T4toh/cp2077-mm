@@ -773,41 +773,6 @@ namespace NexusMods.App.UI.Resources {
             }
         }
         
-        /// <summary>
-        ///   Looks up a localized string similar to Continue with manual install.
-        /// </summary>
-        public static string DialogPremiumCollection_Cancel {
-            get {
-                return ResourceManager.GetString("DialogPremiumCollection_Cancel", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Unlock 1-click collections with Premium.
-        /// </summary>
-        public static string DialogPremiumCollection_DialogTitle {
-            get {
-                return ResourceManager.GetString("DialogPremiumCollection_DialogTitle", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Learn more.
-        /// </summary>
-        public static string DialogPremiumCollection_LearnMore {
-            get {
-                return ResourceManager.GetString("DialogPremiumCollection_LearnMore", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Unlock Auto-download.
-        /// </summary>
-        public static string DialogPremiumCollection_UpgradeToPremium {
-            get {
-                return ResourceManager.GetString("DialogPremiumCollection_UpgradeToPremium", resourceCulture);
-            }
-        }
         
         /// <summary>
         ///   Looks up a localized string similar to Apply changes: Adding {0} Modifying {1} Removing {2}.
@@ -3575,15 +3540,6 @@ namespace NexusMods.App.UI.Resources {
         public static string TopBar_GetPremiumMenuItem {
             get {
                 return ResourceManager.GetString("TopBar_GetPremiumMenuItem", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Click to give feedback and help us improve..
-        /// </summary>
-        public static string TopBar_GiveFeedback_ToolTip {
-            get {
-                return ResourceManager.GetString("TopBar_GiveFeedback_ToolTip", resourceCulture);
             }
         }
         

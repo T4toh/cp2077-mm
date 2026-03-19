@@ -74,50 +74,50 @@
                     </StackPanel>
                     
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <controls:StandardButton Text="Extra Small 24px" Size="Toolbar" ShowIcon="None" RequiresPremium="True" Type="Secondary" Fill="Strong"/>
+                        <controls:StandardButton Text="Extra Small 24px" Size="Toolbar" ShowIcon="None" Type="Secondary" Fill="Strong"/>
                         <controls:StandardButton Text="Left" Size="Toolbar" ShowIcon="Left"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Text="Right" Size="Toolbar" ShowIcon="Right"
-                                                 RightIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 RightIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Text="Both" Size="Toolbar" ShowIcon="Both"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Size="Toolbar" ShowLabel="False" ShowIcon="Left"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Size="Toolbar" ShowLabel="False" ShowIcon="Both"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Size="Toolbar" ShowLabel="False" ShowIcon="IconOnly"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <controls:StandardButton Text="Small 28px (Default)" Size="Small" ShowIcon="None" RequiresPremium="True" Type="Secondary" Fill="Strong"  />
+                        <controls:StandardButton Text="Small 28px (Default)" Size="Small" ShowIcon="None" Type="Secondary" Fill="Strong"  />
                         <controls:StandardButton Text="Left" Size="Small" ShowIcon="Left"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Text="Right" Size="Small" ShowIcon="Right"
-                                                 RightIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 RightIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Text="Both" Size="Small" ShowIcon="Both"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Size="Small" ShowLabel="False" ShowIcon="Left"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Size="Small" ShowLabel="False" ShowIcon="Both"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Size="Small" ShowLabel="False" ShowIcon="IconOnly"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <controls:StandardButton Text="Medium 36px" Size="Medium" ShowIcon="None" RequiresPremium="True" Type="Secondary" Fill="Strong"  />
+                        <controls:StandardButton Text="Medium 36px" Size="Medium" ShowIcon="None" Type="Secondary" Fill="Strong"  />
                         <controls:StandardButton Text="Left" Size="Medium" ShowIcon="Left"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Text="Right" Size="Medium" ShowIcon="Right"
-                                                 RightIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 RightIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Text="Both" Size="Medium" ShowIcon="Both"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
 
                         <controls:StandardButton Size="Medium" ShowLabel="False" ShowIcon="Left"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Size="Medium" ShowLabel="False" ShowIcon="Both"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                         <controls:StandardButton Size="Medium" ShowLabel="False" ShowIcon="IconOnly"
-                                                 LeftIcon="{x:Static icons:IconValues.Code}" RequiresPremium="True" Type="Secondary" Fill="Strong" />
+                                                 LeftIcon="{x:Static icons:IconValues.Code}" Type="Secondary" Fill="Strong" />
                     </StackPanel>
 
                     
@@ -218,10 +218,6 @@
     <sys:Double x:Key="StandardButtonIconSizeSmall">16</sys:Double>
     <sys:Double x:Key="StandardButtonIconSizeExtraSmall">16</sys:Double>
 
-    <sys:Double x:Key="StandardButtonPremiumBadgeSizeMedium">20</sys:Double>
-    <sys:Double x:Key="StandardButtonPremiumBadgeSizeSmall">16</sys:Double>
-    <sys:Double x:Key="StandardButtonPremiumBadgeSizeToolbar">16</sys:Double>
-    
     <!-- The below will also be used when ComboBox and SplitButtons are extended by us so that the styling matches -->
 
     <!-- Primary/Strong -->
@@ -449,16 +445,6 @@
                                                Size="{StaticResource StandardButtonIconSizeSmall}"
                                                Foreground="{TemplateBinding Foreground}"
                                                Margin="0,2,4,3" />
-                            <Border Grid.Column="3" Name="PART_PremiumBadge" 
-                                    Background="{StaticResource BrandPremium600Brush}"
-                                    CornerRadius="{StaticResource Rounded}"
-                                    VerticalAlignment="Center"
-                                    Padding="2">
-                                <icons:UnifiedIcon
-                                    Size="{StaticResource StandardButtonPremiumBadgeSizeSmall}"
-                                    Foreground="{StaticResource BrandPremium100Brush}"
-                                    Value="{x:Static icons:IconValues.Premium}" />
-                            </Border>
                         </Grid>
                     </Border>
                 </Panel>
@@ -520,13 +506,6 @@
             <Style Selector="^ icons|UnifiedIcon#PART_LeftIcon, ^ icons|UnifiedIcon#PART_RightIcon">
                 <Setter Property="Size" Value="{StaticResource StandardButtonIconSizeExtraSmall}" />
             </Style>
-
-            <Style Selector="^ Border#PART_PremiumBadge">
-                <Setter Property="Margin" Value="0" />
-                <Style Selector="^ > icons|UnifiedIcon">
-                    <Setter Property="Size" Value="{StaticResource StandardButtonPremiumBadgeSizeToolbar}" />
-                </Style>
-            </Style>
         </Style>
 
         <!-- medium -->
@@ -543,13 +522,6 @@
                 <Setter Property="Theme" Value="{StaticResource BodyLGNormalTheme}" />
             </Style>
 
-            <Style Selector="^ Border#PART_PremiumBadge">
-                <Setter Property="Margin" Value="0" />
-                <Style Selector="^ > icons|UnifiedIcon">
-                    <Setter Property="Size" Value="{StaticResource StandardButtonPremiumBadgeSizeMedium}" />
-                </Style>
-            </Style>
-
         </Style>
 
         <!-- icon only variants -->
@@ -557,9 +529,6 @@
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0" />
             <Style Selector="^ icons|UnifiedIcon#PART_LeftIcon,^ icons|UnifiedIcon#PART_RightIcon">
-                <Setter Property="Margin" Value="0" />
-            </Style>
-            <Style Selector="^ Border#PART_PremiumBadge">
                 <Setter Property="Margin" Value="0" />
             </Style>
         </Style>

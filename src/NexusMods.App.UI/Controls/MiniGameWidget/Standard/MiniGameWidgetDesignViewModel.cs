@@ -1,10 +1,8 @@
-using System.Reactive;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using NexusMods.Abstractions.Games;
 using NexusMods.Sdk.Games;
 using NexusMods.UI.Sdk;
-using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
 namespace NexusMods.App.UI.Controls.MiniGameWidget.Standard;
@@ -18,6 +16,4 @@ public class MiniGameWidgetDesignViewModel : AViewModel<IMiniGameWidgetViewModel
     public string Name { get; set; } = "Cyberpunk 2077";
     public bool IsFound { get; set; } = true;
     public Bitmap Image { get; set; } = new(AssetLoader.Open(new Uri("avares://NexusMods.App.UI/Assets/DesignTime/cyberpunk_game.png")));
-
-    public ReactiveCommand<Unit, Unit> GiveFeedbackCommand { get; } = ReactiveCommand.CreateFromTask(() => Task.CompletedTask);
 }

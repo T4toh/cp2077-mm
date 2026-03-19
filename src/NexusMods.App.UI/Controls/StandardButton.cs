@@ -129,7 +129,6 @@ public class StandardButton : Button
     private TextBlock? _label = null;
     private ContentPresenter? _content = null;
     private Border? _border = null;
-    private Border? _premiumBadge = null;
 
     /// <summary>
     /// Defines the Text property of the <see cref="StandardButton"/>.
@@ -172,11 +171,6 @@ public class StandardButton : Button
     /// </summary>
     public static readonly AttachedProperty<bool> ShowLabelProperty = AvaloniaProperty.RegisterAttached<StandardButton, TemplatedControl, bool>("ShowLabel", defaultValue: true);
     
-    /// <summary>
-    /// Defines the RequiresPremium attached property of the <see cref="StandardButton"/>.
-    /// </summary>
-    public static readonly AttachedProperty<bool> RequiresPremiumProperty = AvaloniaProperty.RegisterAttached<StandardButton, TemplatedControl, bool>("RequiresPremium", defaultValue: false);
-
     /// <summary>
     /// Gets or sets the text of the <see cref="StandardButton"/>.
     /// </summary>
@@ -239,7 +233,7 @@ public class StandardButton : Button
         get => GetValue(SizeProperty);
         set => SetValue(SizeProperty, value);
     }
-
+    
     /// <summary>
     /// Gets or sets the fill option of the <see cref="StandardButton"/>. Defaults to <see cref="Fills.Weak"/>.
     /// </summary>
@@ -247,15 +241,6 @@ public class StandardButton : Button
     {
         get => GetValue(FillProperty);
         set => SetValue(FillProperty, value);
-    }
-    
-    /// <summary>
-    /// Gets or sets a value indicating whether the label is shown on the <see cref="StandardButton"/>. Defaults to True.
-    /// </summary>
-    public bool RequiresPremium
-    {
-        get => GetValue(RequiresPremiumProperty);
-        set => SetValue(RequiresPremiumProperty, value);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -277,10 +262,6 @@ public class StandardButton : Button
         else if (change.Property == ShowIconProperty)
         {
             UpdateIconVisibility();
-        }
-        else if (change.Property == RequiresPremiumProperty)
-        {
-            UpdatePremiumBadgeVisibility();
         }
     }
 
@@ -306,13 +287,6 @@ public class StandardButton : Button
         _rightIcon = e.NameScope.Find<UnifiedIcon>("PART_RightIcon");
         if (_rightIcon != null)
             UpdateRightIcon(RightIcon);
-        
-        // premium badge
-        _premiumBadge = e.NameScope.Find<Border>("PART_PremiumBadge");
-        if (_premiumBadge != null)
-        {
-            UpdatePremiumBadgeVisibility();
-        }
 
         // if Content is not null, display the Content just like a regular button would (using ContentPresenter).
         // Otherwise, build the button from the set properties
@@ -322,15 +296,6 @@ public class StandardButton : Button
         base.OnApplyTemplate(e);
     }
 
-    /// <summary>
-    /// Updates the premium badge visibility of the <see cref="StandardButton"/>.
-    /// </summary>
-    private void UpdatePremiumBadgeVisibility()
-    {
-        if (_premiumBadge != null)
-            _premiumBadge.IsVisible = RequiresPremium;
-    }
-    
     /// <summary>
     /// Updates the icon visibility of the <see cref="StandardButton"/>.
     /// </summary>

@@ -69,8 +69,7 @@
         <PackageReference Include="SkiaSharp"/>
         <PackageReference Include="SkiaSharp.HarfBuzz"/>
         <PackageReference Include="SkiaSharp.NativeAssets.Linux"/>
-        <PackageReference Include="SkiaSharp.NativeAssets.macOS"/>
-        <PackageReference Include="SkiaSharp.NativeAssets.Win32"/>
+
         <PackageReference Include="Avalonia.Themes.Fluent" />
         <PackageReference Include="AvaloniaEdit.TextMate" />
         <PackageReference Include="LiveChartsCore.SkiaSharpView.Avalonia"/>
@@ -742,16 +741,6 @@
         <Compile Update="Controls\MiniGameWidget\Standard\MiniGameWidgetViewModel.cs">
           <DependentUpon>IMiniGameWidgetViewModel.cs</DependentUpon>
         </Compile>
-        <Compile Update="Controls\MiniGameWidget\ComingSoon\ComingSoonMiniGameWidget.axaml.cs">
-          <DependentUpon>MiniGameWidget.axaml</DependentUpon>
-          <SubType>Code</SubType>
-        </Compile>
-        <Compile Update="Controls\MiniGameWidget\ComingSoon\ComingSoonMiniGameWidgetViewModel.cs">
-          <DependentUpon>IComingSoonMiniGameWidgetViewModel.cs</DependentUpon>
-        </Compile>
-        <Compile Update="Controls\MiniGameWidget\ComingSoon\ComingSoonMiniGameWidgetDesignViewModel.cs">
-          <DependentUpon>IComingSoonMiniGameWidgetViewModel.cs</DependentUpon>
-        </Compile>
         <Compile Update="Pages\CollectionDownload\Dialogs\CollectionPublished\DialogPremiumCollectionDownloadsView.axaml.cs">
           <DependentUpon>DialogPremiumCollectionDownloads.axaml</DependentUpon>
           <SubType>Code</SubType>
@@ -759,9 +748,6 @@
         <Compile Update="Pages\CollectionDownload\Dialogs\CollectionPublished\DialogCollectionPublishedView.axaml.cs">
           <DependentUpon>DialogCollectionPublishedView.axaml</DependentUpon>
           <SubType>Code</SubType>
-        </Compile>
-        <Compile Update="Pages\CollectionDownload\Dialogs\PremiumDownloads\DialogPremiumCollectionDownloadsView.axaml.cs">
-           <DependentUpon>DialogCollectionPublishedView.axaml</DependentUpon>
         </Compile>
         <Compile Update="Pages\Downloads\DownloadsPageViewModel.cs">
            <DependentUpon>IDownloadsPageViewModel.cs</DependentUpon>

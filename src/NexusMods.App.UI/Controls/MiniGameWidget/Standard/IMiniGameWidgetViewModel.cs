@@ -1,9 +1,7 @@
-using System.Reactive;
 using Avalonia.Media.Imaging;
 using NexusMods.Abstractions.Games;
 using NexusMods.Sdk.Games;
 using NexusMods.UI.Sdk;
-using ReactiveUI;
 
 namespace NexusMods.App.UI.Controls.MiniGameWidget.Standard;
 
@@ -14,5 +12,4 @@ public interface IMiniGameWidgetViewModel : IViewModelInterface
     public string Name { get; set; }
     public bool IsFound { get; set; }
     public Bitmap Image { get; }
-    public ReactiveCommand<Unit, Unit> GiveFeedbackCommand { get; }
 }

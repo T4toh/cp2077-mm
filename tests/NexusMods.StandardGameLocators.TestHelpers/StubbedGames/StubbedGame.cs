@@ -27,11 +27,6 @@ public class StubbedGame : IGame, IGameData<StubbedGame>
     public StoreIdentifiers StoreIdentifiers { get; } = new(GameId)
     {
         SteamAppIds = [42u],
-        GOGProductIds = [42L],
-        EADesktopSoftwareIds = ["ea-game-id"],
-        EGSCatalogItemId = ["epic-game-id"],
-        OriginManifestIds = ["origin-game-id"],
-        XboxPackageIdentifiers = ["xbox-game-id"],
     };
 
     public IStreamFactory IconImage { get; } = new EmbeddedResourceStreamFactory<StubbedGame>("NexusMods.StandardGameLocators.TestHelpers.Resources.question_mark_game.png");

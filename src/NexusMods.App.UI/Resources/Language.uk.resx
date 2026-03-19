@@ -928,10 +928,6 @@
     <data name="TopBar_Back_ToolTip" xml:space="preserve">
         <value>Назад</value>
     </data>
-    <data name="TopBar_GiveFeedback_ToolTip" xml:space="preserve">
-        <value
-        >Натисніть, щоб залишити відгук і допомогти нам покращитися.</value>
-    </data>
     <data name="TopBarActions__LOG_IN_ToolTip" xml:space="preserve">
         <value>Підключіть свій обліковий запис Nexus Mods</value>
     </data>

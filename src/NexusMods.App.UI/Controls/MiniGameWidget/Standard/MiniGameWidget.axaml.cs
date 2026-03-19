@@ -1,4 +1,3 @@
-using System.Reactive;
 using System.Reactive.Disposables;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -30,15 +29,10 @@ public partial class MiniGameWidget : ReactiveUserControl<IMiniGameWidgetViewMod
                     )
                     .DisposeWith(d);
                 
-                this.BindCommand<MiniGameWidget, IMiniGameWidgetViewModel, ReactiveCommand<Unit, Unit>, StandardButton>(ViewModel, vm => vm.GiveFeedbackCommand, view => view.ButtonGameNotFound)
-                    .DisposeWith(d);
-
                 this.WhenAnyValue(view => view.ViewModel!.Game)
                     .Subscribe(game =>
                     {
-                        GogGrid.IsVisible = !(game?.StoreIdentifiers.GOGProductIds.IsEmpty ?? false);
                         SteamGrid.IsVisible = !(game?.StoreIdentifiers.SteamAppIds.IsEmpty ?? false);
-                        EpicGrid.IsVisible = !(game?.StoreIdentifiers.EGSCatalogItemId.IsEmpty ?? false);
                     })
                     .DisposeWith(d);
             }

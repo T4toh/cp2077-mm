@@ -38,6 +38,6 @@ public class GameWidgetDesignViewModel : AViewModel<IGameWidgetViewModel>, IGame
         State = GameWidgetState.ManagedGame;
         Version = $"Version: 1.5.6";
         Store = "Foo";
-        GameStoreIcon = GameWidgetViewModel.MapGameStoreToIcon(GameStore.EGS);
+        GameStoreIcon = GameWidgetViewModel.MapGameStoreToIcon(GameStore.Steam);
     }
 }
