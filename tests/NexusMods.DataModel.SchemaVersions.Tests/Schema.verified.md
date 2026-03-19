@@ -3,29 +3,13 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x03E30ECD79A64605
-   - Total attributes: 232
-   - Total namespaces: 75
+   - Fingerprint: 0x0673879C7D308C0C
+   - Total attributes: 192
+   - Total namespaces: 64
    
 ## Attributes
 | AttributeId                                                                        | Type                    | Indexed | Many  | NoHistory | 
 | ---------------------------------------------------------------------------------- | ----------------------- | ------- | ----- | --------- | 
-| NexusMods.Abstractions.Games.FileHashes.GogBuild/BuildId                           | UInt64                  | True    | False | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogBuild/Depots                            | Reference               | False   | True  | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogBuild/Files                             | Reference               | False   | True  | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogBuild/ManifestId                        | Utf8                    | True    | False | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogBuild/OperatingSystem                   | UInt8                   | False   | False | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogBuild/ProductId                         | UInt64                  | True    | False | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogBuild/Public                            | UInt8                   | False   | False | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogBuild/Tags                              | Utf8                    | False   | True  | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogBuild/Version                           | Utf8                    | True    | False | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogDepot/CompressedSize                    | UInt64                  | False   | False | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogDepot/Languages                         | Utf8                    | False   | True  | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogDepot/Manifest                          | Reference               | False   | False | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogDepot/ProductId                         | UInt64                  | True    | False | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogDepot/Size                              | UInt64                  | False   | False | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogManifest/Files                          | Reference               | False   | True  | False     | 
-| NexusMods.Abstractions.Games.FileHashes.GogManifest/ManifestId                     | Utf8                    | True    | False | False     | 
 | NexusMods.Abstractions.Games.FileHashes.HashRelation/Crc32                         | UInt32                  | True    | False | False     | 
 | NexusMods.Abstractions.Games.FileHashes.HashRelation/Md5                           | UInt128                 | True    | False | False     | 
 | NexusMods.Abstractions.Games.FileHashes.HashRelation/MinimalHash                   | UInt64                  | True    | False | False     | 
@@ -40,11 +24,7 @@ models in the app, then validate the tests to update this file.
 | NexusMods.Abstractions.Games.FileHashes.SteamManifest/Files                        | Reference               | False   | True  | False     | 
 | NexusMods.Abstractions.Games.FileHashes.SteamManifest/ManifestId                   | UInt64                  | True    | False | False     | 
 | NexusMods.Abstractions.Games.FileHashes.SteamManifest/Name                         | Utf8                    | True    | False | False     | 
-| NexusMods.Abstractions.Games.FileHashes.VersionDefinition/EpicBuildIds             | Utf8                    | True    | True  | False     | 
-| NexusMods.Abstractions.Games.FileHashes.VersionDefinition/EpicGameStoreBuilds      | Reference               | False   | True  | False     | 
-| NexusMods.Abstractions.Games.FileHashes.VersionDefinition/GOG                      | Utf8                    | True    | True  | False     | 
 | NexusMods.Abstractions.Games.FileHashes.VersionDefinition/GameId                   | UInt32                  | True    | False | False     | 
-| NexusMods.Abstractions.Games.FileHashes.VersionDefinition/GogBuilds                | Reference               | False   | True  | False     | 
 | NexusMods.Abstractions.Games.FileHashes.VersionDefinition/Name                     | Utf8                    | True    | False | False     | 
 | NexusMods.Abstractions.Games.FileHashes.VersionDefinition/OperatingSystem          | UInt8                   | True    | False | False     | 
 | NexusMods.Abstractions.Games.FileHashes.VersionDefinition/Steam                    | Utf8                    | True    | True  | False     | 
@@ -140,13 +120,6 @@ models in the app, then validate the tests to update this file.
 | NexusMods.MnemonicDB.DatomStore/ValueType                                          | UInt8                   | False   | False | False     | 
 | NexusMods.MnemonicDB.Transaction/ExcisedDatoms                                     | UInt64                  | False   | False | False     | 
 | NexusMods.MnemonicDB.Transaction/Timestamp                                         | Int64                   | False   | False | False     | 
-| NexusMods.MountAndBlade2Bannerlord.ModLoadoutItem/ModuleInfo                       | Reference               | False   | False | False     | 
-| NexusMods.MountAndBlade2Bannerlord.ModuleInfoLoadoutFile/ModuleInfoFile            | Null                    | False   | False | False     | 
-| NexusMods.Networking.GOG.AuthInfo/AccessToken                                      | Utf8                    | False   | False | False     | 
-| NexusMods.Networking.GOG.AuthInfo/ExpiresAt                                        | Int64                   | False   | False | False     | 
-| NexusMods.Networking.GOG.AuthInfo/RefreshToken                                     | Utf8                    | False   | False | False     | 
-| NexusMods.Networking.GOG.AuthInfo/SessionId                                        | Utf8                    | False   | False | False     | 
-| NexusMods.Networking.GOG.AuthInfo/UserId                                           | UInt64                  | False   | False | False     | 
 | NexusMods.Networking.NexusWebApi.Auth.ApiKey/Key                                   | Utf8                    | False   | False | False     | 
 | NexusMods.Networking.NexusWebApi.Auth.JWTToken/AccessToken                         | Utf8                    | False   | False | False     | 
 | NexusMods.Networking.NexusWebApi.Auth.JWTToken/ExpiresAt                           | Int64                   | False   | False | False     | 
@@ -228,17 +201,4 @@ models in the app, then validate the tests to update this file.
 | NexusMods.StandardGameLocators.ManuallyAddedGame/GameId                            | UInt32                  | True    | False | False     | 
 | NexusMods.StandardGameLocators.ManuallyAddedGame/Path                              | Utf8                    | True    | False | False     | 
 | NexusMods.StandardGameLocators.ManuallyAddedGame/Version                           | Utf8                    | False   | False | False     | 
-| NexusMods.StardewValley.SMAPILoadoutItem/ModDatabase                               | Reference               | False   | False | False     | 
-| NexusMods.StardewValley.SMAPILoadoutItem/Version                                   | Utf8                    | False   | False | False     | 
-| NexusMods.StardewValley.SMAPIManifestLoadoutFile/ManifestFile                      | Null                    | True    | False | False     | 
-| NexusMods.StardewValley.SMAPIModDatabaseLoadoutFile/ModDatabaseFile                | Null                    | False   | False | False     | 
-| NexusMods.StardewValley.SMAPIModLoadoutItem/Manifest                               | Reference               | False   | False | False     | 
-| NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/AppName                          | Utf8                    | False   | False | False     | 
-| NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/BuildId                          | Utf8Insensitive         | True    | False | False     | 
-| NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/BuildVersion                     | Utf8                    | False   | False | False     | 
-| NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/CreatedAt                        | Int64                   | False   | False | False     | 
-| NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/Files                            | Reference               | False   | True  | False     | 
-| NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/ItemId                           | Utf8Insensitive         | False   | False | False     | 
-| NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/LabelName                        | Utf8                    | False   | False | False     | 
-| NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/ManifestHash                     | Utf8Insensitive         | True    | False | False     | 
-| NexusMods.Stores.EpicGameStore.EpicGameStoreBuild/UpdatedAt                        | Int64                   | False   | False | False     | 
+| NexusMods.StandardGameLocators.ManuallyAddedGame/WinePrefix                        | Utf8                    | False   | False | False     | 

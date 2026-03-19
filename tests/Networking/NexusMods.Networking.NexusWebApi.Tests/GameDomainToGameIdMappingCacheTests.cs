@@ -54,9 +54,7 @@ public class GameDomainToGameIdMappingCacheTests(GameDomainToGameIdMappingCache 
     
     private static readonly (GameDomain Domain, NexusModsGameId Id)[] KnownMappings =
     [
-        (GameDomain.From("stardewvalley"), NexusModsGameId.From(1303)),
         (GameDomain.From("cyberpunk2077"), NexusModsGameId.From(3333)),
-        (GameDomain.From("baldursgate3"), NexusModsGameId.From(3474)),
         (GameDomain.From("site"), NexusModsGameId.From(2295)),
     ];
     

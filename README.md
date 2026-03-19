@@ -115,14 +115,7 @@ Detecta también carpetas redundantes en mods (ej. `Cyberpunk 2077/bin/...` dupl
 - [x] Remoción total de telemetría
 - [x] Rebrand a "Cyberpunk 2077 Mod Manager"
 - [x] Limpieza de código muerto (directorios vacíos, NuGet huérfanos, tiendas removidas, UI de feedback, ComingSoon, settings muertos, premium gates, páginas de debug bajo `#if DEBUG`)
-
-### 🧪 Tests Pendientes de Revisión
-
-Los siguientes tests fallan desde antes de la limpieza y necesitan ser revisados o eliminados:
-
-- [ ] **SchemaVersions:** `SchemaFingerprintHasntChanged` y otros 10 tests — el schema fingerprint del `.verified.md` está desactualizado
-- [ ] **Synchronizer:** 5 tests fallan (`EmptyChildFoldersDontDeleteNonEmptyParents`, `EmptyFoldersAreRemovedWhenSwitchingLoadouts`, `SynchronizerAddAndDisableMods`, `ExistingFilesEndUpInOverrides`, `SynchronizerIntegrationTests`)
-- [ ] **RedEngine:** `FilesAreMappedToCorrectFolders` falla en el caso "All Common Prefixes"
+- [x] Limpieza de tests: eliminación de databases de StardewValley, corrección de migración _0004 para tolerar juegos no registrados, fix de limpieza de carpetas vacías en el Synchronizer, actualización de snapshots Verify, limpieza de referencias a juegos removidos en test data
 
 ### 🔄 Consolidación de Vistas de Descarga
 

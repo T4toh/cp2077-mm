@@ -131,38 +131,34 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             }
         }
         
-        // Find the highest directory not in use for each deletion 
+        // Find all empty directories in the chain for each deletion
         foreach (var dirWithDeletion in directoriesWithDeletions)
         {
             var rootComponent = dirWithDeletion.GetRootComponent;
-            GamePath? highestEmptyDirectory = null;
             
             var currentParentDir = dirWithDeletion;
 
             while (currentParentDir != rootComponent)
             {
                 if (processedDirectories.Contains(currentParentDir))
-                {
-                    highestEmptyDirectory = null;
                     break;
-                }
                 
                 // Check if directory contains files or is a parent of directories with files
                 if (directoriesInUse.Contains(currentParentDir))
-                {
                     break;
-                }
 
                 processedDirectories.Add(currentParentDir);
-                highestEmptyDirectory = currentParentDir;
+                directoriesToDelete.Add(currentParentDir);
                 currentParentDir = currentParentDir.Parent;
             }
-
-            if (highestEmptyDirectory != null)
-                directoriesToDelete.Add(highestEmptyDirectory.Value);
         }
 
-        foreach (var dir in directoriesToDelete)
+        // Sort deepest-first so we delete leaf directories before their parents
+        var sorted = directoriesToDelete
+            .OrderByDescending(d => d.Path.Depth)
+            .ToArray();
+
+        foreach (var dir in sorted)
         {
             var absDir = installation.Locations.ToAbsolutePath(dir);
             if (!absDir.DirectoryExists()) continue;
