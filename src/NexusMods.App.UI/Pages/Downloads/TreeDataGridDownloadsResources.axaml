@@ -38,10 +38,10 @@
 
         <controls:ComponentControl x:TypeArguments="abstractions:DownloadId" Content="{CompiledBinding}">
             <controls:ComponentControl.ComponentTemplate>
-                <controls:ComponentTemplate x:TypeArguments="downloads:DownloadComponents+SizeProgressComponent"
+                <controls:ComponentTemplate x:TypeArguments="controls:SharedProgressComponents+SizeProgressComponent"
                                             ComponentKey="{x:Static downloads:DownloadColumns+Size.ComponentKey}">
                     <controls:ComponentTemplate.DataTemplate>
-                        <DataTemplate DataType="{x:Type downloads:DownloadComponents+SizeProgressComponent}">
+                        <DataTemplate DataType="{x:Type controls:SharedProgressComponents+SizeProgressComponent}">
                             <TextBlock Text="{CompiledBinding DisplayText.Value}" />
                         </DataTemplate>
                     </controls:ComponentTemplate.DataTemplate>
@@ -62,10 +62,10 @@
 
         <controls:ComponentControl x:TypeArguments="abstractions:DownloadId" Content="{CompiledBinding}">
             <controls:ComponentControl.ComponentTemplate>
-                <controls:ComponentTemplate x:TypeArguments="downloads:DownloadComponents+SpeedComponent"
+                <controls:ComponentTemplate x:TypeArguments="controls:SharedProgressComponents+SpeedComponent"
                                             ComponentKey="{x:Static downloads:DownloadColumns+Speed.ComponentKey}">
                     <controls:ComponentTemplate.DataTemplate>
-                        <DataTemplate DataType="{x:Type downloads:DownloadComponents+SpeedComponent}">
+                        <DataTemplate DataType="{x:Type controls:SharedProgressComponents+SpeedComponent}">
                             <TextBlock Text="{CompiledBinding DisplayText.Value}" />
                         </DataTemplate>
                     </controls:ComponentTemplate.DataTemplate>
