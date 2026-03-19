@@ -365,7 +365,16 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
 
                     
             {
+                // Show loading while the adapter initializes its data source
+                IsLoading = true;
+
                 TreeDataGridAdapter.Activate().AddTo(disposables);
+
+                // Clear loading once the adapter's data source is ready
+                TreeDataGridAdapter.IsSourceEmpty
+                    .Take(1)
+                    .Subscribe(_ => IsLoading = false)
+                    .AddTo(disposables);
 
                 jobMonitor
                     .HasActiveJob<InstallCollectionJob>(job => job.RevisionMetadata.Id == _revision.Id)

@@ -116,6 +116,9 @@ public class DownloadsPageViewModel : APageViewModel<IDownloadsPageViewModel>, I
 
         this.WhenActivated(disposables =>
         {
+            // Show loading while the adapter initializes its data source
+            IsLoading = true;
+
             Adapter.Activate().AddTo(disposables);
             
             // Track selection count using count property
@@ -124,9 +127,13 @@ public class DownloadsPageViewModel : APageViewModel<IDownloadsPageViewModel>, I
                 .Subscribe(count => SelectionCount = count)
                 .AddTo(disposables);
 
-            // Track empty state
+            // Track empty state and clear loading once data source is ready
             Adapter.IsSourceEmpty
-                .Subscribe(isEmpty => IsEmptyStateActive = isEmpty)
+                .Subscribe(isEmpty =>
+                {
+                    IsLoading = false;
+                    IsEmptyStateActive = isEmpty;
+                })
                 .AddTo(disposables);
 
             // Subscribe to adapter messages for individual download actions

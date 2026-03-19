@@ -3,6 +3,7 @@ using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.Windows;
 using NexusMods.UI.Sdk;
 using NexusMods.UI.Sdk.Icons;
+using ReactiveUI.Fody.Helpers;
 
 namespace NexusMods.App.UI.WorkspaceSystem;
 
@@ -72,6 +73,9 @@ public abstract class APageViewModel<TInterface> : AViewModel<TInterface>, IPage
             }
         }
     }
+
+    /// <inheritdoc/>
+    [Reactive] public bool IsLoading { get; set; }
 
     /// <inheritdoc/>
     public WindowId WindowId { get; set; }
