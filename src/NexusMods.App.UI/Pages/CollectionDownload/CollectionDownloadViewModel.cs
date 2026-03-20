@@ -354,22 +354,27 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
 
                     
 
-                            CommandRescanDownloads = new ReactiveCommand(
-
+                            CommandRescanDownloads = R3.Observable.CombineLatest(
+                                    IsDownloading,
+                                    IsInstalling,
+                                    _isRescanning,
+                                    static (downloading, installing, rescanning) => !downloading && !installing && !rescanning)
+                                .ToReactiveCommand<Unit>(
                                 executeAsync: async (_, cancellationToken) =>
-
                                 {
-
-                                    await collectionDownloader.RescanDownloads(_revision, cancellationToken);
-
-                                    _notificationService.ShowToast("Rescan complete", ToastNotificationVariant.Success);
-
+                                    _isRescanning.OnNext(true);
+                                    try
+                                    {
+                                        await collectionDownloader.RescanDownloads(_revision, cancellationToken);
+                                        _notificationService.ShowToast("Rescan complete", ToastNotificationVariant.Success);
+                                    }
+                                    finally
+                                    {
+                                        _isRescanning.OnNext(false);
+                                    }
                                 },
-
                                 awaitOperation: AwaitOperation.Drop,
-
                                 configureAwait: false
-
                             );
 
                     
@@ -690,6 +695,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
     private readonly BehaviorSubject<bool> _canInstallRequiredItems = new(initialValue: false);
     private readonly BehaviorSubject<bool> _canInstallOptionalItems = new(initialValue: false);
     public BindableReactiveProperty<bool> IsInstalling { get; } = new(value: false);
+    private readonly BehaviorSubject<bool> _isRescanning = new(initialValue: false);
 
     public BindableReactiveProperty<bool> IsUpdateAvailable { get; }
     public BindableReactiveProperty<Optional<RevisionNumber>> NewestRevisionNumber { get; } = new();
