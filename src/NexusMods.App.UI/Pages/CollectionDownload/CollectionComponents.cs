@@ -50,6 +50,7 @@ public static class CollectionColumns
         public static readonly ComponentKey ExternalDownloadComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(CollectionColumns) + "_" + "ExternalDownload");
         public static readonly ComponentKey ManualDownloadComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(CollectionColumns) + "_" + "ManualDownload");
         public static readonly ComponentKey InstallComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(CollectionColumns) + "_" + "Install");
+        public static readonly ComponentKey ViewModPageComponentKey = ComponentKey.From(ColumnTemplateResourceKey + "_" + nameof(CollectionColumns) + "_" + "ViewModPage");
 
         public static string GetColumnHeader() => "Actions";
         public static string GetColumnTemplateResourceKey() => ColumnTemplateResourceKey;
@@ -150,15 +151,42 @@ public static class CollectionComponents
             IsDownloading = _downloadStatus
                 .Select(status => status == JobStatus.Running)
                 .ToReadOnlyBindableReactiveProperty(initialValue: false);
+
+            IsPaused = _downloadStatus
+                .Select(status => status == JobStatus.Paused)
+                .ToReadOnlyBindableReactiveProperty(initialValue: false);
+
+            CanPause = _downloadStatus
+                .Select(status => status == JobStatus.Running)
+                .ToBindableReactiveProperty(initialValue: false);
+
+            CanResume = _downloadStatus
+                .Select(status => status == JobStatus.Paused)
+                .ToBindableReactiveProperty(initialValue: false);
+
+            CanCancel = _downloadStatus
+                .Select(status => status is JobStatus.Created or JobStatus.Running or JobStatus.Paused)
+                .ToBindableReactiveProperty(initialValue: false);
+
+            PauseCommand = new ReactiveCommand<Unit>();
+            ResumeCommand = new ReactiveCommand<Unit>();
+            CancelCommand = new ReactiveCommand<Unit>();
         }
 
         public ReactiveCommand<Unit, TEntity> CommandDownload { get; }
+        public ReactiveCommand<Unit> PauseCommand { get; }
+        public ReactiveCommand<Unit> ResumeCommand { get; }
+        public ReactiveCommand<Unit> CancelCommand { get; }
 
         private readonly BehaviorSubject<bool> _canDownload = new(initialValue: false);
         private readonly BindableReactiveProperty<JobStatus> _downloadStatus = new(value: JobStatus.None);
         public IReadOnlyBindableReactiveProperty<JobStatus> DownloadStatus => _downloadStatus;
 
         public IReadOnlyBindableReactiveProperty<bool> IsDownloading { get; }
+        public IReadOnlyBindableReactiveProperty<bool> IsPaused { get; }
+        public BindableReactiveProperty<bool> CanPause { get; }
+        public BindableReactiveProperty<bool> CanResume { get; }
+        public BindableReactiveProperty<bool> CanCancel { get; }
 
         private readonly BindableReactiveProperty<string> _buttonText = new(value: "");
         public IReadOnlyBindableReactiveProperty<string> ButtonText => _buttonText;
@@ -177,7 +205,9 @@ public static class CollectionComponents
                 _isDisposed = true;
                 if (disposing)
                 {
-                    Disposable.Dispose(_activationDisposable,IsDownloading, CommandDownload, _canDownload, _buttonText, _downloadStatus);
+                    Disposable.Dispose(_activationDisposable, IsDownloading, IsPaused, CommandDownload,
+                        PauseCommand, ResumeCommand, CancelCommand,
+                        _canDownload, _buttonText, _downloadStatus, CanPause, CanResume, CanCancel);
                 }
             }
 

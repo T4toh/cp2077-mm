@@ -13,8 +13,9 @@
             <x:Type TypeName="controls:CompositeItemModel" x:TypeArguments="abstractions:EntityId" />
         </DataTemplate.DataType>
 
-        <controls:MultiComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
-            <controls:MultiComponentControl.AvailableTemplates>
+        <StackPanel Orientation="Horizontal" Spacing="4">
+            <controls:MultiComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+                <controls:MultiComponentControl.AvailableTemplates>
                 
                 <!-- Nexus Mods download -->
                 <controls:ComponentTemplate x:TypeArguments="local:CollectionComponents+NexusModsDownloadAction"
@@ -29,13 +30,64 @@
                                                          Type="Tertiary"
                                                          Fill="Weak"
                                                          HorizontalAlignment="Center"
-                                                         IsVisible="{CompiledBinding !IsDownloading.Value}"
-                                                         Text="{CompiledBinding ButtonText.Value}"/>
+                                                         Text="{CompiledBinding ButtonText.Value}">
+                                    <controls:StandardButton.IsVisible>
+                                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                            <CompiledBinding Path="!IsDownloading.Value"/>
+                                            <CompiledBinding Path="!IsPaused.Value"/>
+                                        </MultiBinding>
+                                    </controls:StandardButton.IsVisible>
+                                </controls:StandardButton>
                                 <StackPanel x:Name="DownloadingStack" 
                                             Orientation="Horizontal" 
+                                            Spacing="4"
                                             IsVisible="{CompiledBinding IsDownloading.Value}">
                                     <spinner:Spinner IsVisible="{CompiledBinding IsDownloading.Value}"/>
-                                    <TextBlock Text="{CompiledBinding ButtonText.Value}"/>
+                                    <TextBlock Text="{CompiledBinding ButtonText.Value}" VerticalAlignment="Center"/>
+                                    
+                                    <!-- Pause Button -->
+                                    <controls:StandardButton Command="{CompiledBinding PauseCommand}" 
+                                            IsVisible="{CompiledBinding CanPause.Value}"
+                                            LeftIcon="{x:Static icons:IconValues.Pause}"
+                                            ShowIcon="Left"
+                                            ShowLabel="False"
+                                            Size="Small"
+                                            ToolTip.Tip="Pause"/>
+                                    
+                                    <!-- Cancel Button -->
+                                    <controls:StandardButton Command="{CompiledBinding CancelCommand}" 
+                                                             IsVisible="{CompiledBinding CanCancel.Value}"
+                                                             LeftIcon="{x:Static icons:IconValues.Close}"
+                                                             ShowIcon="Left"
+                                                             ShowLabel="False"
+                                                             Size="Small"
+                                                             ToolTip.Tip="Cancel"/>
+                                </StackPanel>
+                                
+                                <!-- Paused state -->
+                                <StackPanel Orientation="Horizontal"
+                                            Spacing="4"
+                                            IsVisible="{CompiledBinding IsPaused.Value}">
+                                    <icons:UnifiedIcon Value="{x:Static icons:IconValues.Pause}" Size="16"/>
+                                    <TextBlock Text="Paused" VerticalAlignment="Center"/>
+                                    
+                                    <!-- Resume Button -->
+                                    <controls:StandardButton Command="{CompiledBinding ResumeCommand}" 
+                                                             IsVisible="{CompiledBinding CanResume.Value}"
+                                                             LeftIcon="{x:Static icons:IconValues.PlayArrow}"
+                                                             ShowIcon="Left"
+                                                             ShowLabel="False"
+                                                             Size="Small"
+                                                             ToolTip.Tip="Resume"/>
+                                    
+                                    <!-- Cancel Button -->
+                                    <controls:StandardButton Command="{CompiledBinding CancelCommand}" 
+                                                             IsVisible="{CompiledBinding CanCancel.Value}"
+                                                             LeftIcon="{x:Static icons:IconValues.Close}"
+                                                             ShowIcon="Left"
+                                                             ShowLabel="False"
+                                                             Size="Small"
+                                                             ToolTip.Tip="Cancel"/>
                                 </StackPanel>
                                 
                             </Panel>
@@ -103,7 +155,30 @@
                     </controls:ComponentTemplate.DataTemplate>
                 </controls:ComponentTemplate>
             </controls:MultiComponentControl.AvailableTemplates>
-        </controls:MultiComponentControl>
+            </controls:MultiComponentControl>
+
+            <!-- View Mod Page button (visible for NexusMods items) -->
+            <controls:ComponentControl x:TypeArguments="abstractions:EntityId" Content="{CompiledBinding}">
+                <controls:ComponentControl.ComponentTemplate>
+                    <controls:ComponentTemplate x:TypeArguments="controls:SharedComponents+ViewModPageAction"
+                                                ComponentKey="{x:Static local:CollectionColumns+Actions.ViewModPageComponentKey}">
+                        <controls:ComponentTemplate.DataTemplate>
+                            <DataTemplate DataType="{x:Type controls:SharedComponents+ViewModPageAction}">
+                                <controls:StandardButton Command="{CompiledBinding CommandViewModPage}"
+                                                         IsVisible="{CompiledBinding IsEnabled.Value}"
+                                                         LeftIcon="{x:Static icons:IconValues.OpenInNew}"
+                                                         ShowIcon="Left"
+                                                         ShowLabel="False"
+                                                         Size="Small"
+                                                         Type="Tertiary"
+                                                         Fill="Weak"
+                                                         ToolTip.Tip="View Mod Page"/>
+                            </DataTemplate>
+                        </controls:ComponentTemplate.DataTemplate>
+                    </controls:ComponentTemplate>
+                </controls:ComponentControl.ComponentTemplate>
+            </controls:ComponentControl>
+        </StackPanel>
     </DataTemplate>
 
     <!-- Download Progress column -->

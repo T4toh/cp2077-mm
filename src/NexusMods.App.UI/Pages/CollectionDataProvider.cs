@@ -131,6 +131,9 @@ public class CollectionDataProvider : ICollectionDataProvider
         // Add progress and speed components that appear when a matching download is active
         AddDownloadProgressComponents(itemModel, download.FileMetadata.Id);
 
+        // Add "View Mod Page" action for NexusMods items
+        itemModel.Add(CollectionColumns.Actions.ViewModPageComponentKey, new SharedComponents.ViewModPageAction(isEnabled: true));
+
         return itemModel;
     }
 
