@@ -20,8 +20,6 @@
         <StackPanel Margin="12,0,12,12" x:Name="LeftMenuStack">
             <items:LeftMenuItemView x:Name="MyGamesItem" />
             <items:LeftMenuItemView x:Name="MyLoadoutsItem" />
-            <items:LeftMenuItemView x:Name="DownloadsItem" />
-            <items:LeftMenuItemView x:Name="CollectionsItem" />
             <items:LeftMenuItemView x:Name="StorageItem" />
 
             <ItemsControl x:Name="CollectionItemsControl">

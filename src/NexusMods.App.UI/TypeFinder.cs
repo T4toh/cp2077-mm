@@ -48,6 +48,7 @@ internal class TypeFinder : ITypeFinder
 #if DEBUG
         typeof(ProtocolRegistrationTestPageContext),
 #endif
+        // Kept for backward compat: persisted window state may reference these
         typeof(DownloadsPageContext),
         typeof(EssentialModsPageContext),
         typeof(StorageManagerPageContext),
@@ -56,6 +57,7 @@ internal class TypeFinder : ITypeFinder
         typeof(EmptyContext),
         typeof(HomeContext),
         typeof(LoadoutContext),
+        // Kept for backward compat: persisted window state may reference this
         typeof(DownloadsContext),
         typeof(CollectionDownloadPageContext),
 #if DEBUG

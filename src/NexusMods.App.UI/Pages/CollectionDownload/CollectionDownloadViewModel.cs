@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Reactive.Linq;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Media.Imaging;
@@ -19,6 +20,7 @@ using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.App.UI.Pages.LoadoutPage;
 using NexusMods.App.UI.Pages.TextEdit;
 using NexusMods.App.UI.Resources;
+using NexusMods.App.UI.Settings;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
 using NexusMods.Collections;
@@ -27,6 +29,7 @@ using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Networking.NexusWebApi;
 using NexusMods.Paths;
 using NexusMods.Sdk;
+using NexusMods.Abstractions.Downloads;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.UI.Sdk;
@@ -68,6 +71,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
         _logger = serviceProvider.GetRequiredService<ILogger<CollectionDownloadViewModel>>();
 
         var connection = serviceProvider.GetRequiredService<IConnection>();
+        var downloadsService = serviceProvider.GetRequiredService<IDownloadsService>();
         var mappingCache = serviceProvider.GetRequiredService<IGameDomainToGameIdMappingCache>();
         var osInterop = serviceProvider.GetRequiredService<IOSInterop>();
         var avaloniaInterop = serviceProvider.GetRequiredService<IAvaloniaInterop>();
@@ -365,7 +369,16 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
 
                     
             {
+                // Show loading while the adapter initializes its data source
+                IsLoading = true;
+
                 TreeDataGridAdapter.Activate().AddTo(disposables);
+
+                // Clear loading once the adapter's data source is ready
+                TreeDataGridAdapter.IsSourceEmpty
+                    .Take(1)
+                    .Subscribe(_ => IsLoading = false)
+                    .AddTo(disposables);
 
                 jobMonitor
                     .HasActiveJob<InstallCollectionJob>(job => job.RevisionMetadata.Id == _revision.Id)
@@ -491,6 +504,10 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                     .Subscribe(this, static (bitmap, self) => self.AuthorAvatar = bitmap)
                     .AddTo(disposables);
 
+                // Materialize active downloads cache for synchronous lookups in download control handlers
+                var activeDownloadsCache = downloadsService.ActiveDownloads.AsObservableCache();
+                disposables.Add(activeDownloadsCache);
+
                 TreeDataGridAdapter.MessageSubject.SubscribeAwait(
                     onNextAsync: (message, cancellationToken) =>
                     {
@@ -498,12 +515,43 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                             f0: installMessage => InstallItem(installMessage.DownloadEntity, cancellationToken),
                             f1: downloadNexusMods => collectionDownloader.Download(downloadNexusMods.DownloadEntity, cancellationToken),
                             f2: downloadExternal => collectionDownloader.Download(downloadExternal.DownloadEntity, cancellationToken),
-                            f3: manualDownloadOpenModal => OpenManualDownloadModal(manualDownloadOpenModal.DownloadEntity)
+                            f3: manualDownloadOpenModal => OpenManualDownloadModal(manualDownloadOpenModal.DownloadEntity),
+                            f4: pauseMsg =>
+                            {
+                                HandleDownloadControl(pauseMsg.EntityId, connection, activeDownloadsCache,
+                                    static (svc, info) => svc.PauseDownload(info), downloadsService);
+                                return ValueTask.CompletedTask;
+                            },
+                            f5: resumeMsg =>
+                            {
+                                HandleDownloadControl(resumeMsg.EntityId, connection, activeDownloadsCache,
+                                    static (svc, info) => svc.ResumeDownload(info), downloadsService);
+                                return ValueTask.CompletedTask;
+                            },
+                            f6: cancelMsg =>
+                            {
+                                HandleDownloadControl(cancelMsg.EntityId, connection, activeDownloadsCache,
+                                    static (svc, info) => svc.CancelDownload(info), downloadsService);
+                                return ValueTask.CompletedTask;
+                            },
+                            f7: viewModPageMsg =>
+                            {
+                                OpenModPage(viewModPageMsg.EntityId, connection, osInterop);
+                                return ValueTask.CompletedTask;
+                            }
                         );
                     },
                     awaitOperation: AwaitOperation.Parallel,
                     configureAwait: false
                 ).AddTo(disposables);
+
+                // Re-sort the collection list when active downloads change (start/complete).
+                // Debounce to ensure progress components have been added/removed before sorting.
+                downloadsService.ActiveDownloads
+                    .Throttle(TimeSpan.FromMilliseconds(300))
+                    .ObserveOn(RxApp.MainThreadScheduler)
+                    .Subscribe(_ => TreeDataGridAdapter.ReapplyCurrentSort())
+                    .AddTo(disposables);
 
                 R3.Observable.Return(_revision)
                     .ObserveOnThreadPool()
@@ -590,6 +638,36 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
         await monitor.Begin<InstallCollectionDownloadJob, LoadoutItemGroup.ReadOnly>(job);
     }
 
+    private static void HandleDownloadControl(
+        EntityId collectionDownloadEntityId,
+        IConnection connection,
+        IObservableCache<DownloadInfo, DownloadId> activeDownloadsCache,
+        Action<IDownloadsService, DownloadInfo> action,
+        IDownloadsService downloadsService)
+    {
+        var db = connection.Db;
+        if (!CollectionDownloadNexusMods.TryGet(db, collectionDownloadEntityId, out var nexusModsDownload))
+            return;
+
+        var fileMetadataId = nexusModsDownload.Value.FileMetadata.Id;
+        var downloadInfo = activeDownloadsCache.Items
+            .FirstOrDefault(d => d.FileMetadataId.Value == fileMetadataId);
+
+        if (downloadInfo is not null)
+            action(downloadsService, downloadInfo);
+    }
+
+    private static void OpenModPage(EntityId collectionDownloadEntityId, IConnection connection, IOSInterop osInterop)
+    {
+        var db = connection.Db;
+        if (!CollectionDownloadNexusMods.TryGet(db, collectionDownloadEntityId, out var nexusModsDownload))
+            return;
+
+        var modPage = nexusModsDownload.Value.FileMetadata.ModPage;
+        var uri = NexusModsUrlBuilder.GetModUri(modPage.GameDomain, modPage.Uid.ModId);
+        osInterop.OpenUri(uri);
+    }
+
     public BindableReactiveProperty<bool> IsInstalled { get; } = new(value: false);
 
     public BindableReactiveProperty<bool> HasInstalledAllOptionalItems { get; } = new(value: false);
@@ -662,26 +740,44 @@ public readonly record struct DownloadExternalMessage(CollectionDownloadExternal
 
 public readonly record struct ManualDownloadOpenModal(CollectionDownloadExternal.ReadOnly DownloadEntity);
 
+public readonly record struct PauseDownloadMessage(EntityId EntityId);
+
+public readonly record struct ResumeDownloadMessage(EntityId EntityId);
+
+public readonly record struct CancelDownloadMessage(EntityId EntityId);
+
+public readonly record struct ViewModPageMessage(EntityId EntityId);
+
 public class CollectionDownloadTreeDataGridAdapter :
     TreeDataGridAdapter<CompositeItemModel<EntityId>, EntityId>,
-    ITreeDataGirdMessageAdapter<OneOf<InstallMessage, DownloadNexusModsMessage, DownloadExternalMessage, ManualDownloadOpenModal>>
+    ITreeDataGirdMessageAdapter<OneOf<InstallMessage, DownloadNexusModsMessage, DownloadExternalMessage, ManualDownloadOpenModal, PauseDownloadMessage, ResumeDownloadMessage, CancelDownloadMessage, ViewModPageMessage>>
 {
     private readonly CollectionRevisionMetadata.ReadOnly _revisionMetadata;
     private readonly Optional<LoadoutId> _targetLoadout;
-    private readonly CollectionDataProvider _collectionDataProvider;
+    private readonly ICollectionDataProvider _collectionDataProvider;
 
     public R3.ReactiveProperty<CollectionDownloadsFilter> Filter { get; } = new(value: CollectionDownloadsFilter.OnlyRequired);
 
-    public Subject<OneOf<InstallMessage, DownloadNexusModsMessage, DownloadExternalMessage, ManualDownloadOpenModal>> MessageSubject { get; } = new();
+    public Subject<OneOf<InstallMessage, DownloadNexusModsMessage, DownloadExternalMessage, ManualDownloadOpenModal, PauseDownloadMessage, ResumeDownloadMessage, CancelDownloadMessage, ViewModPageMessage>> MessageSubject { get; } = new();
 
     public CollectionDownloadTreeDataGridAdapter(
         IServiceProvider serviceProvider,
         CollectionRevisionMetadata.ReadOnly revisionMetadata,
-        Optional<LoadoutId> targetLoadout) : base(serviceProvider)
+        Optional<LoadoutId> targetLoadout) : base(serviceProvider, new TreeDataGridSortingOptions
+        {
+            UseSortingStatePersistence = true,
+            SettingsScopeKey = "CollectionDownloadTreeDataGrid",
+            DefaultSortingState = new TreeDataGridSortingStateSettings
+            {
+                SortedColumnKey = CollectionColumns.DownloadProgress.ColumnTemplateResourceKey,
+                SortDirection = ListSortDirection.Descending,
+                SchemaRevision = 1,
+            },
+        })
     {
         _revisionMetadata = revisionMetadata;
         _targetLoadout = targetLoadout;
-        _collectionDataProvider = serviceProvider.GetRequiredService<CollectionDataProvider>();
+        _collectionDataProvider = serviceProvider.GetRequiredService<ICollectionDataProvider>();
     }
 
     protected override IObservable<IChangeSet<CompositeItemModel<EntityId>, EntityId>> GetRootsObservable(bool viewHierarchical)
@@ -702,8 +798,19 @@ public class CollectionDownloadTreeDataGridAdapter :
         model.SubscribeToComponentAndTrack<CollectionComponents.NexusModsDownloadAction, CollectionDownloadTreeDataGridAdapter>(
             key: CollectionColumns.Actions.NexusModsDownloadComponentKey,
             state: this,
-            factory: static (self, _, component) =>
-                component.CommandDownload.Subscribe(self, static (downloadEntity, self) => { self.MessageSubject.OnNext(new DownloadNexusModsMessage(downloadEntity)); })
+            factory: static (self, model, component) =>
+            {
+                var entityId = model.Key;
+                var d1 = component.CommandDownload.Subscribe(self, static (downloadEntity, self) =>
+                    self.MessageSubject.OnNext(new DownloadNexusModsMessage(downloadEntity)));
+                var d2 = component.PauseCommand.Subscribe((self, entityId), static (_, state) =>
+                    state.self.MessageSubject.OnNext(new PauseDownloadMessage(state.entityId)));
+                var d3 = component.ResumeCommand.Subscribe((self, entityId), static (_, state) =>
+                    state.self.MessageSubject.OnNext(new ResumeDownloadMessage(state.entityId)));
+                var d4 = component.CancelCommand.Subscribe((self, entityId), static (_, state) =>
+                    state.self.MessageSubject.OnNext(new CancelDownloadMessage(state.entityId)));
+                return Disposable.Combine(d1, d2, d3, d4);
+            }
         );
 
         model.SubscribeToComponentAndTrack<CollectionComponents.ExternalDownloadAction, CollectionDownloadTreeDataGridAdapter>(
@@ -719,6 +826,32 @@ public class CollectionDownloadTreeDataGridAdapter :
             factory: static (self, _, component) =>
                 component.CommandOpenModal.Subscribe(self, static (downloadEntity, self) => { self.MessageSubject.OnNext(new ManualDownloadOpenModal(downloadEntity)); })
         );
+
+        model.SubscribeToComponentAndTrack<SharedComponents.ViewModPageAction, CollectionDownloadTreeDataGridAdapter>(
+            key: CollectionColumns.Actions.ViewModPageComponentKey,
+            state: this,
+            factory: static (self, model, component) =>
+                component.CommandViewModPage.Subscribe((self, model.Key), static (_, state) =>
+                    state.self.MessageSubject.OnNext(new ViewModPageMessage(state.Key)))
+        );
+    }
+
+    /// <summary>
+    /// Re-applies the current column sort to reflect changes in download status.
+    /// </summary>
+    public void ReapplyCurrentSort()
+    {
+        var source = Source.Value;
+        if (source is null) return;
+
+        foreach (var col in source.Columns)
+        {
+            if (col.SortDirection is { } direction)
+            {
+                source.SortBy(col, direction);
+                return;
+            }
+        }
     }
 
     protected override IColumn<CompositeItemModel<EntityId>>[] CreateColumns(bool viewHierarchical)
@@ -730,6 +863,8 @@ public class CollectionDownloadTreeDataGridAdapter :
             viewHierarchical ? ITreeDataGridItemModel<CompositeItemModel<EntityId>, EntityId>.CreateExpanderColumn(nameColumn) : nameColumn,
             ColumnCreator.Create<EntityId, LibraryColumns.ItemVersion>(),
             ColumnCreator.Create<EntityId, SharedColumns.ItemSize>(),
+            ColumnCreator.Create<EntityId, CollectionColumns.DownloadProgress>(sortDirection: ListSortDirection.Descending),
+            ColumnCreator.Create<EntityId, CollectionColumns.DownloadSpeed>(),
             ColumnCreator.Create<EntityId, CollectionColumns.Actions>(),
         ];
     }

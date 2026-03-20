@@ -9,10 +9,6 @@ public interface IHomeLeftMenuViewModel : ILeftMenuViewModel
     
     public ILeftMenuItemViewModel LeftMenuItemMyLoadouts { get; }
 
-    public ILeftMenuItemViewModel LeftMenuItemDownloads { get; }
-
-    public ILeftMenuItemViewModel LeftMenuItemCollections { get; }
-
     public ILeftMenuItemViewModel LeftMenuItemStorage { get; }
 
     public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuCollectionItems { get; }

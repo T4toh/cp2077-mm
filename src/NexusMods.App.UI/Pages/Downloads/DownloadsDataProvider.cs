@@ -14,6 +14,9 @@ using NexusMods.Sdk.Resources;
 using R3;
 using ReactiveUI;
 
+using SizeProgressComponent = NexusMods.App.UI.Controls.SharedProgressComponents.SizeProgressComponent;
+using SpeedComponent = NexusMods.App.UI.Controls.SharedProgressComponents.SpeedComponent;
+
 namespace NexusMods.App.UI.Pages.Downloads;
 
 /// <summary>
@@ -68,14 +71,14 @@ public sealed class DownloadsDataProvider(IServiceProvider serviceProvider) : ID
             gameName: ResolveGameName(download.GameId.Value)));
 
         // Add size progress component (Size column)
-        model.Add(DownloadColumns.Size.ComponentKey, new DownloadComponents.SizeProgressComponent(
+        model.Add(DownloadColumns.Size.ComponentKey, new SizeProgressComponent(
             initialDownloaded: download.DownloadedBytes.Value,
             initialTotal: download.FileSize.Value,
             downloadedObservable: download.DownloadedBytes.AsObservable(),
             totalObservable: download.FileSize.AsObservable()));
 
         // Add speed component (Speed column)
-        model.Add(DownloadColumns.Speed.ComponentKey, new DownloadComponents.SpeedComponent(
+        model.Add(DownloadColumns.Speed.ComponentKey, new SpeedComponent(
             initialTransferRate: download.TransferRate.Value,
             transferRateObservable: download.TransferRate.AsObservable()));
 

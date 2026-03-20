@@ -3,10 +3,8 @@ using System.Reactive.Disposables;
 using JetBrains.Annotations;
 using NexusMods.Abstractions.NexusModsLibrary.Models;
 using NexusMods.App.UI.Controls;
-using NexusMods.App.UI.Controls.Navigation;
 using NexusMods.App.UI.LeftMenu.Items;
 using NexusMods.App.UI.Pages.CollectionDownload;
-using NexusMods.App.UI.Pages.Downloads;
 using NexusMods.App.UI.Pages.MyGames;
 using NexusMods.App.UI.Pages.MyLoadouts;
 using NexusMods.App.UI.Pages.StorageManager;
@@ -31,8 +29,6 @@ public class HomeLeftMenuViewModel : AViewModel<IHomeLeftMenuViewModel>, IHomeLe
     public WorkspaceId WorkspaceId { get; }
     public ILeftMenuItemViewModel LeftMenuItemMyGames { get; }
     public ILeftMenuItemViewModel LeftMenuItemMyLoadouts { get; }
-    public ILeftMenuItemViewModel LeftMenuItemDownloads { get; }
-    public ILeftMenuItemViewModel LeftMenuItemCollections { get; }
     public ILeftMenuItemViewModel LeftMenuItemStorage { get; }
 
     public ReadOnlyObservableCollection<ILeftMenuItemViewModel> LeftMenuCollectionItems => _leftMenuCollectionItems;
@@ -73,38 +69,6 @@ public class HomeLeftMenuViewModel : AViewModel<IHomeLeftMenuViewModel>, IHomeLe
         {
             Text = new StringComponent(Language.MyLoadoutsPageTitle),
             Icon = IconValues.Package,
-        };
-
-        LeftMenuItemDownloads = new LeftMenuItemViewModel(
-            workspaceController,
-            WorkspaceId,
-            new PageData
-            {
-                FactoryId = DownloadsPageFactory.StaticId,
-                Context = new DownloadsPageContext { GameScope = Optional<NexusModsGameId>.None },
-            }
-        )
-        {
-            Text = new StringComponent(Language.Downloads_WorkspaceTitle),
-            Icon = IconValues.Download,
-        };
-
-        LeftMenuItemCollections = new LeftMenuItemViewModel(
-            workspaceController,
-            WorkspaceId,
-            new PageData
-            {
-                // We don't have a generic collections page, but we can list them here?
-                // Or just show "All Collections" if such page exists.
-                // For now, let's keep it as a placeholder or remove it if not needed.
-                // Actually the user wants "My Collections" (Downloads menu).
-                FactoryId = DownloadsPageFactory.StaticId,
-                Context = new DownloadsPageContext { GameScope = Optional<NexusModsGameId>.None },
-            }
-        )
-        {
-            Text = new StringComponent("My Collections"), // User specifically asked for this name
-            Icon = IconValues.CollectionsOutline,
         };
 
         LeftMenuItemStorage = new LeftMenuItemViewModel(

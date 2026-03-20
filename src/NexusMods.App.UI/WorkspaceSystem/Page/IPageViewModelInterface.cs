@@ -39,6 +39,15 @@ public interface IPageViewModelInterface : IViewModelInterface
     PanelTabId TabId { get; set; }
 
     /// <summary>
+    /// Gets or sets whether this page is currently loading data.
+    /// </summary>
+    /// <remarks>
+    /// Set to <c>true</c> when performing async data fetches (e.g., loading a TreeDataGrid source,
+    /// fetching from an API). The view layer can bind to this to show a loading indicator.
+    /// </remarks>
+    bool IsLoading { get; set; }
+
+    /// <summary>
     /// Called before the tab is closed.
     /// </summary>
     /// <remarks>
