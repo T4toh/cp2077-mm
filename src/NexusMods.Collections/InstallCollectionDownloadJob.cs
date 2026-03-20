@@ -137,11 +137,23 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
         // Validate the archive physically exists on disk — the DB may say "downloaded"
         // but the .nx archive could have been deleted (garbage collection, manual cleanup, etc.)
-        if (!await FileStore.HaveFile(libraryFile.Hash))
+        // For archives, check a child's hash since the file store indexes contents, not the archive itself.
+        var archiveMissing = false;
+        if (libraryFile.TryGetAsLibraryArchive(out var checkArchive))
         {
-            Logger.LogWarning("[INSTALL] Archive for '{Name}' (index={Index}, hash={Hash}) is missing from file store — needs re-download",
-                Item.Name, Item.ArrayIndex, libraryFile.Hash);
-            throw new InvalidOperationException($"Item '{Item.Name}' (index={Item.ArrayIndex}) has a broken archive (hash={libraryFile.Hash}). Please re-download it.");
+            var children = checkArchive.Children;
+            if (children.Count > 0 && !await FileStore.HaveFile(children.First().AsLibraryFile().Hash))
+                archiveMissing = true;
+        }
+        else if (!await FileStore.HaveFile(libraryFile.Hash))
+        {
+            archiveMissing = true;
+        }
+        if (archiveMissing)
+        {
+            Logger.LogWarning("[INSTALL] Archive for '{Name}' (index={Index}) is missing from file store — needs re-download",
+                Item.Name, Item.ArrayIndex);
+            throw new InvalidOperationException($"Item '{Item.Name}' (index={Item.ArrayIndex}) has a broken archive. Please re-download it.");
         }
         if (CollectionMod.Patches.Count > 0)
         {

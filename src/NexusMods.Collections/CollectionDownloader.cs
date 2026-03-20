@@ -598,11 +598,37 @@ public class CollectionDownloader
 
         if (!libraryItem.TryGetAsLibraryFile(out var libraryFile)) return status;
 
-        if (!await _fileStore.HaveFile(libraryFile.Hash))
+        try
         {
-            _logger.LogWarning("[VALIDATE] Library item '{Name}' (hash={Hash}) reports as downloaded but archive is missing from file store — marking as NotDownloaded",
-                libraryItem.Name, libraryFile.Hash);
-            return new CollectionDownloadStatus.NotDownloaded();
+            // For archives (zip/7z/rar), the file store indexes the CONTENTS (children),
+            // not the archive file itself. Check a child's hash instead.
+            if (libraryFile.TryGetAsLibraryArchive(out var archive))
+            {
+                var children = archive.Children;
+                if (children.Count > 0)
+                {
+                    var firstChild = children.First();
+                    if (!await _fileStore.HaveFile(firstChild.AsLibraryFile().Hash))
+                    {
+                        _logger.LogWarning("[VALIDATE] Archive '{Name}' contents missing from file store (checked child hash={Hash}) — marking as NotDownloaded",
+                            libraryItem.Name, firstChild.AsLibraryFile().Hash);
+                        return new CollectionDownloadStatus.NotDownloaded();
+                    }
+                    return status;
+                }
+            }
+
+            // For plain files (non-archives), check the file hash directly
+            if (!await _fileStore.HaveFile(libraryFile.Hash))
+            {
+                _logger.LogWarning("[VALIDATE] Library file '{Name}' (hash={Hash}) missing from file store — marking as NotDownloaded",
+                    libraryItem.Name, libraryFile.Hash);
+                return new CollectionDownloadStatus.NotDownloaded();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "[VALIDATE] Error checking archive existence for '{Name}', assuming available", libraryItem.Name);
         }
 
         return status;
