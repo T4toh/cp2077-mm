@@ -297,6 +297,10 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         var hashedCount = 0;
         var failedCount = 0;
 
+        // Build a path→HashMapping index for fallback when MD5 doesn't match
+        // (happens when mod author updated the file on Nexus after the collection was created)
+        ConcurrentDictionary<RelativePath, HashMapping> pathIndex = new();
+
         Logger.LogInformation("[REPLICATED] Starting MD5 hashing for '{ModName}' — {Total} files in archive", CollectionMod.Name, totalChildren);
 
         await Parallel.ForEachAsync(libraryArchive.Children, async (child, token) =>
@@ -307,11 +311,13 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
                 var md5 = await Md5Hasher.HashAsync(stream, cancellationToken: token);
 
                 var file = child.AsLibraryFile();
-                hashes[md5] = new HashMapping()
+                var mapping = new HashMapping()
                 {
                     Hash = file.Hash,
                     Size = file.Size,
                 };
+                hashes[md5] = mapping;
+                pathIndex[child.Path] = mapping;
                 Interlocked.Increment(ref hashedCount);
             }
             catch (Exception ex)
@@ -371,14 +377,25 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         // Now we map the files to their locations based on the hashes
         var mappedCount = 0;
         var unmappedCount = 0;
+        var pathFallbackCount = 0;
         foreach (var pair in CollectionMod.Hashes)
         {
             // Try and find the hash we are looking for
             if (!hashes.TryGetValue(pair.MD5, out var libraryItem))
             {
-                unmappedCount++;
-                Logger.LogWarning("[REPLICATED] MD5 hash {MD5} for file '{Path}' was not found in hash dictionary — skipping", pair.MD5, pair.Path);
-                continue;
+                // MD5 didn't match — try fallback by path (handles updated files on Nexus)
+                if (pathIndex.TryGetValue(pair.Path, out var fallbackItem))
+                {
+                    libraryItem = fallbackItem;
+                    pathFallbackCount++;
+                    Logger.LogInformation("[REPLICATED] MD5 mismatch for '{Path}' — using path fallback (mod was likely updated on Nexus)", pair.Path);
+                }
+                else
+                {
+                    unmappedCount++;
+                    Logger.LogWarning("[REPLICATED] MD5 hash {MD5} for file '{Path}' not found by hash or path — skipping", pair.MD5, pair.Path);
+                    continue;
+                }
             }
 
             mappedCount++;
@@ -401,8 +418,8 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             };
         }
 
-        Logger.LogInformation("[REPLICATED] File mapping complete for '{ModName}': {Mapped}/{Total} mapped, {Unmapped} unmapped (collection expects {Expected} files)",
-            CollectionMod.Name, mappedCount, CollectionMod.Hashes.Length, unmappedCount, CollectionMod.Hashes.Length);
+        Logger.LogInformation("[REPLICATED] File mapping complete for '{ModName}': {Mapped}/{Total} mapped ({PathFallback} via path fallback), {Unmapped} unmapped (collection expects {Expected} files)",
+            CollectionMod.Name, mappedCount, CollectionMod.Hashes.Length, pathFallbackCount, unmappedCount, CollectionMod.Hashes.Length);
 
         return group.Id;
     });
