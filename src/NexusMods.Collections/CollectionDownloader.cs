@@ -588,13 +588,30 @@ public class CollectionDownloader
     }
 
     /// <summary>
-    /// Validates that a status reporting "InLibrary" actually has its archive files on disk.
+    /// Validates that a status reporting "InLibrary" or "Installed" actually has its archive files on disk.
     /// If the archive is missing, downgrades the status to "NotDownloaded" so the UI
     /// shows the download button and the user can re-download.
     /// </summary>
     public async ValueTask<CollectionDownloadStatus> ValidateStatusAsync(CollectionDownloadStatus status)
     {
-        if (!status.IsInLibrary(out var libraryItem)) return status;
+        // Extract the LibraryItem from either InLibrary or Installed status
+        LibraryItem.ReadOnly libraryItem;
+        if (status.IsInLibrary(out libraryItem))
+        {
+            // Already have the library item
+        }
+        else if (status.IsInstalled(out var loadoutItem))
+        {
+            // Trace back: LoadoutItem → LibraryLinkedLoadoutItem → LibraryItem
+            var linked = LibraryLinkedLoadoutItem.Load(_connection.Db, loadoutItem.Id);
+            if (!linked.IsValid())
+                return status; // Not library-linked, can't validate
+            libraryItem = linked.LibraryItem;
+        }
+        else
+        {
+            return status;
+        }
 
         if (!libraryItem.TryGetAsLibraryFile(out var libraryFile)) return status;
 
