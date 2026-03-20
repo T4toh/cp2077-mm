@@ -134,6 +134,15 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         }
 
         var libraryFile = GetLibraryFile(Item, Connection.Db);
+
+        // Validate the archive physically exists on disk — the DB may say "downloaded"
+        // but the .nx archive could have been deleted (garbage collection, manual cleanup, etc.)
+        if (!await FileStore.HaveFile(libraryFile.Hash))
+        {
+            Logger.LogWarning("[INSTALL] Archive for '{Name}' (index={Index}, hash={Hash}) is missing from file store — needs re-download",
+                Item.Name, Item.ArrayIndex, libraryFile.Hash);
+            throw new InvalidOperationException($"Item '{Item.Name}' (index={Item.ArrayIndex}) has a broken archive (hash={libraryFile.Hash}). Please re-download it.");
+        }
         if (CollectionMod.Patches.Count > 0)
         {
             if (!libraryFile.TryGetAsLibraryArchive(out var libraryArchive)) throw new NotSupportedException("Expected library file to be an archive");

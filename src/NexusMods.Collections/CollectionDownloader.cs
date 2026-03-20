@@ -22,6 +22,7 @@ using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Networking.NexusWebApi;
 using NexusMods.Paths;
 using NexusMods.Sdk;
+using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.Sdk.NexusModsApi;
@@ -49,6 +50,7 @@ public class CollectionDownloader
     private readonly HttpClient _httpClient;
     private readonly IJobMonitor _jobMonitor;
     private readonly IGameDomainToGameIdMappingCache _mappingCache;
+    private readonly IFileStore _fileStore;
 
     /// <summary>
     /// Constructor.
@@ -66,6 +68,7 @@ public class CollectionDownloader
         _httpClient = serviceProvider.GetRequiredService<HttpClient>();
         _jobMonitor = serviceProvider.GetRequiredService<IJobMonitor>();
         _mappingCache = serviceProvider.GetRequiredService<IGameDomainToGameIdMappingCache>();
+        _fileStore = serviceProvider.GetRequiredService<IFileStore>();
     }
 
     /// <summary>
@@ -524,22 +527,30 @@ public class CollectionDownloader
         CollectionDownload.ReadOnly download,
         IObservable<Optional<CollectionGroup.ReadOnly>> groupObservable)
     {
+        IObservable<CollectionDownloadStatus> statusObservable;
+
         if (download.TryGetAsCollectionDownloadBundled(out var bundled))
         {
-            return GetStatusObservable(bundled, groupObservable).DistinctUntilChanged();
+            statusObservable = GetStatusObservable(bundled, groupObservable);
         }
-
-        if (download.TryGetAsCollectionDownloadNexusMods(out var nexusModsDownload))
+        else if (download.TryGetAsCollectionDownloadNexusMods(out var nexusModsDownload))
         {
-            return GetStatusObservable(nexusModsDownload, groupObservable).DistinctUntilChanged();
+            statusObservable = GetStatusObservable(nexusModsDownload, groupObservable);
         }
-
-        if (download.TryGetAsCollectionDownloadExternal(out var externalDownload))
+        else if (download.TryGetAsCollectionDownloadExternal(out var externalDownload))
         {
-            return GetStatusObservable(externalDownload, groupObservable).DistinctUntilChanged();
+            statusObservable = GetStatusObservable(externalDownload, groupObservable);
+        }
+        else
+        {
+            throw new NotSupportedException();
         }
 
-        throw new NotSupportedException();
+        // Validate that "InLibrary" items actually have their archive on disk.
+        // If not, downgrade to "NotDownloaded" so the UI shows the download button.
+        return statusObservable
+            .SelectMany(status => Observable.FromAsync(() => ValidateStatusAsync(status).AsTask()))
+            .DistinctUntilChanged();
     }
 
     /// <summary>
@@ -574,6 +585,27 @@ public class CollectionDownloader
         }
 
         throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Validates that a status reporting "InLibrary" actually has its archive files on disk.
+    /// If the archive is missing, downgrades the status to "NotDownloaded" so the UI
+    /// shows the download button and the user can re-download.
+    /// </summary>
+    public async ValueTask<CollectionDownloadStatus> ValidateStatusAsync(CollectionDownloadStatus status)
+    {
+        if (!status.IsInLibrary(out var libraryItem)) return status;
+
+        if (!libraryItem.TryGetAsLibraryFile(out var libraryFile)) return status;
+
+        if (!await _fileStore.HaveFile(libraryFile.Hash))
+        {
+            _logger.LogWarning("[VALIDATE] Library item '{Name}' (hash={Hash}) reports as downloaded but archive is missing from file store — marking as NotDownloaded",
+                libraryItem.Name, libraryFile.Hash);
+            return new CollectionDownloadStatus.NotDownloaded();
+        }
+
+        return status;
     }
 
     /// <summary>
