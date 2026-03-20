@@ -33,6 +33,11 @@ public class ManualLinuxCompatabilityDataProvider : ILinuxCompatabilityDataProvi
             var lines = await File.ReadAllLinesAsync(winetricksLog.ToString(), cancellationToken);
             return lines.Select(l => l.Trim()).ToImmutableHashSet();
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Reading winetricks log at {Path} was cancelled", winetricksLog);
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to read winetricks log at {Path}", winetricksLog);
@@ -65,6 +70,11 @@ public class ManualLinuxCompatabilityDataProvider : ILinuxCompatabilityDataProvi
         {
             var content = await File.ReadAllTextAsync(userReg.ToString(), cancellationToken);
             return WineParser.ParseDllOverridesFromRegistry(content).ToImmutableArray();
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Reading WINE registry at {Path} was cancelled", userReg);
+            throw;
         }
         catch (Exception ex)
         {

@@ -216,6 +216,26 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var winningFiles = WinningFilesQuery(Connection.Db, loadout).ToList();
         Logger.LogDebug("[SYNC] WinningFiles query returned {Count} files (db tx={DbTx})", winningFiles.Count, Connection.Db.BasisTxId);
 
+        // Log collection group states for debugging file count changes
+        try
+        {
+            var collectionGroups = CollectionGroup.All(Connection.Db)
+                .Where(cg => cg.AsLoadoutItemGroup().AsLoadoutItem().LoadoutId == loadout.LoadoutId)
+                .ToList();
+            foreach (var cg in collectionGroups)
+            {
+                var item = cg.AsLoadoutItemGroup().AsLoadoutItem();
+                var isDisabled = item.IsDisabled;
+                var childCount = Connection.Db.Datoms(LoadoutItem.Parent, item.Id).Count;
+                Logger.LogDebug("[SYNC] Collection '{Name}' (id={Id}): disabled={Disabled}, children={Children}",
+                    item.Name, item.Id, isDisabled, childCount);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogTrace(ex, "[SYNC] Could not enumerate collection groups");
+        }
+
         foreach (var tuple in winningFiles)
         {
             var itemType = ToItemType(tuple.ItemType);

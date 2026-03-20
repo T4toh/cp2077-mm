@@ -61,6 +61,9 @@ Detecta también carpetas redundantes en mods (ej. `Cyberpunk 2077/bin/...` dupl
 - **Pestaña "Mod List":** Detalle de cada mod en la colección (hashes, enlaces, copiar al portapapeles)
 - **Rescan de descargas:** Detección por MD5 de archivos ya descargados para evitar re-descargas
 - **Resiliencia:** Si el archivo de colección se borra del disco, se re-descarga automáticamente; la página carga sin crashear; Apply funciona con instalaciones parciales
+- **Validación de archivos:** Detecta archivos .nx faltantes (tras Deep Clean, GC) y muestra botón de descarga. Valida todos los hijos del archivo, no solo el primero
+- **Fallback por ruta:** Si el MD5 de un archivo no coincide (mod actualizado), intenta mapeo por ruta relativa antes de fallar
+- **Advertencia de conflictos:** Avisa antes de instalar una colección si ya hay otra instalada
 
 ### Robustez de Descargas
 
@@ -143,6 +146,8 @@ Actualmente hay dos sistemas paralelos de descarga con componentes duplicados:
 
 ### 🔮 Features Futuras
 
+- [ ] **Eliminar .nx file store:** Reemplazar el sistema NxFileStore (herencia del modelo premium upstream) por acceso directo a los archivos descargados (.zip/.7z). Elimina la clase entera de bugs "archivos perdidos tras Deep Clean" y simplifica la validación a "¿existe el .zip?"
+- [ ] **Endorse de mods desde la app:** Botón de endorse en la UI por cada mod instalado + endorse masivo para colecciones. La API ya tiene el endpoint (`POST /v1/games/{domain}/mods/{id}/endorse.json`). Los modders se lo merecen y la app oficial nunca lo implementó
 - [ ] Soporte multi-browser para cookies (Chrome/Chromium). Ver [implementación](#agregar-soporte-para-otro-browser)
 - [ ] Optimización de rescan MD5 para carpetas grandes
 - [ ] Tema claro / alto contraste (solo existe `NexusFluentDark`)

@@ -26,7 +26,12 @@ public class DownloadCollectionJob : IJobDefinitionWithStart<DownloadCollectionJ
         {
             var download = downloads[index];
             if (!CollectionDownloader.DownloadMatchesItemType(download, ItemType)) return;
-            if (CollectionDownloader.GetStatus(download, Db).IsDownloaded()) return;
+            if (CollectionDownloader.GetStatus(download, Db).IsDownloaded())
+            {
+                // Verify the archive physically exists — if it was deleted, re-download
+                var validatedStatus = await Downloader.ValidateStatusAsync(CollectionDownloader.GetStatus(download, Db));
+                if (validatedStatus.IsDownloaded()) return;
+            }
 
             try
             {

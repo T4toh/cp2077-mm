@@ -1328,5 +1328,18 @@ Keep the downloaded files in your library in case you want to retry the installa
     <data name="CollectionDownloadView_Menu_DeleteCollectionRevision" xml:space="preserve">
         <value>Delete collection revision</value>
     </data>
+    <data name="CollectionConflict_Warning_Title" xml:space="preserve">
+        <value>Other collections detected</value>
+    </data>
+    <data name="CollectionConflict_Warning_Message" xml:space="preserve">
+        <value>The following collections are already active in this loadout:
+
+{0}
+
+Installing a different collection may cause conflicts and break your game. It is recommended to remove existing collections first.</value>
+    </data>
+    <data name="CollectionConflict_Warning_InstallAnyway" xml:space="preserve">
+        <value>Install Anyway</value>
+    </data>
 
 </root>

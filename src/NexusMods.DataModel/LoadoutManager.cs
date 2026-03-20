@@ -580,6 +580,8 @@ internal partial class LoadoutManager : ILoadoutManager
     {
         var items = _connection.Query<EntityId>($"SELECT Id FROM MDB_NexusCollectionItemLoadoutGroup(Db => {_connection}) WHERE Parent = {collectionId.Value}").ToList();
 
+        _logger.LogInformation("[COLLECTION-RULES] Found {ItemCount} items for collection {CollectionId}", items.Count, collectionId.Value);
+
         var rulesQuery = _connection.Query<(EntityId SourceId, EntityId OtherId, int RuleType)>(
             $"""
               SELECT Source, Other, RuleType FROM loadouts.CollectionRulesOnItems({_connection})
@@ -590,6 +592,8 @@ internal partial class LoadoutManager : ILoadoutManager
         var rules = rulesQuery
             .GroupBy(tuple => tuple.SourceId, tuple => (tuple.OtherId, tuple.RuleType))
             .ToFrozenDictionary(group => group.Key, group => group.ToArray());
+
+        _logger.LogInformation("[COLLECTION-RULES] Found {RuleCount} rule groups for collection {CollectionId}", rules.Count, collectionId.Value);
 
         var sortedItems = new Sorter().Sort(
             items: items,
@@ -606,10 +610,15 @@ internal partial class LoadoutManager : ILoadoutManager
             }
         ).ToImmutableArray();
 
+        _logger.LogInformation("[COLLECTION-RULES] Sorted {SortedCount} items, committing priority reorder for loadout {LoadoutId} (pre-tx DB={DbTx})",
+            sortedItems.Length, loadoutId, _connection.Db.BasisTxId);
+
         using var tx = _connection.BeginTransaction();
 
         tx.Add(new ApplyCollectionRulesTxFunc(loadoutId, sortedItems));
-        await tx.Commit();
+        var result = await tx.Commit();
+
+        _logger.LogInformation("[COLLECTION-RULES] Priority reorder committed. Post-tx DB={DbTx}", result.Db.BasisTxId);
     }
 
     public async ValueTask LoseAllFileConflicts(LoadoutItemGroupPriorityId[] loserIds)

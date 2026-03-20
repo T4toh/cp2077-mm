@@ -32,6 +32,12 @@ public class PresetGuidedInstaller : IGuidedInstaller
     /// <inheritdoc/>
     public Task<UserChoice> RequestUserChoice(GuidedInstallationStep installationStep, Percent progress, CancellationToken cancellationToken)
     {
+        if (_currentStep >= _steps.Length)
+        {
+            // More FOMOD steps than preset choices — proceed with no selections for this step.
+            return Task.FromResult(new UserChoice(new UserChoice.GoToNextStep([])));
+        }
+
         var step = _steps[_currentStep];
         
         // This looks gross, but it's fairly simple we map through the two trees matching by name, and it's cleaner than 4 nested loops.

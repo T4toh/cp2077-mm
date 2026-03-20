@@ -53,6 +53,11 @@ public class Cyberpunk2077Synchronizer : ALoadoutSynchronizer
         if (pathStr.Contains("_mod_remover_backup_"))
             return true;
 
+        // r6/logs/ contains runtime logs from Redscript, RED4ext, etc.
+        // These are generated every time the game runs and are not mod files.
+        if (pathStr.StartsWith("r6/logs/"))
+            return true;
+
         return false;
     }
 

@@ -204,7 +204,11 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
         Logger.LogDebug("[INSTALL-COLLECTION] hasAnyInstalledItems={HasAny}, anyRequiredItemInstalled={AnyRequired} → group will be {State}",
             hasAnyInstalledItems, anyRequiredItemInstalled, anyRequiredItemInstalled ? "ENABLED" : "DISABLED");
         {
+            Logger.LogInformation("[INSTALL-COLLECTION] Applying collection download rules for '{CollectionName}' (groupId={GroupId}, loadoutId={LoadoutId})",
+                RevisionMetadata.Collection.Name, collectionGroup.Id, TargetLoadout);
             await LoadoutManager.ApplyCollectionDownloadRules(collectionGroup, TargetLoadout);
+            Logger.LogInformation("[INSTALL-COLLECTION] Collection download rules applied. Current DB tx={DbTx}",
+                Connection.Db.BasisTxId);
 
             using var tx = Connection.BeginTransaction();
 
@@ -220,6 +224,8 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             }
 
             var result = await tx.Commit();
+            Logger.LogInformation("[INSTALL-COLLECTION] Enable/disable committed for '{CollectionName}'. TX={TxId}, IsDisabled={IsDisabled}",
+                RevisionMetadata.Collection.Name, result.Db.BasisTxId, !anyRequiredItemInstalled);
             collectionGroup = NexusCollectionLoadoutGroup.Load(result.Db, collectionGroup.Id);
         }
 

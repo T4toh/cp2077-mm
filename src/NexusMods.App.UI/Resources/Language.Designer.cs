@@ -3794,5 +3794,32 @@ namespace NexusMods.App.UI.Resources {
                 return ResourceManager.GetString("ViewModInfoPage_Title", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Other collections detected.
+        /// </summary>
+        public static string CollectionConflict_Warning_Title {
+            get {
+                return ResourceManager.GetString("CollectionConflict_Warning_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The following collections are already active in this loadout:....
+        /// </summary>
+        public static string CollectionConflict_Warning_Message {
+            get {
+                return ResourceManager.GetString("CollectionConflict_Warning_Message", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Install Anyway.
+        /// </summary>
+        public static string CollectionConflict_Warning_InstallAnyway {
+            get {
+                return ResourceManager.GetString("CollectionConflict_Warning_InstallAnyway", resourceCulture);
+            }
+        }
     }
 }

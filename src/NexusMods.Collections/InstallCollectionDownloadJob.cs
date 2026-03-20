@@ -19,7 +19,10 @@ using NexusMods.Games.FOMOD;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Networking.NexusWebApi;
 using NexusMods.Paths;
+using NexusMods.Hashing.xxHash3;
+using NexusMods.Hashing.xxHash3.Paths;
 using NexusMods.Sdk;
+using NexusMods.Sdk.FileExtractor;
 using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Hashes;
@@ -134,6 +137,34 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         }
 
         var libraryFile = GetLibraryFile(Item, Connection.Db);
+
+        // Validate the archive physically exists on disk — the DB may say "downloaded"
+        // but the .nx archive could have been deleted (garbage collection, manual cleanup, etc.)
+        // For archives, check ALL children since they may be spread across different .nx files.
+        var archiveMissing = false;
+        if (libraryFile.TryGetAsLibraryArchive(out var checkArchive))
+        {
+            foreach (var child in checkArchive.Children)
+            {
+                if (!await FileStore.HaveFile(child.AsLibraryFile().Hash))
+                {
+                    Logger.LogWarning("[INSTALL] Archive child '{Path}' (hash={Hash}) missing from file store for '{Name}'",
+                        child.Path, child.AsLibraryFile().Hash, Item.Name);
+                    archiveMissing = true;
+                    break;
+                }
+            }
+        }
+        else if (!await FileStore.HaveFile(libraryFile.Hash))
+        {
+            archiveMissing = true;
+        }
+        if (archiveMissing)
+        {
+            Logger.LogWarning("[INSTALL] Archive for '{Name}' (index={Index}) is missing from file store — needs re-download",
+                Item.Name, Item.ArrayIndex);
+            throw new InvalidOperationException($"Item '{Item.Name}' (index={Item.ArrayIndex}) has a broken archive. Please re-download it.");
+        }
         if (CollectionMod.Patches.Count > 0)
         {
             if (!libraryFile.TryGetAsLibraryArchive(out var libraryArchive)) throw new NotSupportedException("Expected library file to be an archive");
@@ -293,18 +324,59 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         if (!libraryFile.TryGetAsLibraryArchive(out var libraryArchive))
             throw new NotImplementedException();
 
+        var totalChildren = libraryArchive.Children.Count;
+        var hashedCount = 0;
+        var failedCount = 0;
+
+        // Build a path→HashMapping index for fallback when MD5 doesn't match
+        // (happens when mod author updated the file on Nexus after the collection was created)
+        ConcurrentDictionary<RelativePath, HashMapping> pathIndex = new();
+
+        // Track children that failed due to missing .nx entries for re-extraction
+        ConcurrentBag<LibraryArchiveFileEntry.ReadOnly> failedChildren = new();
+
+        Logger.LogInformation("[REPLICATED] Starting MD5 hashing for '{ModName}' — {Total} files in archive", CollectionMod.Name, totalChildren);
+
         await Parallel.ForEachAsync(libraryArchive.Children, async (child, token) =>
         {
-            await using var stream = await FileStore.GetFileStream(child.AsLibraryFile().Hash, token);
-            var md5 = await Md5Hasher.HashAsync(stream, cancellationToken: token);
-
-            var file = child.AsLibraryFile();
-            hashes[md5] = new HashMapping()
+            try
             {
-                Hash = file.Hash,
-                Size = file.Size,
-            };
+                await using var stream = await FileStore.GetFileStream(child.AsLibraryFile().Hash, token);
+                var md5 = await Md5Hasher.HashAsync(stream, cancellationToken: token);
+
+                var file = child.AsLibraryFile();
+                var mapping = new HashMapping()
+                {
+                    Hash = file.Hash,
+                    Size = file.Size,
+                };
+                hashes[md5] = mapping;
+                pathIndex[child.Path] = mapping;
+                Interlocked.Increment(ref hashedCount);
+            }
+            catch (Exception ex)
+            {
+                Interlocked.Increment(ref failedCount);
+                failedChildren.Add(child);
+                Logger.LogWarning(ex, "[REPLICATED] Failed to read/hash file '{Path}' (hash={Hash}) from archive — will try re-extraction", child.Path, child.AsLibraryFile().Hash);
+            }
         });
+
+        Logger.LogInformation("[REPLICATED] MD5 hashing complete for '{ModName}': {Hashed}/{Total} hashed, {Failed} failed", CollectionMod.Name, hashedCount, totalChildren, failedCount);
+
+        // Re-extraction fallback: when individual file entries are missing from the .nx store,
+        // try to re-extract them from the parent archive (the original downloaded .zip/.7z)
+        if (failedCount > 0)
+        {
+            var recovered = await TryReExtractMissingFiles(libraryFile, failedChildren, hashes, pathIndex);
+            hashedCount += recovered;
+            failedCount -= recovered;
+            if (recovered > 0)
+                Logger.LogInformation("[REPLICATED] Re-extraction recovered {Recovered} files for '{ModName}'", recovered, CollectionMod.Name);
+        }
+
+        if (failedCount > 0)
+            Logger.LogWarning("[REPLICATED] ⚠ {Failed} files could not be hashed for '{ModName}' — these will be MISSING from the installed mod", failedCount, CollectionMod.Name);
 
         foreach (var patchedFile in patchedFiles)
         {
@@ -350,11 +422,30 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         };
 
         // Now we map the files to their locations based on the hashes
+        var mappedCount = 0;
+        var unmappedCount = 0;
+        var pathFallbackCount = 0;
         foreach (var pair in CollectionMod.Hashes)
         {
             // Try and find the hash we are looking for
             if (!hashes.TryGetValue(pair.MD5, out var libraryItem))
-                throw new InvalidOperationException("The hash was not found in the archive.");
+            {
+                // MD5 didn't match — try fallback by path (handles updated files on Nexus)
+                if (pathIndex.TryGetValue(pair.Path, out var fallbackItem))
+                {
+                    libraryItem = fallbackItem;
+                    pathFallbackCount++;
+                    Logger.LogInformation("[REPLICATED] MD5 mismatch for '{Path}' — using path fallback (mod was likely updated on Nexus)", pair.Path);
+                }
+                else
+                {
+                    unmappedCount++;
+                    Logger.LogWarning("[REPLICATED] MD5 hash {MD5} for file '{Path}' not found by hash or path — skipping", pair.MD5, pair.Path);
+                    continue;
+                }
+            }
+
+            mappedCount++;
 
             // Map the file to the specific path
             _ = new LoadoutFile.New(tx, out var fileId)
@@ -374,8 +465,100 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             };
         }
 
+        Logger.LogInformation("[REPLICATED] File mapping complete for '{ModName}': {Mapped}/{Total} mapped ({PathFallback} via path fallback), {Unmapped} unmapped (collection expects {Expected} files)",
+            CollectionMod.Name, mappedCount, CollectionMod.Hashes.Length, pathFallbackCount, unmappedCount, CollectionMod.Hashes.Length);
+
         return group.Id;
     });
+
+    /// <summary>
+    /// When individual file entries are missing from the .nx file store (their .nx archive was deleted),
+    /// try to re-extract them from the parent archive (the downloaded .zip/.7z) and re-backup to the store.
+    /// </summary>
+    private async Task<int> TryReExtractMissingFiles(
+        LibraryFile.ReadOnly parentLibraryFile,
+        ConcurrentBag<LibraryArchiveFileEntry.ReadOnly> failedChildren,
+        ConcurrentDictionary<Md5Value, HashMapping> hashes,
+        ConcurrentDictionary<RelativePath, HashMapping> pathIndex)
+    {
+        // Check if the parent archive itself is still in the .nx store
+        if (!await FileStore.HaveFile(parentLibraryFile.Hash))
+        {
+            Logger.LogWarning("[RE-EXTRACT] Parent archive for '{ModName}' (hash={Hash}) is also missing from file store — cannot recover",
+                CollectionMod.Name, parentLibraryFile.Hash);
+            return 0;
+        }
+
+        var fileExtractor = ServiceProvider.GetRequiredService<IFileExtractor>();
+        var tempFileManager = ServiceProvider.GetRequiredService<TemporaryFileManager>();
+
+        try
+        {
+            // Extract the parent archive to a temp directory
+            await using var tempDir = tempFileManager.CreateFolder();
+            await using var archiveStream = await FileStore.GetFileStream(parentLibraryFile.Hash);
+
+            // Write the archive stream to a temp file so the extractor can work with it
+            await using var tempArchiveFile = tempFileManager.CreateFile();
+            {
+                await using var writeStream = tempArchiveFile.Path.Create();
+                await archiveStream.CopyToAsync(writeStream);
+            }
+
+            await fileExtractor.ExtractAllAsync(tempArchiveFile.Path, tempDir.Path);
+
+            Logger.LogInformation("[RE-EXTRACT] Extracted parent archive for '{ModName}' to temp dir, looking for {Count} missing files",
+                CollectionMod.Name, failedChildren.Count);
+
+            var recovered = 0;
+            var toBackup = new List<ArchivedFileEntry>();
+
+            foreach (var child in failedChildren)
+            {
+                var extractedPath = tempDir.Path.Combine(child.Path.ToString());
+                if (!extractedPath.FileExists)
+                {
+                    Logger.LogWarning("[RE-EXTRACT] File '{Path}' not found in extracted archive", child.Path);
+                    continue;
+                }
+
+                // Hash the extracted file
+                Hash xxHash;
+                Md5Value md5;
+                Size size;
+                xxHash = await extractedPath.XxHash3Async();
+                await using (var fileStream = extractedPath.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    md5 = await Md5Hasher.HashAsync(fileStream);
+                }
+                size = extractedPath.FileInfo.Size;
+
+                // Queue for backup to .nx store
+                toBackup.Add(new ArchivedFileEntry(new NativeFileStreamFactory(extractedPath), xxHash, size));
+
+                var mapping = new HashMapping { Hash = xxHash, Size = size };
+                hashes[md5] = mapping;
+                pathIndex[child.Path] = mapping;
+                recovered++;
+
+                Logger.LogInformation("[RE-EXTRACT] Recovered '{Path}' (xxHash={Hash}, md5={Md5})", child.Path, xxHash, md5);
+            }
+
+            // Re-backup all recovered files to the .nx store
+            if (toBackup.Count > 0)
+            {
+                await FileStore.BackupFiles(toBackup, deduplicate: true);
+                Logger.LogInformation("[RE-EXTRACT] Backed up {Count} recovered files to .nx store", toBackup.Count);
+            }
+
+            return recovered;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[RE-EXTRACT] Failed to re-extract files from parent archive for '{ModName}'", CollectionMod.Name);
+            return 0;
+        }
+    }
 
     private async ValueTask<PatchedFile[]> PatchFiles(LibraryArchive.ReadOnly srcArchive, CancellationToken cancellationToken)
     {
