@@ -601,21 +601,21 @@ public class CollectionDownloader
         try
         {
             // For archives (zip/7z/rar), the file store indexes the CONTENTS (children),
-            // not the archive file itself. Check a child's hash instead.
+            // not the archive file itself. Check ALL children's hashes — HaveFile is just
+            // a dictionary lookup so this is fast even for large archives.
             if (libraryFile.TryGetAsLibraryArchive(out var archive))
             {
                 var children = archive.Children;
-                if (children.Count > 0)
+                foreach (var child in children)
                 {
-                    var firstChild = children.First();
-                    if (!await _fileStore.HaveFile(firstChild.AsLibraryFile().Hash))
+                    if (!await _fileStore.HaveFile(child.AsLibraryFile().Hash))
                     {
-                        _logger.LogWarning("[VALIDATE] Archive '{Name}' contents missing from file store (checked child hash={Hash}) — marking as NotDownloaded",
-                            libraryItem.Name, firstChild.AsLibraryFile().Hash);
+                        _logger.LogWarning("[VALIDATE] Archive '{Name}' has missing content (file '{Path}', hash={Hash}) — marking as NotDownloaded",
+                            libraryItem.Name, child.Path, child.AsLibraryFile().Hash);
                         return new CollectionDownloadStatus.NotDownloaded();
                     }
-                    return status;
                 }
+                return status;
             }
 
             // For plain files (non-archives), check the file hash directly

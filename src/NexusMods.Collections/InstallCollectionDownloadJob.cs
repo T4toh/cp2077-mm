@@ -140,13 +140,20 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
         // Validate the archive physically exists on disk — the DB may say "downloaded"
         // but the .nx archive could have been deleted (garbage collection, manual cleanup, etc.)
-        // For archives, check a child's hash since the file store indexes contents, not the archive itself.
+        // For archives, check ALL children since they may be spread across different .nx files.
         var archiveMissing = false;
         if (libraryFile.TryGetAsLibraryArchive(out var checkArchive))
         {
-            var children = checkArchive.Children;
-            if (children.Count > 0 && !await FileStore.HaveFile(children.First().AsLibraryFile().Hash))
-                archiveMissing = true;
+            foreach (var child in checkArchive.Children)
+            {
+                if (!await FileStore.HaveFile(child.AsLibraryFile().Hash))
+                {
+                    Logger.LogWarning("[INSTALL] Archive child '{Path}' (hash={Hash}) missing from file store for '{Name}'",
+                        child.Path, child.AsLibraryFile().Hash, Item.Name);
+                    archiveMissing = true;
+                    break;
+                }
+            }
         }
         else if (!await FileStore.HaveFile(libraryFile.Hash))
         {
