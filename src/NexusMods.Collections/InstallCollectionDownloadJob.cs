@@ -293,6 +293,12 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         if (!libraryFile.TryGetAsLibraryArchive(out var libraryArchive))
             throw new NotImplementedException();
 
+        var totalChildren = libraryArchive.Children.Count;
+        var hashedCount = 0;
+        var failedCount = 0;
+
+        Logger.LogInformation("[REPLICATED] Starting MD5 hashing for '{ModName}' — {Total} files in archive", CollectionMod.Name, totalChildren);
+
         await Parallel.ForEachAsync(libraryArchive.Children, async (child, token) =>
         {
             try
@@ -306,12 +312,18 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
                     Hash = file.Hash,
                     Size = file.Size,
                 };
+                Interlocked.Increment(ref hashedCount);
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Failed to read/hash file '{Path}' from archive — skipping", child.Path);
+                Interlocked.Increment(ref failedCount);
+                Logger.LogWarning(ex, "[REPLICATED] Failed to read/hash file '{Path}' (hash={Hash}) from archive — skipping", child.Path, child.AsLibraryFile().Hash);
             }
         });
+
+        Logger.LogInformation("[REPLICATED] MD5 hashing complete for '{ModName}': {Hashed}/{Total} hashed, {Failed} failed", CollectionMod.Name, hashedCount, totalChildren, failedCount);
+        if (failedCount > 0)
+            Logger.LogWarning("[REPLICATED] ⚠ {Failed} files could not be hashed for '{ModName}' — these will be MISSING from the installed mod", failedCount, CollectionMod.Name);
 
         foreach (var patchedFile in patchedFiles)
         {
@@ -357,14 +369,19 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         };
 
         // Now we map the files to their locations based on the hashes
+        var mappedCount = 0;
+        var unmappedCount = 0;
         foreach (var pair in CollectionMod.Hashes)
         {
             // Try and find the hash we are looking for
             if (!hashes.TryGetValue(pair.MD5, out var libraryItem))
             {
-                Logger.LogWarning("MD5 hash {MD5} for file '{Path}' was not found in the archive — skipping", pair.MD5, pair.Path);
+                unmappedCount++;
+                Logger.LogWarning("[REPLICATED] MD5 hash {MD5} for file '{Path}' was not found in hash dictionary — skipping", pair.MD5, pair.Path);
                 continue;
             }
+
+            mappedCount++;
 
             // Map the file to the specific path
             _ = new LoadoutFile.New(tx, out var fileId)
@@ -383,6 +400,9 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
                 },
             };
         }
+
+        Logger.LogInformation("[REPLICATED] File mapping complete for '{ModName}': {Mapped}/{Total} mapped, {Unmapped} unmapped (collection expects {Expected} files)",
+            CollectionMod.Name, mappedCount, CollectionMod.Hashes.Length, unmappedCount, CollectionMod.Hashes.Length);
 
         return group.Id;
     });

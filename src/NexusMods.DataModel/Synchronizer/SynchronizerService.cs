@@ -282,7 +282,8 @@ public class SynchronizerService : ISynchronizerService
                         return LoadoutSynchronizerState.Current;
                     }
 
-                    _logger.LogDebug("[STATUS] Calling ShouldSynchronize: last={LastId} rev={RevId} lastTx={LastTx} revDbTx={RevDbTx}", last.Id, rev.LoadoutId, last.Tx, revDbTx);
+                    _logger.LogDebug("[STATUS] Calling ShouldSynchronize: last={LastId} rev={RevId} lastTx={LastTx} revDbTx={RevDbTx} (txDelta={TxDelta})",
+                        last.Id, rev.LoadoutId, last.Tx, revDbTx, revDbTx.Value - last.Tx.Value);
 
                     // Potentially long operation, run on thread pool
                     var diffFound = await Task.Run(async () =>
