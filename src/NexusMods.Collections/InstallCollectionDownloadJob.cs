@@ -295,15 +295,22 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
         await Parallel.ForEachAsync(libraryArchive.Children, async (child, token) =>
         {
-            await using var stream = await FileStore.GetFileStream(child.AsLibraryFile().Hash, token);
-            var md5 = await Md5Hasher.HashAsync(stream, cancellationToken: token);
-
-            var file = child.AsLibraryFile();
-            hashes[md5] = new HashMapping()
+            try
             {
-                Hash = file.Hash,
-                Size = file.Size,
-            };
+                await using var stream = await FileStore.GetFileStream(child.AsLibraryFile().Hash, token);
+                var md5 = await Md5Hasher.HashAsync(stream, cancellationToken: token);
+
+                var file = child.AsLibraryFile();
+                hashes[md5] = new HashMapping()
+                {
+                    Hash = file.Hash,
+                    Size = file.Size,
+                };
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to read/hash file '{Path}' from archive — skipping", child.Path);
+            }
         });
 
         foreach (var patchedFile in patchedFiles)
@@ -354,7 +361,10 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         {
             // Try and find the hash we are looking for
             if (!hashes.TryGetValue(pair.MD5, out var libraryItem))
-                throw new InvalidOperationException("The hash was not found in the archive.");
+            {
+                Logger.LogWarning("MD5 hash {MD5} for file '{Path}' was not found in the archive — skipping", pair.MD5, pair.Path);
+                continue;
+            }
 
             // Map the file to the specific path
             _ = new LoadoutFile.New(tx, out var fileId)

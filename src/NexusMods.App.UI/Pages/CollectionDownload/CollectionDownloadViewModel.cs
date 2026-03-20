@@ -15,6 +15,7 @@ using NexusMods.App.UI.Controls;
 using NexusMods.App.UI.Controls.MarkdownRenderer;
 using NexusMods.App.UI.Controls.Navigation;
 using NexusMods.App.UI.Extensions;
+using NexusMods.App.UI.Helpers;
 using NexusMods.App.UI.Overlays;
 using NexusMods.App.UI.Pages.LibraryPage;
 using NexusMods.App.UI.Pages.LoadoutPage;
@@ -151,6 +152,10 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
             .ToReactiveCommand<Unit>(
                 executeAsync: async (_, _) =>
                 {
+                    if (!await CollectionConflictHelpers.ConfirmInstallWithConflicts(
+                            connection.Db, _targetLoadout.Value, _collection, WindowManager))
+                        return;
+
                     // Only install optional items that have actually been downloaded
                     var downloadedItems = CollectionDownloader.GetItems(revisionMetadata, CollectionDownloader.ItemType.Optional)
                         .Where(d => CollectionDownloader.GetStatus(d, connection.Db).IsDownloaded())
@@ -171,6 +176,10 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
             .ToReactiveCommand<Unit>(
                 executeAsync: async (_, _) =>
                 {
+                    if (!await CollectionConflictHelpers.ConfirmInstallWithConflicts(
+                            connection.Db, _targetLoadout.Value, _collection, WindowManager))
+                        return;
+
                     var installItemType = RequiredDownloadsCount > 0 ? CollectionDownloader.ItemType.Required : CollectionDownloader.ItemType.Optional;
                     // For all-optional collections, only install items that have been downloaded
                     var items = CollectionDownloader.GetItems(revisionMetadata, installItemType)
