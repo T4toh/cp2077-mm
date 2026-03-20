@@ -121,15 +121,20 @@ Detecta también carpetas redundantes en mods (ej. `Cyberpunk 2077/bin/...` dupl
 
 Actualmente hay dos sistemas paralelos de descarga con componentes duplicados:
 
-- [ ] **Unificar componentes de descarga:** `DownloadComponents.cs` y `CollectionComponents.cs` repiten patrones de UI (progreso, estado, botones). Extraer componentes compartidos
-- [ ] **Progreso de colecciones:** Las descargas de colección solo muestran estado (Descargado/Descargando), no barra de progreso como las descargas regulares. Unificar usando `SizeProgressComponent`
-- [ ] **Refactorizar CollectionDownloadViewModel:** 749 líneas es demasiado. Extraer lógica de orquestación a un servicio separado
-- [ ] **Agregar interface a CollectionDataProvider:** `DownloadsDataProvider` tiene `IDownloadsDataProvider`; el de colecciones no tiene interfaz
+- [x] **Unificar componentes de descarga:** Extraídos `SizeProgressComponent` y `SpeedComponent` a `SharedProgressComponents.cs`, usados por ambas vistas
+- [x] **Progreso de colecciones:** Las descargas de colección ahora muestran barra de progreso real y velocidad, conectándose a `IDownloadsService.ActiveDownloads` por `FileMetadataId`
+- [x] **Agregar interface a CollectionDataProvider:** Extraída `ICollectionDataProvider` con registro DI apropiado
+- [x] **Remover página de descargas vacía:** La navegación a la página standalone de descargas fue eliminada (estaba vacía). El botón de velocidad en el spine es ahora solo informativo. Descargas activas se ordenan arriba en la vista de colección
+- [x] **Controles de descarga en colección:** Botones de pausa/resume/cancel en la columna de acciones, conectados a `IDownloadsService`
+- [x] **Auto-reordenamiento:** La lista se re-ordena automáticamente cuando una descarga termina para que la siguiente suba al tope
+- [x] **Botón "Ver página del mod":** Abre la página de Nexus Mods del mod directamente desde la vista de colección
+- [x] **IsLoading infrastructure:** Agregado `IsLoading` a `APageViewModel` con control `LoadingSection` reutilizable
+- [ ] **Refactorizar CollectionDownloadViewModel:** ~850 líneas. Extraer lógica de orquestación a un servicio separado
 - [ ] **Unificar settings de paralelismo:** `DownloadSettings.MaxParallelDownloads` solo controla descargas de colección, no las regulares
 
 ### 🎨 Mejoras de UI/UX
 
-- [ ] **Loading indicators:** Solo 1 de 25+ páginas tiene indicador de carga (`StorageManager.IsBusy`). Agregar `IsLoading` al `APageViewModel` base con spinner/skeleton
+- [x] **Loading indicators:** Agregado `IsLoading` al `APageViewModel` base con control `LoadingSection` reutilizable
 - [ ] **Manejo de errores visible:** Muchos ViewModels tienen `// TODO: handle errors`. Implementar notificación al usuario vía `IWindowNotificationService` en todos los comandos async
 - [ ] **Empty states consistentes:** El control `EmptyState` existe pero no todas las páginas lo usan. Auditar y completar: MyGames sin juego, Library vacía, Loadout sin mods
 - [ ] **Accesibilidad básica:** Faltan `TabIndex`, estilos `:focus`/`:keyboard`, tooltips en botones icon-only
@@ -140,7 +145,6 @@ Actualmente hay dos sistemas paralelos de descarga con componentes duplicados:
 
 - [ ] Soporte multi-browser para cookies (Chrome/Chromium). Ver [implementación](#agregar-soporte-para-otro-browser)
 - [ ] Optimización de rescan MD5 para carpetas grandes
-- [ ] UI de progreso global centralizado para todas las descargas activas
 - [ ] Tema claro / alto contraste (solo existe `NexusFluentDark`)
 
 ## 🏗 Cómo Construir
