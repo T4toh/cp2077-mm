@@ -18,7 +18,7 @@ using NexusMods.Sdk.IO;
 namespace NexusMods.Games.RedEngine.Cyberpunk2077;
 
 [UsedImplicitly]
-public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>
+public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>, IDisposable
 {
     public static GameId GameId { get; } = GameId.From("RedEngine.Cyberpunk2077");
     public static string DisplayName => "Cyberpunk 2077";
@@ -39,12 +39,18 @@ public class Cyberpunk2077Game : IGame, IGameData<Cyberpunk2077Game>
     public ISortOrderManager SortOrderManager => _sortOrderManager.Value;
     public IDiagnosticEmitter[] DiagnosticEmitters { get; }
 
+    public void Dispose()
+    {
+        if (_sortOrderManager.IsValueCreated) (_sortOrderManager.Value as IDisposable)?.Dispose();
+    }
+
     public Cyberpunk2077Game(IServiceProvider provider)
     {
         _synchronizer = new Lazy<ILoadoutSynchronizer>(() => new Cyberpunk2077Synchronizer(provider));
         _sortOrderManager = new Lazy<ISortOrderManager>(() =>
         {
-            var sortOrderManager = provider.GetRequiredService<SortOrderManager>();
+            // One per game: RegisterSortOrderVarieties replaces whatever varieties the instance had.
+            var sortOrderManager = new SortOrderManager(provider);
             sortOrderManager.RegisterSortOrderVarieties(
                 sortOrderVarieties: [
                     provider.GetRequiredService<RedModSortOrderVariety>(),
