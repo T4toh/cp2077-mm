@@ -38,6 +38,28 @@ public static class DataDirectoryMigration
             include: file => !File.ReadAllText(file).Contains(ApplicationConstants.UpstreamDirectoryName, StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// Snapshots used to sit directly in <c>Backups/</c>, written only by <paramref name="owner"/> (Cyberpunk's Deep
+    /// Clean). Moves them into <c>Backups/&lt;owner&gt;/</c>, see <see cref="Games.GameBackups"/>. Only renames inside
+    /// <c>Backups/</c>; anything that isn't a snapshot folder stays where it is.
+    /// </summary>
+    public static void MoveLegacyBackups(AbsolutePath basePath, Games.GameId owner)
+    {
+        var backups = basePath.Combine(ApplicationConstants.DataDirectoryName).Combine("Backups");
+        if (!backups.DirectoryExists()) return;
+
+        var ownerFolder = Path.Combine(backups.ToString(), owner.ToString());
+        foreach (var snapshot in Directory.GetDirectories(backups.ToString()))
+        {
+            var name = Path.GetFileName(snapshot);
+            if (!Games.GameBackups.IsSnapshotName(name)) continue;
+            var target = Path.Combine(ownerFolder, name);
+            if (Directory.Exists(target)) continue;
+            Directory.CreateDirectory(ownerFolder);
+            Directory.Move(snapshot, target);
+        }
+    }
+
     private static void CopyOnce(AbsolutePath from, AbsolutePath to, Func<string, bool> include)
     {
         if (to.DirectoryExists() || !from.DirectoryExists()) return;

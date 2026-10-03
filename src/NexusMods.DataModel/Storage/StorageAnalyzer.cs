@@ -5,6 +5,7 @@ using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using NexusMods.Sdk;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Loadouts;
@@ -43,10 +44,7 @@ internal class StorageAnalyzer : IStorageAnalyzer
         _logger = logger;
         _fileStore = fileStore;
         LegacyDownloadsFolderProvider = () => LegacyDataDetector.LegacyDownloadsFolder(fileSystem);
-        // keep in sync with CyberpunkDeepCleanTool.BackupsRoot — DataModel must not reference a game project
-        BackupsFolderProvider = () => fileSystem.GetKnownPath(KnownPath.XDG_DATA_HOME)
-            .Combine(ApplicationConstants.DataDirectoryName)
-            .Combine("Backups");
+        BackupsFolderProvider = () => GameBackups.Root(fileSystem);
     }
 
     /// <summary>Test seam: overridden in tests so they never touch the real <c>~/.local/share</c>.</summary>
@@ -165,12 +163,19 @@ internal class StorageAnalyzer : IStorageAnalyzer
         var backups = BackupsFolderProvider();
         if (!backups.DirectoryExists()) return Task.CompletedTask;
 
-        // Snapshot folders are named yyyyMMdd_HHmmss, so ordinal order is chronological.
-        var snapshots = backups.EnumerateDirectories(recursive: false)
-            .OrderByDescending(dir => dir.FileName.ToString(), StringComparer.Ordinal)
-            .Skip(keepNewest ? 1 : 0);
-        foreach (var snapshot in snapshots)
-            snapshot.DeleteDirectoryNoFollow();
+        // One folder per game (GameBackups), so "keep the newest" means each game's newest
+        foreach (var gameFolder in backups.EnumerateDirectories(recursive: false))
+        {
+            // A linked game folder would make the folders it points to look like snapshots
+            if (new DirectoryInfo(gameFolder.ToString()).LinkTarget is not null) continue;
+
+            // Snapshot folders are named yyyyMMdd_HHmmss, so ordinal order is chronological.
+            var snapshots = gameFolder.EnumerateDirectories(recursive: false)
+                .OrderByDescending(dir => dir.FileName.ToString(), StringComparer.Ordinal)
+                .Skip(keepNewest ? 1 : 0);
+            foreach (var snapshot in snapshots)
+                snapshot.DeleteDirectoryNoFollow();
+        }
 
         return Task.CompletedTask;
     }

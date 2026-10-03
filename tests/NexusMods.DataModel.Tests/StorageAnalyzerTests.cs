@@ -55,23 +55,24 @@ public class StorageAnalyzerTests(ITestOutputHelper helper) : ACyberpunkIsolated
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task DeletePhysicalFilesAsync_KeepNewest_KeepsOnlyTheLatestSnapshot(bool keepNewest)
+    public async Task DeletePhysicalFilesAsync_KeepNewest_KeepsEachGamesLatestSnapshot(bool keepNewest)
     {
+        // A Super Clean keeps the snapshot it just made; another game's only backup must survive it too.
         var analyzer = (StorageAnalyzer)ServiceProvider.GetRequiredService<IStorageAnalyzer>();
         var backups = TemporaryFileManager.CreateFolder().Path;
         analyzer.BackupsFolderProvider = () => backups;
-        string[] names = ["20260101_000000", "20260103_000000", "20260102_000000"];
-        foreach (var name in names)
+        string[] snapshots = ["GameA/20260101_000000", "GameA/20260103_000000", "GameA/20260102_000000", "GameB/20250101_000000"];
+        foreach (var snapshot in snapshots)
         {
-            backups.Combine(name).CreateDirectory();
-            await File.WriteAllTextAsync(backups.Combine(name).Combine("mod.archive").ToString(), name);
+            backups.Combine(snapshot).CreateDirectory();
+            await File.WriteAllTextAsync(backups.Combine(snapshot).Combine("mod.archive").ToString(), snapshot);
         }
 
         await analyzer.DeletePhysicalFilesAsync(keepNewest);
 
-        backups.EnumerateDirectories(recursive: false).Select(d => d.FileName.ToString())
-            .Should().BeEquivalentTo(keepNewest ? ["20260103_000000"] : Array.Empty<string>());
-        if (keepNewest) backups.Combine("20260103_000000").Combine("mod.archive").FileExists.Should().BeTrue();
+        snapshots.Where(snapshot => backups.Combine(snapshot).DirectoryExists())
+            .Should().BeEquivalentTo(keepNewest ? ["GameA/20260103_000000", "GameB/20250101_000000"] : Array.Empty<string>());
+        if (keepNewest) backups.Combine("GameA/20260103_000000/mod.archive").FileExists.Should().BeTrue();
     }
 
     [Fact]
@@ -85,13 +86,15 @@ public class StorageAnalyzerTests(ITestOutputHelper helper) : ACyberpunkIsolated
         canary.Parent.CreateDirectory();
         await File.WriteAllTextAsync(canary.ToString(), "must survive");
         analyzer.BackupsFolderProvider = () => backups;
-        backups.Combine("20260101_000000").CreateDirectory();
-        File.CreateSymbolicLink(backups.Combine("20260101_000000/linked-mod").ToString(), outside.ToString());
+        backups.Combine("GameA/20260101_000000").CreateDirectory();
+        File.CreateSymbolicLink(backups.Combine("GameA/20260101_000000/linked-mod").ToString(), outside.ToString());
+        // A linked game folder: its "snapshots" are the outside folder's own subfolders
+        File.CreateSymbolicLink(backups.Combine("GameB").ToString(), outside.ToString());
 
         var stats = await analyzer.GetStorageStatsAsync();
         await analyzer.DeletePhysicalFilesAsync();
 
-        backups.Combine("20260101_000000").DirectoryExists().Should().BeFalse();
+        backups.Combine("GameA/20260101_000000").DirectoryExists().Should().BeFalse();
         canary.FileExists.Should().BeTrue();
         stats.CyberpunkBackupsSize.Value.Should().Be(0, "the size walk must not count files behind a symlink");
     }

@@ -37,9 +37,9 @@ public interface IStorageAnalyzer
     Task DeleteArchivesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deletes the timestamped backup directories under Backups, freeing disk space
+    /// Deletes the timestamped backup directories under <c>Backups/&lt;GameId&gt;/</c>, freeing disk space
     /// occupied by mod-file snapshots created by the Deep Clean tool. With <paramref name="keepNewest"/>
-    /// the most recent snapshot (the one a Deep Clean just made) survives. Never touches the
+    /// each game's most recent snapshot (the one a Deep Clean just made) survives. Never touches the
     /// downloads folder.
     /// </summary>
     Task DeletePhysicalFilesAsync(bool keepNewest = false, CancellationToken cancellationToken = default);

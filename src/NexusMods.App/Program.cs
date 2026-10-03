@@ -9,6 +9,7 @@ using Avalonia;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using NexusMods.Games.RedEngine.Cyberpunk2077;
 using NexusMods.Abstractions.Logging;
 using NexusMods.Abstractions.Serialization;
 using NexusMods.Sdk.Settings;
@@ -48,6 +49,7 @@ public class Program
             if (DataDirectoryMigration.MigrateLegacyDataDirectory(basePath))
                 Console.Error.WriteLine($"Migrated data directory to {basePath.Combine(ApplicationConstants.DataDirectoryName)}");
             DataDirectoryMigration.CopyUpstreamDataOnce(basePath);
+            DataDirectoryMigration.MoveLegacyBackups(basePath, Cyberpunk2077Game.GameId);
         }
         catch (Exception e)
         {

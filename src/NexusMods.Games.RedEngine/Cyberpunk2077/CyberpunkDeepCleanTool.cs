@@ -142,10 +142,9 @@ public class CyberpunkDeepCleanTool : ITool
     }
 
     /// <summary>
-    /// Root directory where Deep Clean backups are stored, outside the game folder.
+    /// Directory where this game's Deep Clean backups are stored, outside the game folder.
     /// </summary>
-    public static AbsolutePath BackupsRoot(IFileSystem fs) =>
-        fs.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine(ApplicationConstants.DataDirectoryName).Combine("Backups");
+    public static AbsolutePath BackupsRoot(IFileSystem fs) => GameBackups.ForGame(fs, Cyberpunk2077Game.GameId);
 
     /// <summary>
     /// Moves <paramref name="from"/> into the backup. Returns false only when the move failed (e.g. no space left or
@@ -239,7 +238,7 @@ public class CyberpunkDeepCleanTool : ITool
 
         // Step 1: Move mod files to a timestamped backup directory outside the game folder.
         // Keeping backups outside the game folder prevents the sync from tracking or trying to restore them.
-        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        var timestamp = DateTime.Now.ToString(GameBackups.SnapshotNameFormat);
         var backupsRoot = BackupsRoot(_fileSystem);
         var backupDir = backupsRoot.Combine(RelativePath.FromUnsanitizedInput(timestamp));
         var backupCreated = false;
