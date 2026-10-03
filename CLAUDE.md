@@ -8,6 +8,8 @@ Fork of NexusMods.App focused exclusively on **Cyberpunk 2077** via **Steam on L
 
 The upstream repository was discontinued. This fork removed support for other games (Stardew Valley, BG3, Skyrim/Fallout, M&B Bannerlord), stores (GOG, Epic Games Store, Xbox), and platforms (Windows, macOS). The app is named **tModManager** (app ID `io.github.t4toh.tmodmanager`, constants in `NexusMods.Sdk/ApplicationConstants.cs`). C# namespaces keep the upstream `NexusMods.*` prefix on purpose.
 
+**Direction: multi-game and multi-source.** CP2077 is the only game today, but the plan is to add more (Witcher 3 first; see `TODO.md` → Multi-juego for the decoupling survey and phases). Two rules for new code: nothing CP-specific outside `NexusMods.Games.RedEngine` (per-game behaviour goes through `IGame` or a per-game service, never `GameId ==` checks or concrete RedEngine types in core/UI), and nothing that assumes Nexus Mods is the only mod source (don't key data by `NexusModsGameId`, don't make Nexus metadata required). Nexus is one source among others.
+
 ## Build & Run Commands
 
 ```bash
