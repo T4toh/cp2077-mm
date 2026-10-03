@@ -162,7 +162,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
         if (CollectionMod.Hashes.Length > 0)
         {
-            return (await InstallReplicatedMod(patchedFiles), []);
+            return (await InstallReplicatedMod(patchedFiles, context.CancellationToken), []);
         }
 
         if (CollectionMod.Choices is { Type: ChoicesType.fomod })
@@ -303,7 +303,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
     /// situation. We don't store the MD5 hashes in the database, so we'll have to calculate them on the fly.
     /// </summary>
     /// <param name="patchedFiles"></param>
-    private Task<LoadoutItemGroup.ReadOnly> InstallReplicatedMod(PatchedFile[] patchedFiles) => LoadoutManager.InstallItemWrapper(TargetLoadout, async tx =>
+    private Task<LoadoutItemGroup.ReadOnly> InstallReplicatedMod(PatchedFile[] patchedFiles, CancellationToken cancellationToken) => LoadoutManager.InstallItemWrapper(TargetLoadout, async tx =>
     {
         // So collections hash everything by MD5, so we'll have to collect MD5 information for the files in the archive.
         // We don't do this during indexing into the library because this is the only case where we need MD5 hashes.
@@ -326,7 +326,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
 
         Logger.LogInformation("[REPLICATED] Starting MD5 hashing for '{ModName}' — {Total} files in archive", CollectionMod.Name, totalChildren);
 
-        await Parallel.ForEachAsync(libraryArchive.Children, async (child, token) =>
+        await Parallel.ForEachAsync(libraryArchive.Children, cancellationToken, async (child, token) =>
         {
             try
             {
@@ -357,7 +357,7 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         // restore them from their original downloads.
         if (failedCount > 0)
         {
-            var recovered = await TryReExtractMissingFiles(failedChildren, hashes, pathIndex);
+            var recovered = await TryReExtractMissingFiles(failedChildren, hashes, pathIndex, cancellationToken);
             hashedCount += recovered;
             failedCount -= recovered;
             if (recovered > 0)
@@ -467,11 +467,12 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
     private async Task<int> TryReExtractMissingFiles(
         ConcurrentBag<LibraryArchiveFileEntry.ReadOnly> failedChildren,
         ConcurrentDictionary<Md5Value, HashMapping> hashes,
-        ConcurrentDictionary<RelativePath, HashMapping> pathIndex)
+        ConcurrentDictionary<RelativePath, HashMapping> pathIndex,
+        CancellationToken cancellationToken)
     {
         var reExtractor = ServiceProvider.GetRequiredService<IDownloadReExtractor>();
         var wanted = failedChildren.Select(c => c.AsLibraryFile().Hash).ToArray();
-        var restored = await reExtractor.RestoreAsync(wanted, default);
+        var restored = await reExtractor.RestoreAsync(wanted, cancellationToken);
         var recovered = 0;
         foreach (var child in failedChildren)
         {
@@ -479,8 +480,8 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
             if (!restored.Contains(hash)) continue;
             try
             {
-                await using var stream = await FileStore.GetFileStream(hash);
-                var md5 = await Md5Hasher.HashAsync(stream);
+                await using var stream = await FileStore.GetFileStream(hash, cancellationToken);
+                var md5 = await Md5Hasher.HashAsync(stream, cancellationToken: cancellationToken);
                 var mapping = new HashMapping { Hash = hash, Size = child.AsLibraryFile().Size };
                 hashes[md5] = mapping;
                 pathIndex[child.Path] = mapping;
