@@ -39,6 +39,7 @@ show_menu() {
     echo "  8) Restaurar dependencias"
     echo "  9) Todo (limpiar + restaurar + compilar + tests)"
     echo " 10) Generar AppImage"
+    echo " 11) Ejecutar app en jaula (prueba real, disco protegido)"
     echo "  0) Salir"
     echo ""
     read -p "Opcion: " option
@@ -53,6 +54,21 @@ build_solution() {
 run_app() {
     echo -e "${GREEN}Ejecutando app...${NC}"
     dotnet run --project "$APP_PROJECT"
+}
+
+# Prueba con datos reales: todo el disco queda de solo lectura salvo los datos de la app, el juego y su prefix
+# (ver sandbox-run.sh). Antes saca un snapshot de /home si hay config de snapper `home`; el algoritmo
+# `number` hace que snapper-cleanup lo borre solo (guarda los ultimos NUMBER_LIMIT, 50 por defecto).
+run_app_sandboxed() {
+    echo -e "${GREEN}Compilando Release...${NC}"
+    dotnet build "$APP_PROJECT" -c Release || return 1
+    "$SCRIPT_DIR/sandbox-run.sh" --check || { echo -e "${RED}La jaula no protege lo que deberia. Abortando.${NC}"; return 1; }
+    if snapper -c home list &> /dev/null; then
+        snapper -c home create --cleanup-algorithm number -d "tModManager jaula $(date '+%F %T')" && echo -e "${GREEN}Snapshot de /home creado${NC}"
+    else
+        echo -e "${YELLOW}Sin snapshot: no hay config de snapper 'home'${NC}"
+    fi
+    "$SCRIPT_DIR/sandbox-run.sh"
 }
 
 # Un proyecto por vez: `dotnet test` sobre la solucion entera corre todo en paralelo y casi congela la PC.
@@ -201,6 +217,7 @@ while true; do
         8) restore_deps ;;
         9) run_all ;;
         10) build_appimage ;;
+        11) run_app_sandboxed ;;
         0)
             echo -e "${BLUE}¡Ahí luego!${NC}"
             exit 0
