@@ -148,8 +148,8 @@ public class CyberpunkDeepCleanTool : ITool
         fs.GetKnownPath(KnownPath.XDG_DATA_HOME).Combine(ApplicationConstants.DataDirectoryName).Combine("Backups");
 
     /// <summary>
-    /// Moves <paramref name="from"/> into the backup. Returns false only when the move failed (e.g. the game is on
-    /// another filesystem than the backups), so the caller can stop before forgetting mods that were not backed up.
+    /// Moves <paramref name="from"/> into the backup. Returns false only when the move failed (e.g. no space left or
+    /// permission denied), so the caller can stop before forgetting mods that were not backed up.
     /// </summary>
     private bool MoveToBackup(AbsolutePath gameRoot, AbsolutePath from, AbsolutePath to, ref bool backupCreated, AbsolutePath backupDir)
     {
@@ -173,8 +173,9 @@ public class CyberpunkDeepCleanTool : ITool
 
         try
         {
+            // The game and the backups can be on different disks or btrfs subvolumes, where a rename fails
             if (from.DirectoryExists())
-                System.IO.Directory.Move(from.ToString(), to.ToString());
+                NoFollowMove.MoveDirectoryNoFollow(from.ToString(), to.ToString());
             else
                 System.IO.File.Move(from.ToString(), to.ToString());
 
@@ -284,7 +285,7 @@ public class CyberpunkDeepCleanTool : ITool
         // Removing the mods from the database below would make the next apply delete the files that could not be
         // backed up, and pruning could drop the only older backup. Stop here instead.
         if (failedMoves > 0)
-            throw new InvalidOperationException($"No se pudieron mover {failedMoves} carpeta(s) o archivo(s) al backup (¿el juego está en otro disco?). Lo que sí se movió quedó en {backupDir}; no se borró nada y los mods siguen en la base, así que al aplicar se vuelven a poner. Revisá el log.");
+            throw new InvalidOperationException($"No se pudieron mover {failedMoves} carpeta(s) o archivo(s) al backup (¿sin espacio o sin permisos?). Lo que sí se movió quedó en {backupDir}; no se borró nada y los mods siguen en la base, así que al aplicar se vuelven a poner. Revisá el log.");
 
         foreach (var relativePath in PathsToDelete)
         {
