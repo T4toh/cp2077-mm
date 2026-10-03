@@ -104,4 +104,33 @@ public class ReExtractOnApplyTests(ITestOutputHelper helper) : ACyberpunkIsolate
             .Select(c => ((GamePath)c.ToLoadoutItemWithTargetPath().TargetPath).Path.ToString())
             .Should().Contain("mods/MyMod/info.json");
     }
+
+    [Fact]
+    public async Task InstallItem_StoreWipedAndDownloadChanged_FailsInsteadOfInstallingWithoutFiles()
+    {
+        var downloads = ServiceProvider.GetRequiredService<ISettingsManager>().Get<DownloadsSettings>().Folder.ToPath(FileSystem);
+        downloads.CreateDirectory();
+        var zip = downloads.Combine("changed.zip");
+        async Task WriteZip(string content)
+        {
+            await using var fs = zip.Create();
+            using var archive = new ZipArchive(fs, ZipArchiveMode.Create);
+            await using var w = new StreamWriter(archive.CreateEntry("archive/pc/mod/changed.archive").Open());
+            await w.WriteAsync(content);
+        }
+        await WriteZip("version 1");
+
+        var loadout = await CreateLoadout();
+        var local = await LibraryService.AddLocalFile(zip);
+        var hashes = LibraryArchiveFileEntry.FindByParent(Connection.Db, local.AsLibraryFile().Id).Select(e => e.AsLibraryFile().Hash).ToArray();
+        foreach (var h in hashes) ((LooseFileStore)FileStore).PathFor(h).Delete();
+        // Same name in Downloads, new content (e.g. the mod was updated and re-downloaded over it)
+        zip.Delete();
+        await WriteZip("version 2");
+
+        var act = async () => await LoadoutManager.InstallItem(local.AsLibraryFile().AsLibraryItem(), loadout);
+
+        var thrown = await act.Should().ThrowAsync<Exception>();
+        thrown.Which.ToString().Should().Contain("no se pudieron reextraer desde Descargas");
+    }
 }

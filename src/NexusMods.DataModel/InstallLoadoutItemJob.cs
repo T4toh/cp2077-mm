@@ -139,8 +139,9 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
     private async Task RestoreMissingArchiveEntries(CancellationToken ct)
     {
         if (!LibraryItem.TryGetAsLibraryFile(out var file)) return;
+        // A nested archive is extracted on import and only its files are stored, never the archive itself
         var hashes = file.TryGetAsLibraryArchive(out var archive)
-            ? archive.Children.Select(child => child.AsLibraryFile().Hash).ToArray()
+            ? archive.Children.Select(child => child.AsLibraryFile()).Where(child => !child.TryGetAsLibraryArchive(out _)).Select(child => child.Hash).ToArray()
             : [file.Hash];
 
         var reExtractor = ServiceProvider.GetRequiredService<IDownloadReExtractor>();
@@ -148,6 +149,10 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
         var (missing, restored) = await reExtractor.RestoreMissingAsync(fileStore, hashes, ct);
         if (missing > 0)
             Logger.LogInformation("Faltaban {Missing} archivos de '{Name}' en el store; {Restored} reextraídos desde Descargas", missing, LibraryItem.Name, restored);
+
+        // Installers would pick a layout from an incomplete file set and the apply would deploy without those files
+        if (restored < missing)
+            throw new InvalidOperationException($"Faltan {missing - restored} archivo(s) de '{LibraryItem.Name}' en el store y no se pudieron reextraer desde Descargas: la descarga no está o cambió de contenido. Volvé a bajar el mod.");
     }
 
     private async ValueTask<LoadoutItemGroup.New?> ExecuteInstallersAsync(

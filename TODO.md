@@ -39,9 +39,7 @@ Notas: login desde un build de `bin/` necesita `/etc/dotnet/install_location` ap
 
 ### Pendiente después de probar
 
-- [ ] **Una descarga con contenido cambiado se da por bajada.** `CollectionDownloader.ValidateStatusAsync` solo mira que exista el archivo de `DownloadPath`; si el contenido cambió, la reextracción lo rechaza (hash) y la instalación de un mod suelto (`InstallLoadoutItemJob.RestoreMissingArchiveEntries`) solo loguea y deja correr los instaladores (puede instalar con layout incorrecto). Arreglo de una línea: tirar error claro cuando `restored < missing`
 - [ ] **Super Clean con varios loadouts:** hoy se niega (guarda del 2026-09-25). Arreglo real: conservar todos los snapshots de una corrida (cada pasada con sync crea uno y `PruneOldBackups` se lleva el primero, el único con archivos no gestionados). El orden de snapshots es por nombre (hora local): un cambio de horario o una carpeta ajena en `Backups/` puede elegir mal
-- [ ] `InstallCollectionDownloadJob.TryReExtractMissingFiles` pasa `default` en vez del token del job a `RestoreAsync`
 - [ ] **Desacoplar Cyberpunk del core** (ver sección Multi-juego). Rama nueva desde `main`, verificada con la suite local.
 
 ## ✅ Completado
