@@ -1350,29 +1350,45 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var locatorIds = loadout.LocatorIds.Distinct().ToArray();
         var nexusKnows = NexusKnowsVersion(store, locatorIds);
 
+        var previous = new Dictionary<GamePath, (Hash Hash, Size Size)>();
+        foreach (var entry in GameBaselineFile.FindByGame(metadata.Db, metadata))
+            previous[entry.Path] = (entry.Hash, entry.Size);
+        var disk = DiskStateEntry.FindByGame(metadata.Db, metadata).Select(e => ((GamePath)e.Path, e.Hash, e.Size)).ToList();
+        // The disk holds the last synced loadout as it was applied: not `loadout` when switching loadouts, and
+        // without edits made since (a mod disabled since then is still deployed and still the loadout's)
+        var onDisk = loadout.Rebase();
+        if (Sdk.Games.GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastSyncedId)
+            && metadata.Contains(Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransaction))
+        {
+            var appliedTx = Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransactionId.Get(metadata);
+            var applied = Loadout.Load(metadata.Db.Connection.AsOf(TxId.From(appliedTx.Value)), lastSyncedId);
+            if (applied.IsValid()) onDisk = applied;
+        }
+        var owned = OwnedPaths(onDisk);
+
         IEnumerable<(GamePath Path, Hash Hash, Size Size)> files;
         LoadoutFile.ReadOnly[] adopted = [];
         if (nexusKnows)
         {
-            files = _fileHashService.GetGameFiles((store, locatorIds)).Select(f => (f.Path, f.Hash, f.Size));
+            var nexus = new Dictionary<GamePath, (Hash Hash, Size Size)>();
+            foreach (var f in _fileHashService.GetGameFiles((store, locatorIds)))
+                nexus[f.Path] = (f.Hash, f.Size);
+
+            // Nothing that was original becomes a leftover: entries Nexus doesn't list (a disk-made list's, files the
+            // button adopted) stay while the disk still holds them unchanged or the loadout owns the path (BaselineRule)
+            var diskHashes = new Dictionary<GamePath, Hash>();
+            foreach (var (path, hash, _) in disk) diskHashes[path] = hash;
+            foreach (var (path, entry) in previous)
+            {
+                if (nexus.ContainsKey(path)) continue;
+                if (owned.ContainsKey(path) || (diskHashes.TryGetValue(path, out var diskHash) && diskHash == entry.Hash))
+                    nexus[path] = entry;
+            }
+
+            files = nexus.Select(kv => (kv.Key, kv.Value.Hash, kv.Value.Size));
         }
         else
         {
-            var previous = new Dictionary<GamePath, (Hash Hash, Size Size)>();
-            foreach (var entry in GameBaselineFile.FindByGame(metadata.Db, metadata))
-                previous[entry.Path] = (entry.Hash, entry.Size);
-            var disk = DiskStateEntry.FindByGame(metadata.Db, metadata).Select(e => ((GamePath)e.Path, e.Hash, e.Size)).ToList();
-            // The disk holds the last synced loadout as it was applied: not `loadout` when switching loadouts, and
-            // without edits made since (a mod disabled since then is still deployed and still the loadout's)
-            var onDisk = loadout.Rebase();
-            if (Sdk.Games.GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastSyncedId)
-                && metadata.Contains(Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransaction))
-            {
-                var appliedTx = Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransactionId.Get(metadata);
-                var applied = Loadout.Load(metadata.Db.Connection.AsOf(TxId.From(appliedTx.Value)), lastSyncedId);
-                if (applied.IsValid()) onDisk = applied;
-            }
-            var owned = OwnedPaths(onDisk);
             if (adoptExternalChanges)
             {
                 adopted = AdoptableExternalChanges(onDisk, owned, disk);
@@ -1408,6 +1424,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             };
             count++;
         }
+        // False even with entries kept from the previous list: the "Nexus now knows" rebuild must not fire again, and
+        // every later Nexus rebuild keeps them the same way
         tx.Add(metadata.Id, Sdk.Games.GameInstallMetadata.BaselineFromDisk, !nexusKnows);
 
         // Like ReprocessOverrides: the External Change is a game file now, and its backup stays rooted

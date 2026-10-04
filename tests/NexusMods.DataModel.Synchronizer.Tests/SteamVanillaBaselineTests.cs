@@ -10,6 +10,7 @@ using NexusMods.Games.RedEngine;
 using NexusMods.Games.RedEngine.Cyberpunk2077;
 using NexusMods.Games.TestFramework;
 using NexusMods.Hashing.xxHash3;
+using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -129,8 +130,73 @@ public class SteamVanillaBaselineTests(ITestOutputHelper helper) : AIsolatedGame
         await Synchronizer.Synchronize(loadout.Rebase());
 
         GameFile("config.ini").FileExists.Should().BeTrue();
+        // Only the disk list held it (the stubbed Nexus list has no exe): it stays an original
+        GameFile("bin/x64/Cyberpunk2077.exe").FileExists.Should().BeTrue();
         GameInstallMetadata.BaselineFromDisk.Get(GameRegistry.ForceGetMetadata(GameInstallation)).Should().BeFalse();
-        ListPaths().Should().Equal(NexusPaths("not-in-the-db-yet"));
+        ListPaths().Should().BeEquivalentTo(NexusPaths("not-in-the-db-yet").Append(new GamePath(LocationId.Game, "bin/x64/Cyberpunk2077.exe")));
+    }
+
+    [Fact]
+    public async Task ButtonAdoptedAUserFile_HashDatabaseLearnsTheVersion_ThenAKnownPatch_TheFileSurvives()
+    {
+        Locator.LocatorIds = [LocatorId.From("not-in-the-db-yet")];
+        await WriteGameFile("bin/x64/Cyberpunk2077.exe", "primary file");
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        var loadout = await Synchronizer.Synchronize(await CreateLoadout());
+
+        // A user file lands in External Changes and the "Actualicé el juego" button adopts it as an original
+        await WriteGameFile("bin/x64/plugins/user-settings.json", "user settings");
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        var userFile = new GamePath(LocationId.Game, "bin/x64/plugins/user-settings.json");
+        Overrides(loadout).Should().Contain(userFile);
+        await SynchronizerService.UpdateBaseline(loadout.LoadoutId);
+        ListPaths().Should().Contain(userFile);
+        Overrides(loadout).Should().NotContain(userFile);
+
+        // The hash database learns the version: the list comes from Nexus now
+        Hashes.LearnedLocatorIds.Add(LocatorId.From("not-in-the-db-yet"));
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        GameFile("bin/x64/plugins/user-settings.json").FileExists.Should().BeTrue();
+        GameInstallMetadata.BaselineFromDisk.Get(GameRegistry.ForceGetMetadata(GameInstallation)).Should().BeFalse();
+
+        // Then Steam patches to another version the database knows: the file is still not a leftover
+        Locator.LocatorIds = [LocatorId.From("StubbedGameState_game_v2.zip")];
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        await Synchronizer.Synchronize(loadout.Rebase());
+        (await GameFile("bin/x64/plugins/user-settings.json").ReadAllTextAsync()).Should().Be("user settings");
+        GameFile("bin/x64/Cyberpunk2077.exe").FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ListFromDisk_OriginalUnderAMod_HashDatabaseLearnsTheVersion_RemovingTheModRestoresIt()
+    {
+        Locator.LocatorIds = [LocatorId.From("not-in-the-db-yet")];
+        await WriteGameFile("bin/x64/Cyberpunk2077.exe", "primary file");
+        await WriteGameFile("r6/config/settings.ini", "vanilla");
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        var loadout = await Synchronizer.Synchronize(await CreateLoadout());
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, [(RelativePath)"r6/config/settings.ini"], loadout, "ConfigMod");
+            await tx.Commit();
+        }
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+
+        // The stubbed Nexus list has no settings.ini: only the disk list knows its original, now under the mod
+        Hashes.LearnedLocatorIds.Add(LocatorId.From("not-in-the-db-yet"));
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        NexusPaths("not-in-the-db-yet").Should().NotContain(new GamePath(LocationId.Game, "r6/config/settings.ini"));
+
+        var mod = LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemGroup().Single(g => g.AsLoadoutItem().Name == "ConfigMod");
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Delete(mod, recursive: true);
+            await tx.Commit();
+        }
+        await Synchronizer.Synchronize(loadout.Rebase());
+
+        (await GameFile("r6/config/settings.ini").ReadAllTextAsync()).Should().Be("vanilla");
     }
 
     [Fact]
