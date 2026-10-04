@@ -329,37 +329,7 @@ public class CyberpunkDeepCleanTool : ITool
         // Library items and archives are preserved so mods can be re-installed without re-downloading.
         try
         {
-            var db = _connection.Db;
-            using var tx = _connection.BeginTransaction();
-            var removedCount = 0;
-
-            // Find all top-level LoadoutItemGroups (direct children of the loadout, not nested mod groups)
-            // and delete them recursively. This removes:
-            //   - Regular mod groups (LoadoutItemGroup)
-            //   - Collection groups (NexusCollectionLoadoutGroup via CollectionGroup → LoadoutItemGroup)
-            //   - Their nested mod groups and all LoadoutFiles within
-            foreach (var item in LoadoutItem.FindByLoadout(db, loadout.Id).OfTypeLoadoutItemGroup())
-            {
-                // Only delete top-level groups (those directly under the Loadout, not nested under another group)
-                var loadoutItem = item.AsLoadoutItem();
-                if (loadoutItem.Contains(LoadoutItem.Parent)) continue; // skip nested groups
-
-                // Skip the overrides group — it tracks vanilla game files that shouldn't be removed
-                if (new[] { item }.OfTypeLoadoutOverridesGroup().Any()) continue;
-
-                tx.Delete(item.Id, recursive: true);
-                removedCount++;
-            }
-
-            if (removedCount > 0)
-            {
-                await tx.Commit();
-                _logger.LogInformation("Removed {Count} top-level mod group(s) from the loadout database", removedCount);
-            }
-            else
-            {
-                _logger.LogInformation("No mod groups found to remove from the database");
-            }
+            await RemoveModGroups(_connection, loadout.LoadoutId, _logger);
         }
         catch (Exception ex)
         {
@@ -370,6 +340,49 @@ public class CyberpunkDeepCleanTool : ITool
         // This avoids the app trying to re-apply (or delete) files it no longer tracks.
         _logger.LogInformation("Rescanning game folder to update disk state...");
         await _synchronizerService.RescanFiles(loadout.InstallationInstance);
+    }
+
+    /// <summary>
+    /// Deletes every top-level group of the loadout (mods, Nexus collections and their nested groups and files),
+    /// except the overrides group and the editable collections ("My Mods"), which are emptied instead: the library
+    /// installs into an editable collection and needs one to exist.
+    /// </summary>
+    internal static async Task RemoveModGroups(IConnection connection, LoadoutId loadoutId, ILogger logger)
+    {
+        var db = connection.Db;
+        using var tx = connection.BeginTransaction();
+        var removedCount = 0;
+
+        foreach (var item in LoadoutItem.FindByLoadout(db, loadoutId).OfTypeLoadoutItemGroup())
+        {
+            if (item.AsLoadoutItem().Contains(LoadoutItem.Parent)) continue; // nested groups go with their parent
+
+            // The overrides group tracks vanilla game files that shouldn't be removed
+            if (new[] { item }.OfTypeLoadoutOverridesGroup().Any()) continue;
+
+            if (item.TryGetAsCollectionGroup(out var collection) && !collection.IsReadOnly)
+            {
+                foreach (var child in LoadoutItem.FindByParent(db, item.Id))
+                {
+                    tx.Delete(child.Id, recursive: true);
+                    removedCount++;
+                }
+                continue;
+            }
+
+            tx.Delete(item.Id, recursive: true);
+            removedCount++;
+        }
+
+        if (removedCount > 0)
+        {
+            await tx.Commit();
+            logger.LogInformation("Removed {Count} mod group(s) from the loadout database", removedCount);
+        }
+        else
+        {
+            logger.LogInformation("No mod groups found to remove from the database");
+        }
     }
 
     public IJobTask<ITool, Unit> StartJob(Loadout.ReadOnly loadout, IJobMonitor monitor, CancellationToken cancellationToken)
