@@ -80,6 +80,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
     public ReactiveCommand<NavigationInformation> CommandOpenLibraryPage { get; }
     public ReactiveCommand<NavigationInformation> CommandOpenFilesPage { get; }
     public ReactiveCommand<Unit> CommandOpenEssentialModsPage { get; }
+    public bool HasEssentialMods { get; }
 
     public ReactiveCommand<Unit> CommandRemoveItem { get; }
     public ReactiveCommand<Unit> CommandDeselectItems { get; }
@@ -468,6 +469,7 @@ public class LoadoutViewModel : APageViewModel<ILoadoutViewModel>, ILoadoutViewM
             }
         );
 
+        HasEssentialMods = EssentialModsPageFactory.IsAvailableFor(loadout.InstallationInstance.Game);
         CommandOpenEssentialModsPage = new ReactiveCommand<Unit>(_ =>
         {
             var pageData = new PageData

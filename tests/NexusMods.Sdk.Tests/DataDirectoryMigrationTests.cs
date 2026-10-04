@@ -66,4 +66,31 @@ public class DataDirectoryMigrationTests
             if (basePath.DirectoryExists()) Directory.Delete(basePath.ToString(), recursive: true);
         }
     }
+
+    [Test]
+    public async Task MoveLegacyBackups_MovesSnapshotsIntoTheOwnersFolder()
+    {
+        var basePath = FileSystem.Shared.GetKnownPath(KnownPath.TempDirectory).Combine($"tModManager-backups-{Guid.NewGuid()}");
+        var backups = basePath.Combine(ApplicationConstants.DataDirectoryName).Combine("Backups");
+        var owner = Games.GameId.From("RedEngine.Cyberpunk2077");
+        try
+        {
+            backups.Combine("20260101_000000/mods").CreateDirectory();
+            File.WriteAllText(backups.Combine("20260101_000000/mods/mod.archive").ToString(), "mod");
+            backups.Combine("OtherGame/20260102_000000").CreateDirectory();
+            backups.Combine("not-a-snapshot").CreateDirectory();
+
+            DataDirectoryMigration.MoveLegacyBackups(basePath, owner);
+            DataDirectoryMigration.MoveLegacyBackups(basePath, owner);
+
+            await Assert.That(backups.Combine("20260101_000000").DirectoryExists()).IsFalse();
+            await Assert.That(File.ReadAllText(backups.Combine("RedEngine.Cyberpunk2077/20260101_000000/mods/mod.archive").ToString())).IsEqualTo("mod");
+            await Assert.That(backups.Combine("OtherGame/20260102_000000").DirectoryExists()).IsTrue();
+            await Assert.That(backups.Combine("not-a-snapshot").DirectoryExists()).IsTrue();
+        }
+        finally
+        {
+            if (basePath.DirectoryExists()) Directory.Delete(basePath.ToString(), recursive: true);
+        }
+    }
 }

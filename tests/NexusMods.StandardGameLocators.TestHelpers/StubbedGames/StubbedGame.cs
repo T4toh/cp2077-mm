@@ -21,8 +21,8 @@ public class StubbedGame : IGame, IGameData<StubbedGame>
     public static GameId GameId { get; } = GameId.From("StubbedGame");
     public static string DisplayName => "Stubbed Game";
 
-    // TODO: make None after moving to GameId
-    public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Sdk.NexusModsApi.NexusModsGameId.From(uint.MaxValue);
+    // No Nexus Mods page: a game is identified by its GameId, Nexus is only one place to get mods from
+    public static Optional<Sdk.NexusModsApi.NexusModsGameId> NexusModsGameId => Optional<Sdk.NexusModsApi.NexusModsGameId>.None;
 
     public StoreIdentifiers StoreIdentifiers { get; } = new(GameId)
     {
@@ -81,7 +81,7 @@ public class StubbedGame : IGame, IGameData<StubbedGame>
             {
                 Path = path.ToString(),
                 Version = Version.Parse($"1.{version}.0.0").ToString(),
-                GameId = NexusModsGameId.Value,
+                GameId = GameId,
                 WinePrefix = string.Empty,
             };
             await tx.Commit();
@@ -90,6 +90,8 @@ public class StubbedGame : IGame, IGameData<StubbedGame>
         await AddTestFiles(path, provider);
 
         var gameRegistry = provider.GetRequiredService<IGameRegistry>();
+        // The registry caches what the locators found, and the new install was added after that
+        gameRegistry.ClearCache();
         var install = gameRegistry.LocateGameInstallations().First(g => g.Game is StubbedGame && g.LocatorResult.Path == path);
 
         return install;

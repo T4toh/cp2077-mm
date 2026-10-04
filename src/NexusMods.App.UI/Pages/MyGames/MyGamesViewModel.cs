@@ -95,9 +95,6 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         IGameRegistry gameRegistry,
         IToolManager toolManager) : base(windowManager)
     {
-        var settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
-        var experimentalSettings = settingsManager.Get<ExperimentalSettings>();
-
         var libraryDataProviders = serviceProvider.GetServices<ILibraryDataProvider>().ToArray();
 
         _collectionDownloader = serviceProvider.GetRequiredService<CollectionDownloader>();
@@ -133,24 +130,9 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
 
         AddGameManuallyCommand = ReactiveCommand.CreateFromTask(async () =>
         {
-            var overlay = new ManualAddGameOverlayViewModel(_serviceProvider.GetRequiredService<IAvaloniaInterop>());
+            var overlay = new ManualAddGameOverlayViewModel(_serviceProvider.GetRequiredService<IAvaloniaInterop>(), _serviceProvider.GetServices<IGameData>());
             var result = await _overlayController.EnqueueAndWait(overlay);
-            if (result is null || !result.Confirmed) return;
-
-            var gamePath = _serviceProvider.GetRequiredService<IFileSystem>().FromUnsanitizedFullPath(result.GamePath);
-            var exePath = gamePath.Combine("bin/x64/Cyberpunk2077.exe");
-
-            if (!exePath.FileExists)
-            {
-                var messageBox = new MessageBoxOkViewModel
-                {
-                    Title = "Invalid Game Path",
-                    Description = "The selected folder does not appear to contain a Cyberpunk 2077 installation (bin/x64/Cyberpunk2077.exe not found).",
-                    MarkdownRenderer = null
-                };
-                await _overlayController.EnqueueAndWait(messageBox);
-                return;
-            }
+            if (result is not { Confirmed: true, Game: { } game }) return;
 
             if (!string.IsNullOrWhiteSpace(result.WinePrefix))
             {
@@ -184,28 +166,43 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
             }
 
             using var tx = conn.BeginTransaction();
-            _ = new ManuallyAddedGame.New(tx)
+            var added = new ManuallyAddedGame.New(tx)
             {
-                GameId = NexusModsGameId.From(3333),
+                GameId = game.GameId,
                 Version = "Manual",
                 Path = result.GamePath,
                 WinePrefix = result.WinePrefix,
             };
-            await tx.Commit();
+            var addedId = (await tx.Commit()).Remap(added).Id;
 
             // Forzar re-deteccion
             _gameRegistry.ClearCache();
             _refreshSignal.OnNext(Unit.Default);
-            
-            // Wait for refresh to propagate? 
-            // We can manually locate it here just to get the object for ManageGame
-            var installations = gameRegistry.LocateGameInstallations();
-            var cp2077 = installations.FirstOrDefault(i => i.Game.GameId == GameId.From("RedEngine.Cyberpunk2077") && i.LocatorResult.Store == GameStore.ManuallyAdded);
-            if (cp2077 is null) return;
+
+            // ManuallyAddedLocator reports the entity id as the store identifier
+            var installation = gameRegistry.LocateGameInstallations()
+                .FirstOrDefault(i => i.LocatorResult.Store == GameStore.ManuallyAdded && i.LocatorResult.StoreIdentifier == addedId.ToString());
+            var primaryFile = installation is null ? (AbsolutePath?)null : installation.Locations.ToAbsolutePath(game.GetPrimaryFile(installation));
+            if (installation is null || primaryFile is not { FileExists: true })
+            {
+                using var undo = conn.BeginTransaction();
+                undo.Delete(addedId, recursive: false);
+                await undo.Commit();
+                _gameRegistry.ClearCache();
+                _refreshSignal.OnNext(Unit.Default);
+
+                await _overlayController.EnqueueAndWait(new MessageBoxOkViewModel
+                {
+                    Title = "Invalid Game Path",
+                    Description = $"The selected folder does not appear to contain a {game.DisplayName} installation ({primaryFile?.FileName.ToString() ?? "main executable"} not found).",
+                    MarkdownRenderer = null,
+                });
+                return;
+            }
 
             // Crear loadout y navegar a Library
-            await Task.Run(async () => await ManageGame(cp2077));
-            NavigateToLoadoutLibrary(conn, cp2077);
+            await Task.Run(async () => await ManageGame(installation));
+            NavigateToLoadoutLibrary(conn, installation);
         });
 
         this.WhenActivated(d =>
@@ -213,13 +210,8 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                 _refreshSignal
                     .Subscribe(_ =>
                     {
-                        var games = gameRegistry.LocateGameInstallations()
-                            .Where(game =>
-                            {
-                                if (experimentalSettings.EnableAllGames) return true;
-                                return experimentalSettings.SupportedGames.Contains(game.Game.GameId);
-                            });
-                        
+                        var games = gameRegistry.LocateGameInstallations();
+
                         _sourceList.Edit(innerList =>
                         {
                             innerList.Clear();
@@ -408,11 +400,11 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                     .SubscribeWithErrorLogging()
                     .DisposeWith(d);
 
-                // Create Wine prefix status panel for the first installed game
+                // Wine prefix status panel for the game whose requirements it checks
                 // We observe the source list directly to update this
                 _sourceList.Connect()
                     .ToCollection()
-                    .Select(list => list.FirstOrDefault())
+                    .Select(list => list.FirstOrDefault(installation => WinePrefixStatusViewModel.AppliesTo(installation.Game)))
                     .Subscribe(firstInstallation =>
                     {
                         if (firstInstallation is not null)

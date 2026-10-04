@@ -14,11 +14,16 @@ public partial class GameInstallMetadata : IModelDefinition
 {
     private const string Namespace = "NexusMods.Loadouts.GameMetadata";
 
-    // TODO: replace nexus mods game id with actual game id
     /// <summary>
-    /// The game's unique id.
+    /// The game's unique id. Stored as "Game": "GameId" is the attribute it replaced.
     /// </summary>
-    public static readonly NexusModsGameIdAttribute GameId = new(Namespace, nameof(GameId)) { IsIndexed = true };
+    public static readonly GameIdAttribute GameId = new(Namespace, "Game") { IsIndexed = true };
+
+    /// <summary>
+    /// What identified the game before <see cref="GameId"/>: its id on Nexus Mods. Only kept so the migration that
+    /// fills <see cref="GameId"/> can read older databases; nothing else reads or writes it.
+    /// </summary>
+    public static readonly NexusModsGameIdAttribute LegacyNexusModsGameId = new(Namespace, "GameId") { IsIndexed = true, IsOptional = true };
 
     /// <summary>
     /// The name of the store the game is from

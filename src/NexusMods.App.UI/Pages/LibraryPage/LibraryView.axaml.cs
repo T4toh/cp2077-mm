@@ -122,6 +122,9 @@ public partial class LibraryView : ReactiveUserControl<ILibraryViewModel>
                 this.BindCommand(ViewModel, vm => vm.OpenEssentialModsCommand, view => view.EssentialModsButton)
                     .AddTo(disposables);
 
+                this.OneWayBind(ViewModel, vm => vm.HasEssentialMods, view => view.EssentialModsButton.IsVisible)
+                    .AddTo(disposables);
+
                 this.OneWayBind(ViewModel, vm => vm.Adapter.Source.Value, view => view.TreeDataGridLibrary.Source)
                     .AddTo(disposables);
 

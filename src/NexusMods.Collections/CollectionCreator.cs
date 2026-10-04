@@ -423,7 +423,8 @@ public static class CollectionCreator
     {
         Debug.Assert(group.IsValid());
 
-        var gameId = group.AsLoadoutItem().Loadout.Installation.GameId;
+        // Collections live on Nexus Mods, so this is the one place that needs the game's Nexus id
+        var gameId = group.AsLoadoutItem().Loadout.InstallationInstance.Game.NexusModsGameId.Value;
         var gameDomain = mappingCache[gameId];
 
         var collectionMods = new List<CollectionMod>();

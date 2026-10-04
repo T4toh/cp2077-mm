@@ -7,6 +7,7 @@ using NexusMods.DataModel.LegacyData;
 using NexusMods.DataModel.Storage;
 using NexusMods.Paths;
 using NexusMods.Sdk;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Settings;
 using R3;
 
@@ -18,8 +19,6 @@ namespace NexusMods.App.UI.Overlays;
 /// </summary>
 public class LegacyCleanupOverlayViewModel : AOverlayViewModel<ILegacyCleanupOverlayViewModel>, ILegacyCleanupOverlayViewModel
 {
-    private const string SteamValidateUri = "steam://validate/1091500";
-
     public BindableReactiveProperty<int> Step { get; } = new(1);
     public BindableReactiveProperty<string> LegacyDownloadsText { get; } = new("");
     public BindableReactiveProperty<bool> DeleteProtonPrefix { get; } = new(false);
@@ -36,7 +35,7 @@ public class LegacyCleanupOverlayViewModel : AOverlayViewModel<ILegacyCleanupOve
         IStorageAnalyzer storage,
         IOSInterop osInterop,
         ILogger logger,
-        Func<AbsolutePath?> steamLibraryRoot,
+        Func<GameInstallation?> steamInstallation,
         Action resetAndRestart,
         Action quit)
     {
@@ -46,9 +45,15 @@ public class LegacyCleanupOverlayViewModel : AOverlayViewModel<ILegacyCleanupOve
         CommandQuit = IsBusy.Select(static busy => !busy).ToReactiveCommand<Unit>(_ => quit());
         CommandVerifySteam = new ReactiveCommand<Unit>(_ =>
         {
+            if (steamInstallation() is not { } installation)
+            {
+                Message.Value = "No se encontró el juego en Steam. Verificá los archivos desde Steam: Propiedades > Archivos instalados.";
+                return;
+            }
+
             try
             {
-                osInterop.OpenUri(new Uri(SteamValidateUri));
+                osInterop.OpenUri(new Uri($"steam://validate/{installation.LocatorResult.StoreIdentifier}"));
             }
             catch (Exception e)
             {
@@ -95,10 +100,10 @@ public class LegacyCleanupOverlayViewModel : AOverlayViewModel<ILegacyCleanupOve
 
                             if (DeleteProtonPrefix.Value)
                             {
-                                if (steamLibraryRoot() is { } root)
-                                    await storage.DeleteProtonPrefixAsync(root, cancellationToken);
+                                if (steamInstallation() is { } installation)
+                                    await storage.DeleteProtonPrefixAsync(installation, cancellationToken);
                                 else
-                                    Message.Value = "No se encontró la librería de Steam del juego; el prefix de Proton no se borró.";
+                                    Message.Value = "No se encontró el juego en Steam; el prefix de Proton no se borró.";
                             }
                             break;
                         default:
@@ -137,7 +142,8 @@ public class LegacyCleanupOverlayViewModel : AOverlayViewModel<ILegacyCleanupOve
             storage: serviceProvider.GetRequiredService<IStorageAnalyzer>(),
             osInterop: osInterop,
             logger: serviceProvider.GetRequiredService<ILogger<LegacyCleanupOverlayViewModel>>(),
-            steamLibraryRoot: () => SteamPaths.LibraryRoot(serviceProvider),
+            // Only data from before multi-game support has .nx archives, and that data is Cyberpunk's: the one game it had
+            steamInstallation: () => SteamPaths.Installations(serviceProvider).FirstOrDefault(),
             resetAndRestart: () =>
             {
                 LegacyDataDetector.RequestResetOnStart(fs);

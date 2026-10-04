@@ -29,7 +29,7 @@ public interface IStorageManagerPageViewModel : IPageViewModelInterface
     /// <summary>Deletes the original downloaded files. Requires separate explicit confirmation.</summary>
     ReactiveCommand<Unit> DeleteDownloadsCommand { get; }
 
-    /// <summary>Deletes the game's Proton prefix (steamapps/compatdata/1091500). Requires separate explicit confirmation.</summary>
+    /// <summary>Deletes a Steam game's Proton prefix (steamapps/compatdata/&lt;appid&gt;), asking which game when there are several. Requires separate explicit confirmation.</summary>
     ReactiveCommand<Unit> DeleteProtonPrefixCommand { get; }
 
     /// <summary>Refreshes the storage stats from disk.</summary>

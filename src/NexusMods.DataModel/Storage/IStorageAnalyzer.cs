@@ -1,3 +1,4 @@
+using NexusMods.Sdk.Games;
 using NexusMods.Paths;
 
 namespace NexusMods.DataModel.Storage;
@@ -37,9 +38,9 @@ public interface IStorageAnalyzer
     Task DeleteArchivesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deletes the timestamped backup directories under Backups, freeing disk space
+    /// Deletes the timestamped backup directories under <c>Backups/&lt;GameId&gt;/</c>, freeing disk space
     /// occupied by mod-file snapshots created by the Deep Clean tool. With <paramref name="keepNewest"/>
-    /// the most recent snapshot (the one a Deep Clean just made) survives. Never touches the
+    /// each game's most recent snapshot (the one a Deep Clean just made) survives. Never touches the
     /// downloads folder.
     /// </summary>
     Task DeletePhysicalFilesAsync(bool keepNewest = false, CancellationToken cancellationToken = default);
@@ -62,8 +63,9 @@ public interface IStorageAnalyzer
     Task<int> MoveLegacyDownloadsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Borra el prefix de Proton de Cyberpunk 2077 (<c>steamapps/compatdata/1091500</c>) bajo la
-    /// biblioteca de Steam indicada. No hace nada si la ruta no coincide con lo esperado.
+    /// Borra el prefix de Proton de <paramref name="installation"/> (<c>steamapps/compatdata/&lt;appid&gt;</c>, la
+    /// ruta que encontró el locator de Steam). No hace nada si no es una instalación de Steam o si la ruta no
+    /// coincide con lo esperado.
     /// </summary>
-    Task DeleteProtonPrefixAsync(AbsolutePath steamLibraryRoot, CancellationToken cancellationToken = default);
+    Task DeleteProtonPrefixAsync(GameInstallation installation, CancellationToken cancellationToken = default);
 }

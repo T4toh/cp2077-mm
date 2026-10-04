@@ -153,6 +153,13 @@ public class StubbedFileHasherService : IFileHashesService
     {
         var (_, locatorIds) = locatorIdsWithGameStore;
 
+        // A manually added install has no locator ids, so no known version (like the real service)
+        if (locatorIds.Length == 0)
+        {
+            version = VanityVersion.DefaultValue;
+            return false;
+        }
+
         var locatorId = locatorIds.First();
         if (locatorId == "StubbedGameState.zip")
         {

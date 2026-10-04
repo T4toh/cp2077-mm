@@ -14,7 +14,6 @@ public static class Services
     public static IServiceCollection AddGames(this IServiceCollection services)
     {
         return services
-            .AddSingleton<SortOrderManager>()
             .AddSortOrderItemModel()
             .AddSortOrderQueriesSql()
             .AddLoadoutItemGroupPriorityModel();

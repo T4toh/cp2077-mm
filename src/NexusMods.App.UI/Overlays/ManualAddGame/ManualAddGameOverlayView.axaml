@@ -9,6 +9,7 @@
     xmlns:base="clr-namespace:NexusMods.App.UI.Overlays.Generic.MessageBox.Base"
     xmlns:controls="clr-namespace:NexusMods.App.UI.Controls"
     xmlns:icons="clr-namespace:NexusMods.UI.Sdk.Icons;assembly=NexusMods.UI.Sdk"
+    xmlns:games="clr-namespace:NexusMods.Sdk.Games;assembly=NexusMods.Sdk"
     x:DataType="local:IManualAddGameOverlayViewModel"
     mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="400"
     x:Class="NexusMods.App.UI.Overlays.ManualAddGameOverlayView">
@@ -18,7 +19,7 @@
             <Border Padding="24">
                 <StackPanel Spacing="16">
                     <TextBlock
-                        Text="Manually Add Cyberpunk 2077"
+                        Text="Add a Game Manually"
                         TextWrapping="Wrap"
                         Theme="{StaticResource HeadingXSSemiTheme}" />
                     
@@ -26,6 +27,19 @@
                         Text="Select the game installation folder and optionally a WINE prefix if you are using a non-standard runner (e.g. Lutris, Heroic, or manual WINE)."
                         TextWrapping="Wrap"
                         Theme="{StaticResource BodyMDNormalTheme}" />
+
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Game" Theme="{StaticResource BodySMNormalTheme}" Opacity="0.7" />
+                        <ComboBox ItemsSource="{CompiledBinding Games}"
+                                  SelectedItem="{CompiledBinding SelectedGame.Value}"
+                                  HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="games:IGameData">
+                                    <TextBlock Text="{CompiledBinding DisplayName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
 
                     <StackPanel Spacing="8">
                         <TextBlock Text="Game Installation Path" Theme="{StaticResource BodySMNormalTheme}" Opacity="0.7" />

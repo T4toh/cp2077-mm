@@ -334,7 +334,7 @@ public class LibraryServiceTests : ACyberpunkIsolatedGameTest<LibraryServiceTest
             Path = GameInstallation.LocatorResult.Path.ToString(),
             Name = GameInstallation.Game.DisplayName,
             Store = GameInstallation.LocatorResult.Store,
-            GameId = GameInstallation.Game.NexusModsGameId.Value,
+            GameId = GameInstallation.Game.GameId,
         };
 
         var loadoutNew = new Loadout.New(tx)
