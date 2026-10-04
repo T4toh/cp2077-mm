@@ -58,7 +58,9 @@ public interface ISynchronizerService
     public Task RescanFiles(GameInstallation installation);
 
     /// <summary>
-    /// Rebuilds the vanilla file list of the loadout's installation from the disk, serialized with other sync operations.
+    /// The "Actualicé el juego" action, serialized with other sync operations: rebuilds the vanilla file list of the
+    /// loadout's installation (from the Nexus hash database when it knows the installed version, otherwise from the
+    /// disk, adopting External Changes that still match it).
     /// </summary>
     public Task<GameInstallMetadata.ReadOnly> UpdateBaseline(LoadoutId loadoutId);
 }

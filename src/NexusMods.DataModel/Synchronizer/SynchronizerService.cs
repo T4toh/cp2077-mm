@@ -153,7 +153,7 @@ public class SynchronizerService : ISynchronizerService
         try
         {
             var loadout = Loadout.Load(_conn.Db, loadoutId);
-            return await loadout.InstallationInstance.GetGame().Synchronizer.UpdateBaseline(loadout);
+            return await loadout.InstallationInstance.GetGame().Synchronizer.UpdateBaseline(loadout, adoptExternalChanges: true);
         }
         finally
         {

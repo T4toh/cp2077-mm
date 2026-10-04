@@ -1343,7 +1343,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     }
 
     /// <inheritdoc />
-    public async Task<Sdk.Games.GameInstallMetadata.ReadOnly> UpdateBaseline(Loadout.ReadOnly loadout)
+    public async Task<Sdk.Games.GameInstallMetadata.ReadOnly> UpdateBaseline(Loadout.ReadOnly loadout, bool adoptExternalChanges = false)
     {
         var metadata = await ReindexState(loadout.InstallationInstance);
         var store = metadata.Store;
@@ -1351,6 +1351,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var nexusKnows = NexusKnowsVersion(store, locatorIds);
 
         IEnumerable<(GamePath Path, Hash Hash, Size Size)> files;
+        LoadoutFile.ReadOnly[] adopted = [];
         if (nexusKnows)
         {
             files = _fileHashService.GetGameFiles((store, locatorIds)).Select(f => (f.Path, f.Hash, f.Size));
@@ -1360,7 +1361,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             var previous = new Dictionary<GamePath, (Hash Hash, Size Size)>();
             foreach (var entry in GameBaselineFile.FindByGame(metadata.Db, metadata))
                 previous[entry.Path] = (entry.Hash, entry.Size);
-            var disk = DiskStateEntry.FindByGame(metadata.Db, metadata).Select(e => ((GamePath)e.Path, e.Hash, e.Size));
+            var disk = DiskStateEntry.FindByGame(metadata.Db, metadata).Select(e => ((GamePath)e.Path, e.Hash, e.Size)).ToList();
             // The disk holds the last synced loadout as it was applied: not `loadout` when switching loadouts, and
             // without edits made since (a mod disabled since then is still deployed and still the loadout's)
             var onDisk = loadout.Rebase();
@@ -1371,7 +1372,14 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 var applied = Loadout.Load(metadata.Db.Connection.AsOf(TxId.From(appliedTx.Value)), lastSyncedId);
                 if (applied.IsValid()) onDisk = applied;
             }
-            var fromDisk = BaselineRule.Apply(previous, disk, OwnedPaths(onDisk));
+            var owned = OwnedPaths(onDisk);
+            if (adoptExternalChanges)
+            {
+                adopted = AdoptableExternalChanges(onDisk, owned, disk);
+                foreach (var file in adopted)
+                    owned.Remove(file.AsLoadoutItemWithTargetPath().TargetPath);
+            }
+            var fromDisk = BaselineRule.Apply(previous, disk, owned);
 
             // An empty or half-read folder (drive not mounted, game being deleted) would make every original a leftover
             var primaryFile = loadout.InstallationInstance.Game.GetPrimaryFile(loadout.InstallationInstance);
@@ -1401,11 +1409,58 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             count++;
         }
         tx.Add(metadata.Id, Sdk.Games.GameInstallMetadata.BaselineFromDisk, !nexusKnows);
+
+        // Like ReprocessOverrides: the External Change is a game file now, and its backup stays rooted
+        foreach (var file in adopted)
+        {
+            tx.Delete(file, recursive: false);
+            _ = new GameBackedUpFile.New(tx)
+            {
+                Hash = file.Hash,
+                GameInstallId = metadata.Id,
+            };
+        }
         await tx.Commit();
 
-        Logger.LogInformation("Lista de archivos originales de {Game}: {Count} archivos, desde {Source}",
-            loadout.InstallationInstance.Game.DisplayName, count, nexusKnows ? "la base de Nexus" : "el disco");
+        Logger.LogInformation("Lista de archivos originales de {Game}: {Count} archivos, desde {Source}; {Adopted} cambios externos adoptados",
+            loadout.InstallationInstance.Game.DisplayName, count, nexusKnows ? "la base de Nexus" : "el disco", adopted.Length);
         return Sdk.Games.GameInstallMetadata.Load(Connection.Db, metadata.Id);
+    }
+
+    /// <summary>
+    /// External Changes the "Actualicé el juego" button turns into originals: overrides that are files (not deletions),
+    /// were already External Changes when the loadout was applied, still match the disk, and sit where no mod has a file
+    /// and the app generates nothing (a mod's file the game rewrote, like a config, is still the user's).
+    /// </summary>
+    private LoadoutFile.ReadOnly[] AdoptableExternalChanges(Loadout.ReadOnly onDisk, IReadOnlyDictionary<GamePath, Hash?> owned, IEnumerable<(GamePath Path, Hash Hash, Size Size)> disk)
+    {
+        // The current overrides, not the applied ones: only entities that still exist can be deleted
+        var db = Connection.Db;
+        var loadoutId = onDisk.LoadoutId;
+        if (!LoadoutOverridesGroup.FindByOverridesFor(db, loadoutId).TryGetFirst(out var overrides)) return [];
+
+        var diskHashes = new Dictionary<GamePath, Hash>();
+        foreach (var (path, hash, _) in disk) diskHashes[path] = hash;
+
+        var modPaths = LoadoutItem.FindByLoadout(db, loadoutId)
+            .OfTypeLoadoutItemWithTargetPath()
+            .Where(item => !item.AsLoadoutItem().HasParent() || item.AsLoadoutItem().ParentId.Value != overrides.Id)
+            .Select(item => (GamePath)item.TargetPath)
+            .ToHashSet();
+        modPaths.UnionWith(IntrinsicFiles(onDisk).Keys);
+
+        var adoptable = new List<LoadoutFile.ReadOnly>();
+        foreach (var item in overrides.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
+        {
+            GamePath path = item.TargetPath;
+            if (!item.TryGetAsLoadoutFile(out var file) || item.TryGetAsDeletedFile(out _)) continue;
+            if (!owned.TryGetValue(path, out var ownedHash) || ownedHash is not null) continue;
+            if (!diskHashes.TryGetValue(path, out var diskHash) || diskHash != file.Hash) continue;
+            if (modPaths.Contains(path)) continue;
+            adoptable.Add(file);
+        }
+
+        return adoptable.ToArray();
     }
 
     /// <summary>

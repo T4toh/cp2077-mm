@@ -289,4 +289,71 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
         metadata.Contains(GameInstallMetadata.BaselineFromDisk).Should().BeFalse();
         GameBaselineFile.FindByGame(metadata.Db, metadata).Should().BeEmpty();
     }
+
+    private GamePath[] Overrides(Loadout.ReadOnly loadout) =>
+        LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id)
+            .SelectMany(g => g.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
+            .Select(i => (GamePath)i.TargetPath).ToArray();
+
+    private async Task WriteGameFile(string path, string content)
+    {
+        GameFile(path).Parent.CreateDirectory();
+        await GameFile(path).WriteAllTextAsync(content);
+    }
+
+    [Fact]
+    public async Task UpdateBaselineButton_AdoptsAPatchAlreadyInExternalChanges()
+    {
+        // A patch with no signal (manual install, GOG): it changes an original and adds a file
+        var loadout = await ManagedLoadoutWith(("bin/x64/original.exe", "v1"));
+        await WriteGameFile("bin/x64/original.exe", "v2");
+        await WriteGameFile("bin/x64/new-in-patch.dll", "patched");
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        var original = new GamePath(LocationId.Game, "bin/x64/original.exe");
+        var added = new GamePath(LocationId.Game, "bin/x64/new-in-patch.dll");
+        Overrides(loadout).Should().Contain([original, added]);
+
+        await SynchronizerService.UpdateBaseline(loadout.LoadoutId);
+
+        GameBaselineFile.TryGetVanillaFiles(GameRegistry.ForceGetMetadata(GameInstallation), out var files).Should().BeTrue();
+        files.Single(f => (GamePath)f.Path == original).Hash.Should().Be("v2".xxHash3AsUtf8());
+        files.Single(f => (GamePath)f.Path == added).Hash.Should().Be("patched".xxHash3AsUtf8());
+        Overrides(loadout).Should().NotContain(original).And.NotContain(added);
+
+        // The patch's files are originals now: the reset keeps them
+        await Synchronizer.ResetToOriginalGameState(GameInstallation);
+        (await GameFile("bin/x64/new-in-patch.dll").ReadAllTextAsync()).Should().Be("patched");
+        (await GameFile("bin/x64/original.exe").ReadAllTextAsync()).Should().Be("v2");
+    }
+
+    [Fact]
+    public async Task UpdateBaselineButton_KeepsProtectingDeletionsChangedFilesAndModFiles()
+    {
+        var loadout = await ManagedLoadoutWith(("r6/config/settings.ini", "vanilla"));
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, [(RelativePath)"r6/config/settings.ini", (RelativePath)"r6/config/mod.ini"], loadout, "ConfigMod");
+            await tx.Commit();
+        }
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+
+        GameFile("r6/config/settings.ini").Delete();                     // a deletion (over an original)
+        await WriteGameFile("r6/config/mod.ini", "edited by the game");  // a mod's file changed at runtime
+        await WriteGameFile("bin/x64/edited-later.ini", "first");        // changes again before the button
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        await WriteGameFile("bin/x64/edited-later.ini", "second");
+        var before = GameBaselineFile.FindByGame(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation))
+            .Select(f => ((GamePath)f.Path, f.Hash)).OrderBy(f => f.Item1).ToArray();
+        Overrides(loadout).Should().BeEquivalentTo([
+            new GamePath(LocationId.Game, "r6/config/settings.ini"),
+            new GamePath(LocationId.Game, "r6/config/mod.ini"),
+            new GamePath(LocationId.Game, "bin/x64/edited-later.ini"),
+        ]);
+
+        await SynchronizerService.UpdateBaseline(loadout.LoadoutId);
+
+        GameBaselineFile.FindByGame(Connection.Db, GameRegistry.ForceGetMetadata(GameInstallation))
+            .Select(f => ((GamePath)f.Path, f.Hash)).OrderBy(f => f.Item1).Should().Equal(before);
+        Overrides(loadout).Should().HaveCount(3);
+    }
 }

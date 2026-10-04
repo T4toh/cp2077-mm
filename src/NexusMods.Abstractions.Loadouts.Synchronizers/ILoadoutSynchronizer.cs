@@ -122,9 +122,16 @@ public interface ILoadoutSynchronizer
 
     /// <summary>
     /// Reindexes the game and rebuilds the installation's original file list (GameBaselineFile): from the Nexus hash
-    /// database when it knows the installed version, otherwise from the disk (BaselineRule).
+    /// database when it knows the installed version, otherwise from the disk (BaselineRule). A disk list without the
+    /// game's primary file is not saved (the previous list stays).
     /// </summary>
-    Task<Sdk.Games.GameInstallMetadata.ReadOnly> UpdateBaseline(Loadout.ReadOnly loadout);
+    /// <param name="loadout">The loadout to rebuild the list for.</param>
+    /// <param name="adoptExternalChanges">
+    /// The user said the game was updated: on a disk rebuild, External Changes that still match the disk (files, not
+    /// deletions, where no mod has a file) become originals and leave the overrides group. Automatic rebuilds keep
+    /// External Changes out of the list.
+    /// </param>
+    Task<Sdk.Games.GameInstallMetadata.ReadOnly> UpdateBaseline(Loadout.ReadOnly loadout, bool adoptExternalChanges = false);
     ValueTask BuildProcessRun(Loadout.ReadOnly loadout, Sdk.Games.GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken);
 
     Task ResetToOriginalGameState(GameInstallation installation);
