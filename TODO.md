@@ -163,7 +163,7 @@ El core heredado de upstream ya es multi-juego (`IGame`, `SteamLocator`, API de 
 - [ ] **Requisitos del prefix** declarados por juego + un emitter genérico (ver "Requisitos de cada juego como datos")
 - [ ] **Sacar `App.UI → Games.RedEngine`** cuando lo anterior esté hecho
 - [ ] **Launch sin `IRunGameTool`** explota (`LaunchButtonViewModel.cs:80`, `.First()`): run tool por defecto en `AddGame<T>()`
-- [ ] **Lista de archivos originales:** apply en Steam se niega a borrar si la base de hashes no conoce la versión (`ALoadoutSynchronizer.cs:484`). La base viene de `Nexus-Mods/game-hashes` (congelada) y el builder revienta con juegos no registrados (`BuildHashesDb.cs:136`). **Verificar si trae Witcher 3**; si no, usar el estado inicial del disco (`GameInstallMetadata.InitialDiskStateTransaction`) o una base propia. Sin esto no se pueden sacar mods en Witcher
+- [x] **Lista de archivos originales:** hecho (rama `feat/vanilla-baseline`, PR pendiente): `GameBaselineFile` por instalación, de Nexus si conoce la versión, del disco si no (con la propiedad de los mods leída del último loadout aplicado); botón "Actualicé el juego" (`ISynchronizerService.UpdateBaseline`, serializado con los syncs). Texto original: apply en Steam se niega a borrar si la base de hashes no conoce la versión (`ALoadoutSynchronizer.cs:484`). La base viene de `Nexus-Mods/game-hashes` (congelada) y el builder revienta con juegos no registrados (`BuildHashesDb.cs:136`). **Verificar si trae Witcher 3**; si no, usar el estado inicial del disco (`GameInstallMetadata.InitialDiskStateTransaction`) o una base propia. Sin esto no se pueden sacar mods en Witcher
 - [ ] **Downloads por juego:** una sola carpeta; el rescan de colecciones fuerza el vínculo cuando coincide solo el nombre (`CollectionDownloader.cs:825-897`). Subcarpeta por juego o filtrar candidatos; nunca vincular solo por nombre
 - [ ] **Storage Manager por juego:** `StorageStats.CyberpunkBackupsSize` → tamaños por juego
 - [ ] **GOG/Heroic** (sacado en `723cb0a11`): Witcher 3 y KOTOR se juegan mucho por GOG. Decidir si vuelve o si alcanza con agregar a mano
@@ -177,7 +177,7 @@ No se escribe código de Witcher 3 ni de KOTOR hasta que estas piezas existan. C
 
 | # | Pieza | Prueba con CP2077 | Uso en W3 | Después |
 |---|---|---|---|---|
-| 1 | Lista vanilla sin la base de Nexus (= "Lista de archivos originales" de la fase 2; la base local **no trae W3**) | después de cada parche la app no aplica | poder sacar mods | cualquier juego |
+| 1 | Lista vanilla sin la base de Nexus (hecha) (= "Lista de archivos originales" de la fase 2; la base local **no trae W3**) | después de cada parche la app no aplica | poder sacar mods | cualquier juego |
 | 2 | Ubicaciones dentro del prefix, con whitelist de archivos gestionados (hoy el reset borra todo lo no vanilla de cualquier ubicación) + test con symlink | saves, `AppData/Local/.../UserSettings.json`; vuelve AppData | `Documents/The Witcher 3` | saves/config de cualquier juego |
 | 3 | Mods locales de primera clase (= "Archivos locales fuera de Descargas") + metadata opcional de fuente/URL/versión | archivos agregados a mano | mods de mod.io/GitHub/foros | KOTOR |
 | 4 | Primer uso real de `IIntrinsicFile` (archivo base + bloques por mod; `Ingest` de lo que cambia el juego) | `inputUserMappings.xml`, `options.json` | `mods.settings`, `dx12user.settings`/`input.settings`, XML de menús | `plugins.txt` |

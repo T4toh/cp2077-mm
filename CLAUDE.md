@@ -58,7 +58,7 @@ The solution (`NexusMods.App.sln`) is organized into layers:
 - **`NexusMods.Sdk`** — Shared utilities, `WineParser` (Lutris/WINEDLLOVERRIDES), `Md5Value`, settings infrastructure.
 - **`NexusMods.Abstractions.*`** — Interfaces and contracts for all subsystems (21 projects).
 - **`NexusMods.Games.RedEngine`** — Cyberpunk 2077 implementation (the only supported game). Includes `EssentialMods`, `CyberpunkDeepCleanTool`, diagnostic emitters (core mods, redundant folders, Wine prefix, REDmod, pattern-based dependencies).
-- **`NexusMods.Games.FileHashes`** — File hash database for game version detection (Steam only).
+- **`NexusMods.Games.FileHashes`** — File hash database for game version detection (Steam only; version names and the known-version vanilla list, optional).
 - **`NexusMods.Networking.Steam`** — Steam store integration (the only supported store).
 - **`NexusMods.Networking.NexusWebApi`** — Nexus Mods API integration + `FirefoxCookieReader` for cookie-based downloads.
 - **`NexusMods.Networking.HttpDownloader`** — HTTP download infrastructure.
@@ -154,6 +154,8 @@ The core mod management loop:
 2. **Synchronizer** — three-way diff: previous disk state vs. current game folder vs. desired loadout
 3. **Apply** — writes the diff to disk (backs up originals, deploys mod files)
 4. **SynchronizerService** — serializes sync operations via semaphore, exposes observable status
+
+Layer 0 (game files) is the installation's `GameBaselineFile` list: filled from the Nexus hash DB when it knows the installed Steam version, otherwise from the disk (`BaselineRule`, mod ownership read from the last applied loadout), rebuilt when manifest IDs change or with the "Actualicé el juego" button (`ISynchronizerService.UpdateBaseline`, serialized with syncs). Nothing outside `UpdateBaseline` asks the hash DB what is vanilla; Deep Clean picks loose files via `CyberpunkDeepCleanTool.LooseModFilesToMove`.
 
 Loadout data hierarchy: `Loadout` → `LoadoutItemGroup` (mod) → `LoadoutItem` → `LoadoutFile` (individual file with hash/size/path).
 

@@ -1,6 +1,6 @@
 # Lista de archivos originales sin la base de Nexus (pieza 1)
 
-Fecha: 2026-10-04 · Estado: diseño aprobado, sin implementar. Ajustado al escribir el plan (ver "Ajustes del plan")
+Fecha: 2026-10-04 · Estado: implementado en la rama feat/vanilla-baseline (PR pendiente). Ajustado al escribir el plan (ver "Ajustes del plan")
 
 ## Objetivo
 
