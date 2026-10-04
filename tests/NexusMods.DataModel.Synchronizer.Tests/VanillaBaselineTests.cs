@@ -179,4 +179,26 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
 
         ListPaths().Should().Equal(new GamePath(LocationId.Game, "bin/x64/original.exe"));
     }
+
+    [Fact]
+    public async Task ModDisabledBeforeAPatch_IsNotAnOriginalAndGetsRemoved()
+    {
+        // The disk holds the loadout as last applied: a mod disabled since then is still deployed and still the loadout's
+        var loadout = await ManagedLoadoutWith(("bin/x64/original.exe", "v1"));
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, [(RelativePath)"bin/x64/mod.dll"], loadout, "DisabledLater");
+            await tx.Commit();
+        }
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        GameFile("bin/x64/mod.dll").FileExists.Should().BeTrue();
+
+        await DisableItem(LoadoutItem.FindByLoadout(Connection.Db, loadout).Single(i => i.Name == "DisabledLater").Id);
+        var locator = ServiceProvider.GetServices<IGameLocator>().OfType<UniversalStubbedGameLocator<Cyberpunk2077Game>>().Single();
+        locator.LocatorIds = [LocatorId.From("unknown-v2")];
+        await Synchronizer.Synchronize(loadout.Rebase());
+
+        ListPaths().Should().Equal(new GamePath(LocationId.Game, "bin/x64/original.exe"));
+        GameFile("bin/x64/mod.dll").FileExists.Should().BeFalse();
+    }
 }

@@ -1354,10 +1354,16 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             foreach (var entry in GameBaselineFile.FindByGame(metadata.Db, metadata))
                 previous[entry.Path] = (entry.Hash, entry.Size);
             var disk = DiskStateEntry.FindByGame(metadata.Db, metadata).Select(e => ((GamePath)e.Path, e.Hash, e.Size));
-            // The disk holds the last synced loadout's files, not `loadout`'s when switching loadouts
+            // The disk holds the last synced loadout as it was applied: not `loadout` when switching loadouts, and
+            // without edits made since (a mod disabled since then is still deployed and still the loadout's)
             var onDisk = loadout.Rebase();
-            if (Sdk.Games.GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastSyncedId) && Loadout.Load(metadata.Db, lastSyncedId) is { } lastSynced && lastSynced.IsValid())
-                onDisk = lastSynced;
+            if (Sdk.Games.GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastSyncedId)
+                && metadata.Contains(Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransaction))
+            {
+                var appliedTx = Sdk.Games.GameInstallMetadata.LastSyncedLoadoutTransactionId.Get(metadata);
+                var applied = Loadout.Load(metadata.Db.Connection.AsOf(TxId.From(appliedTx.Value)), lastSyncedId);
+                if (applied.IsValid()) onDisk = applied;
+            }
             files = BaselineRule.Apply(previous, disk, OwnedPaths(onDisk)).Select(kv => (kv.Key, kv.Value.Hash, kv.Value.Size));
         }
 
