@@ -87,6 +87,19 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
     }
 
     [Fact]
+    public async Task SynchronizerServiceUpdateBaseline_PicksUpFilesAddedByThePatch()
+    {
+        var loadout = await ManagedLoadoutWith(("bin/x64/original.exe", "vanilla"));
+        GameFile("bin/x64/new-in-patch.dll").Parent.CreateDirectory();
+        await GameFile("bin/x64/new-in-patch.dll").WriteAllTextAsync("patched");
+
+        var metadata = await SynchronizerService.UpdateBaseline(loadout.LoadoutId);
+
+        GameBaselineFile.TryGetVanillaFiles(metadata, out var files).Should().BeTrue();
+        files.Select(f => (GamePath)f.Path).Order().Should().Contain(new GamePath(LocationId.Game, "bin/x64/new-in-patch.dll"));
+    }
+
+    [Fact]
     public async Task LocatorIdsChange_RebuildsTheListAndAdoptsThePatch()
     {
         var loadout = await ManagedLoadoutWith(("bin/x64/original.exe", "v1"));

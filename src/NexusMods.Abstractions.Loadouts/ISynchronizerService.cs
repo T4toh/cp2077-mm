@@ -56,5 +56,10 @@ public interface ISynchronizerService
     /// Force a rescan of the game folder to update the database state.
     /// </summary>
     public Task RescanFiles(GameInstallation installation);
+
+    /// <summary>
+    /// Rebuilds the vanilla file list of the loadout's installation from the disk, serialized with other sync operations.
+    /// </summary>
+    public Task<GameInstallMetadata.ReadOnly> UpdateBaseline(LoadoutId loadoutId);
 }
 

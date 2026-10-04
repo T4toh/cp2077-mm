@@ -146,6 +146,21 @@ public class SynchronizerService : ISynchronizerService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<GameInstallMetadata.ReadOnly> UpdateBaseline(LoadoutId loadoutId)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            var loadout = Loadout.Load(_conn.Db, loadoutId);
+            return await loadout.InstallationInstance.GetGame().Synchronizer.UpdateBaseline(loadout);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
     private SynchronizerState GetOrAddLoadoutState(LoadoutId loadoutId)
     {
         lock (_lock)

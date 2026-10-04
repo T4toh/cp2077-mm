@@ -236,6 +236,27 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                                 }
                             });
 
+                            vm.UpdateBaselineCommand = ReactiveCommand.CreateFromTask(async () =>
+                            {
+                                try
+                                {
+                                    var loadoutId = GetLoadout(conn, installation);
+                                    if (!loadoutId.HasValue) return;
+                                    var metadata = await _syncService.UpdateBaseline(loadoutId.Value);
+                                    GameBaselineFile.TryGetVanillaFiles(metadata, out var files);
+                                    _notificationService.ShowToast($"Lista de archivos originales actualizada: {files.Count} archivos", ToastNotificationVariant.Success);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Error al actualizar la lista de archivos originales");
+                                    _notificationService.ShowToast("No se pudo actualizar la lista de archivos originales", ToastNotificationVariant.Failure);
+                                }
+                                finally
+                                {
+                                    _refreshSignal.OnNext(Unit.Default);
+                                }
+                            });
+
                             vm.DeepCleanCommand = ReactiveCommand.CreateFromTask(async () =>
                             {
                                 try
