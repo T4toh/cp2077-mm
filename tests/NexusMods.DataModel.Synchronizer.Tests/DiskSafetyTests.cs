@@ -105,7 +105,7 @@ public class DiskSafetyTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameT
 
         var act = () => Synchronizer.ResetToOriginalGameState(GameInstallation);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*lista de archivos originales*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*lista de archivos originales*Actualicé el juego*");
         original.FileExists.Should().BeTrue();
     }
 }

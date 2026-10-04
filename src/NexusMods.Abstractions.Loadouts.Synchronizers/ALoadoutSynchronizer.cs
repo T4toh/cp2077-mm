@@ -569,7 +569,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         if (GameBaselineFile.TryGetVanillaFiles(metadata, out _)) return;
         throw new InvalidOperationException(
             $"No se puede {operation}: todavía no hay lista de archivos originales para {metadata.Name}. " +
-            "Sin esa lista tModManager borraría archivos del juego, así que no hace nada.");
+            "Sin esa lista tModManager borraría archivos del juego, así que no hace nada. " +
+            "Podés rearmarla con el botón «Actualicé el juego» del juego en My Games.");
     }
 
     /// <summary>
