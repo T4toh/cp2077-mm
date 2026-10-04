@@ -200,6 +200,55 @@ public class SteamVanillaBaselineTests(ITestOutputHelper helper) : AIsolatedGame
     }
 
     [Fact]
+    public async Task ButtonAdoptedAUserFile_RewrittenBeforeTheHashDatabaseLearnsTheVersion_TheEditSurvives()
+    {
+        Locator.LocatorIds = [LocatorId.From("not-in-the-db-yet")];
+        await WriteGameFile("bin/x64/Cyberpunk2077.exe", "primary file");
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        var loadout = await Synchronizer.Synchronize(await CreateLoadout());
+        await WriteGameFile("bin/x64/plugins/user-settings.json", "user settings");
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        await SynchronizerService.UpdateBaseline(loadout.LoadoutId);
+        ListPaths().Should().Contain(new GamePath(LocationId.Game, "bin/x64/plugins/user-settings.json"));
+        // A sync after the button: the loadout as applied no longer has the External Change
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        Overrides(loadout).Should().BeEmpty();
+
+        // The plugin rewrites it, and the hash database learns the version before any sync sees the edit
+        await WriteGameFile("bin/x64/plugins/user-settings.json", "rewritten");
+        Hashes.LearnedLocatorIds.Add(LocatorId.From("not-in-the-db-yet"));
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        await Synchronizer.Synchronize(loadout.Rebase());
+
+        (await GameFile("bin/x64/plugins/user-settings.json").ReadAllTextAsync()).Should().Be("rewritten");
+        // The list keeps the original; the edit is an External Change
+        ListPaths().Should().Contain(new GamePath(LocationId.Game, "bin/x64/plugins/user-settings.json"));
+        Overrides(loadout.Rebase()).Should().Contain(new GamePath(LocationId.Game, "bin/x64/plugins/user-settings.json"));
+    }
+
+    [Fact]
+    public async Task ListFromDisk_OriginalEditedBeforeTheHashDatabaseLearnsTheVersion_TheEditSurvives()
+    {
+        Locator.LocatorIds = [LocatorId.From("not-in-the-db-yet")];
+        await WriteGameFile("bin/x64/Cyberpunk2077.exe", "primary file");
+        await WriteGameFile("r6/config/settings.ini", "vanilla");
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        var loadout = await Synchronizer.Synchronize(await CreateLoadout());
+        ListPaths().Should().Contain(new GamePath(LocationId.Game, "r6/config/settings.ini"));
+
+        // The user edits an original only the disk list knows, then the hash database learns the version
+        await WriteGameFile("r6/config/settings.ini", "user edit");
+        Hashes.LearnedLocatorIds.Add(LocatorId.From("not-in-the-db-yet"));
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        await Synchronizer.Synchronize(loadout.Rebase());
+
+        (await GameFile("r6/config/settings.ini").ReadAllTextAsync()).Should().Be("user edit");
+        // The list keeps the original; the edit is an External Change
+        ListPaths().Should().Contain(new GamePath(LocationId.Game, "r6/config/settings.ini"));
+        Overrides(loadout.Rebase()).Should().Contain(new GamePath(LocationId.Game, "r6/config/settings.ini"));
+    }
+
+    [Fact]
     public async Task ListFromDisk_PartiallyKnownIds_ExternalChangeAtAKnownDepotPath_Survives()
     {
         // One depot the hash database knows, one it doesn't: the version isn't known, so the list comes from the disk

@@ -98,8 +98,9 @@ condición que hoy usa el SQL (`Store = 'Steam'`). Un juego agregado a mano nunc
 **La lista es siempre `GameBaselineFile`.** Si Nexus conoce la versión, la lista se llena con los
 archivos de Nexus para esos IDs (la lista completa, igual que el layer 0 de hoy); si no, con la regla de
 la foto. Al rearmar desde Nexus, las entradas de la lista anterior que Nexus no lista (de una lista del
-disco, o adoptadas por el botón) se conservan si el disco las tiene sin cambios o la ruta es del loadout:
-nada que era original pasa a ser un sobrante. Nadie más lee la base de Nexus para saber qué es original.
+disco, o adoptadas por el botón) se conservan si el disco tiene esa ruta (con cualquier contenido: una
+edición desde el último sync pasa a "External Changes" contra el original conservado) o la ruta es del
+loadout: nada que era original pasa a ser un sobrante. Nadie más lee la base de Nexus para saber qué es original.
 
 La leen:
 - el layer 0 en SQL;
@@ -167,7 +168,7 @@ terminar, y uno de error si la lista del disco se rechaza (falta el archivo prin
   juego" hace lo mismo con los que ya estaban en "External Changes" fuera de rutas de mods.
 - Un original borrado a mano sale de la foto; el reset ya no lo recupera.
 - Lo que la lista conserva al rearmar desde Nexus (entradas que Nexus no lista) sigue como original
-  mientras siga igual en disco, también tras parches conocidos: incluye archivos de una versión vieja
+  mientras siga en disco, también tras parches conocidos: incluye archivos de una versión vieja
   que Steam no borró. El sync no los borra y el reset no los saca.
 - En una instalación existente sin foto y con versión desconocida, un original pisado por un mod no
   entra a la foto (no hay entrada anterior); el reset no lo restaura aunque su backup exista.

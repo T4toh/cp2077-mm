@@ -1382,13 +1382,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 nexus[f.Path] = (f.Hash, f.Size);
 
             // Nothing that was original becomes a leftover: entries Nexus doesn't list (a disk-made list's, files the
-            // button adopted) stay while the disk still holds them unchanged or the loadout owns the path (BaselineRule)
-            var diskHashes = new Dictionary<GamePath, Hash>();
-            foreach (var (path, hash, _) in disk) diskHashes[path] = hash;
+            // button adopted) stay while the disk still holds the path, with any content (an edit since the last sync
+            // becomes an External Change against the kept original), or the loadout owns it (BaselineRule)
+            var diskPaths = disk.Select(d => d.Item1).ToHashSet();
             foreach (var (path, entry) in previous)
             {
-                if (nexus.ContainsKey(path)) continue;
-                if (owned.ContainsKey(path) || (diskHashes.TryGetValue(path, out var diskHash) && diskHash == entry.Hash))
+                if (!nexus.ContainsKey(path) && (owned.ContainsKey(path) || diskPaths.Contains(path)))
                     nexus[path] = entry;
             }
 
