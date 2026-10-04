@@ -50,7 +50,6 @@ using NexusMods.UI.Sdk;
 using NexusMods.UI.Sdk.Dialog;
 using NexusMods.UI.Sdk.Dialog.Enums;
 using GameInstallMetadata = NexusMods.Sdk.Games.GameInstallMetadata;
-using NexusMods.Abstractions.Games.FileHashes;
 
 namespace NexusMods.App.UI.Pages.MyGames;
 
@@ -68,7 +67,6 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     private readonly IServiceProvider _serviceProvider;
     private readonly ISynchronizerService _syncService;
     private readonly ILoadoutManager _loadoutManager;
-    private readonly IFileHashesService _fileHashesService;
     private readonly IGameRegistry _gameRegistry;
     private readonly IToolManager _toolManager;
     private readonly IWindowNotificationService _notificationService;
@@ -103,7 +101,6 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         _overlayController = overlayController;
         _connection = conn;
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
-        _fileHashesService = serviceProvider.GetRequiredService<IFileHashesService>();
         _gameRegistry = gameRegistry;
         _toolManager = toolManager;
         _logger = logger;
@@ -612,7 +609,7 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     }
     
     private bool HasVanillaData(GameInstallation installation) =>
-        _fileHashesService.UnknownLocatorIds(installation.LocatorResult.Store, installation.LocatorResult.LocatorIds.Distinct().ToArray()).Length == 0;
+        _gameRegistry.TryGetMetadata(installation, out var metadata) && GameBaselineFile.TryGetVanillaFiles(metadata, out _);
 
     private async Task CleanGameFolder(GameInstallation installation, Loadout.ReadOnly loadout)
     {

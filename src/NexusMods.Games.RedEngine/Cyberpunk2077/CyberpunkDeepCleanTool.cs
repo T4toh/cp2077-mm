@@ -2,7 +2,6 @@ using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Collections;
-using NexusMods.Abstractions.Games.FileHashes;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.TxFunctions;
@@ -22,20 +21,17 @@ public class CyberpunkDeepCleanTool : ITool
     private readonly ILogger<CyberpunkDeepCleanTool> _logger;
     private readonly ISynchronizerService _synchronizerService;
     private readonly IConnection _connection;
-    private readonly IFileHashesService _fileHashes;
 
     public CyberpunkDeepCleanTool(
         IFileSystem fileSystem,
         ILogger<CyberpunkDeepCleanTool> logger,
         ISynchronizerService synchronizerService,
-        IConnection connection,
-        IFileHashesService fileHashes)
+        IConnection connection)
     {
         _fileSystem = fileSystem;
         _logger = logger;
         _synchronizerService = synchronizerService;
         _connection = connection;
-        _fileHashes = fileHashes;
     }
 
     public IEnumerable<GameId> GameIds => [Cyberpunk2077Game.GameId];
@@ -87,7 +83,7 @@ public class CyberpunkDeepCleanTool : ITool
     /// <summary>
     /// Finds files matching <see cref="LooseFileGlobs"/> under <paramref name="gameRoot"/> that are not
     /// part of the vanilla file set. Returns an empty list (never moves anything) when <paramref name="vanilla"/>
-    /// is empty, since that means the file-hash service has no data for the installed game version.
+    /// is empty, since that means the installation has no vanilla list yet.
     /// </summary>
     internal static IReadOnlyList<RelativePath> FindLooseModFiles(AbsolutePath gameRoot, IReadOnlySet<GamePath> vanilla)
     {
@@ -109,36 +105,6 @@ public class CyberpunkDeepCleanTool : ITool
             .Where(rel => !vanillaPaths.Contains(rel.ToString()))
             .OrderBy(rel => rel.ToString(), StringComparer.Ordinal)
             .ToArray();
-    }
-
-    /// <summary>
-    /// Combines the vanilla files for every locator ID of the loadout. <paramref name="lookup"/> is called once
-    /// per ID (typically <c>IFileHashesService.GetGameFiles</c> restricted to that single ID) so that an ID with
-    /// no known manifest can be told apart from an ID that legitimately has no files.
-    /// If ANY id resolves to zero files, the whole result is empty (with that id listed in <c>UnknownIds</c>):
-    /// a partial vanilla set is worse than none, since it would treat some genuinely vanilla files (from the
-    /// unresolved manifest) as mod leftovers. This happens after a game patch when the upstream hash database
-    /// (discontinued) hasn't caught up yet for one of the game's locator IDs (e.g. the base depot manifest is
-    /// unknown but REDmod's is known, or vice versa).
-    /// </summary>
-    internal static (IReadOnlySet<GamePath> Vanilla, IReadOnlyList<LocatorId> UnknownIds) ResolveVanilla(
-        Func<LocatorId, IEnumerable<GamePath>> lookup, IReadOnlyList<LocatorId> ids)
-    {
-        var vanilla = new HashSet<GamePath>();
-        var unknown = new List<LocatorId>();
-        foreach (var id in ids)
-        {
-            var files = lookup(id).ToArray();
-            if (files.Length == 0)
-            {
-                unknown.Add(id);
-                continue;
-            }
-            foreach (var file in files)
-                vanilla.Add(file);
-        }
-
-        return unknown.Count > 0 ? (new HashSet<GamePath>(), unknown) : (vanilla, unknown);
     }
 
     /// <summary>
@@ -251,30 +217,10 @@ public class CyberpunkDeepCleanTool : ITool
         }
 
         IReadOnlySet<GamePath> vanilla = new HashSet<GamePath>();
-        try
-        {
-            var resolved = ResolveVanilla(
-                id => _fileHashes.GetGameFiles((loadout.Installation.Store, [id])).Select(f => f.Path),
-                loadout.LocatorIds.ToArray());
-            vanilla = resolved.Vanilla;
-
-            if (resolved.UnknownIds.Count > 0)
-            {
-                _logger.LogWarning(
-                    "No hay datos vanilla para los locator IDs {LocatorIds}; se omite la búsqueda de archivos sueltos de mods",
-                    string.Join(", ", resolved.UnknownIds));
-            }
-            else if (vanilla.Count == 0)
-            {
-                _logger.LogWarning(
-                    "No se encontraron datos de archivos vanilla para esta versión del juego; se omite la búsqueda de archivos sueltos de mods");
-            }
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex,
-                "No se pudo obtener la lista de archivos vanilla; se omite la búsqueda de archivos sueltos de mods");
-        }
+        if (GameBaselineFile.TryGetVanillaFiles(loadout.Installation, out var vanillaFiles))
+            vanilla = vanillaFiles.Select(f => (GamePath)f.Path).ToHashSet();
+        else
+            _logger.LogWarning("Todavía no hay lista de archivos originales; se omite la búsqueda de archivos sueltos de mods");
 
         foreach (var rel in FindLooseModFiles(gamePath, vanilla))
         {

@@ -289,15 +289,7 @@ internal partial class LoadoutManager : ILoadoutManager
         // Synchronize the last applied loadout, so we don't lose any changes
         await synchronizer.Synchronize(Loadout.Load(_connection.Db, metadata.LastSyncedLoadout));
 
-        var metadataLocatorIds = installation.LocatorResult.LocatorIds;
-        var locatorIds = metadataLocatorIds.Distinct().ToArray();
-        
-        if (locatorIds.Length != metadataLocatorIds.Length)
-        {
-            _logger.LogWarning("Duplicate locator ids `{LocatorIds}` found in LocatorResultMetadata for {Game} when deactivating loadout", metadataLocatorIds, installation.Game.DisplayName);
-        }
-
-        await synchronizer.ResetToOriginalGameState(installation, locatorIds);
+        await synchronizer.ResetToOriginalGameState(installation);
     }
 
     public Optional<LoadoutId> GetCurrentlyActiveLoadout(GameInstallation installation)

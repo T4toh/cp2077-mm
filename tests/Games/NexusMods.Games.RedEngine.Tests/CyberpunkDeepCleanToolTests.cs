@@ -94,37 +94,6 @@ public class CyberpunkDeepCleanToolTests : IDisposable
     }
 
     [Fact]
-    public void ResolveVanilla_AllIdsKnown_ReturnsUnionOfFiles()
-    {
-        var idA = LocatorId.From("100");
-        var idB = LocatorId.From("200");
-        var filesA = new[] { new GamePath(LocationId.Game, "a.txt") };
-        var filesB = new[] { new GamePath(LocationId.Game, "b.txt") };
-
-        var result = CyberpunkDeepCleanTool.ResolveVanilla(
-            id => id == idA ? filesA : id == idB ? filesB : [],
-            [idA, idB]);
-
-        result.UnknownIds.Should().BeEmpty();
-        result.Vanilla.Should().BeEquivalentTo(filesA.Concat(filesB));
-    }
-
-    [Fact]
-    public void ResolveVanilla_OneIdUnknown_ReturnsEmptyAndNamesIt()
-    {
-        var idKnown = LocatorId.From("100");
-        var idUnknown = LocatorId.From("999");
-        var filesKnown = new[] { new GamePath(LocationId.Game, "a.txt") };
-
-        var result = CyberpunkDeepCleanTool.ResolveVanilla(
-            id => id == idKnown ? filesKnown : [],
-            [idKnown, idUnknown]);
-
-        result.Vanilla.Should().BeEmpty();
-        result.UnknownIds.Should().BeEquivalentTo([idUnknown]);
-    }
-
-    [Fact]
     public void PruneOldBackups_WithoutANewBackup_KeepsEveryBackup()
     {
         _game.Combine("20260101_000000").Combine("mods").CreateDirectory();

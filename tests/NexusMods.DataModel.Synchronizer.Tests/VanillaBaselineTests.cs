@@ -201,4 +201,55 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
         ListPaths().Should().Equal(new GamePath(LocationId.Game, "bin/x64/original.exe"));
         GameFile("bin/x64/mod.dll").FileExists.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task UnknownVersion_ModOverOriginal_RemovingItRestoresTheOriginal_AndResetKeepsOriginals()
+    {
+        var loadout = await ManagedLoadoutWith(("bin/x64/original.exe", "vanilla exe"), ("r6/config/settings.ini", "vanilla ini"));
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, [(RelativePath)"r6/config/settings.ini", (RelativePath)"archive/pc/mod/new.archive"], loadout, "ConfigMod");
+            await tx.Commit();
+        }
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        (await GameFile("r6/config/settings.ini").ReadAllTextAsync()).Should().Be("r6/config/settings.ini"); // AddModAsync content = path
+
+        var mod = LoadoutItem.FindByLoadout(loadout.Db, loadout).OfTypeLoadoutItemGroup().Single(g => g.AsLoadoutItem().Name == "ConfigMod");
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Delete(mod, recursive: true);
+            await tx.Commit();
+        }
+        await Synchronizer.Synchronize(loadout.Rebase());
+
+        (await GameFile("r6/config/settings.ini").ReadAllTextAsync()).Should().Be("vanilla ini");
+        GameFile("archive/pc/mod/new.archive").FileExists.Should().BeFalse();
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation);
+        GameFile("bin/x64/original.exe").FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Reset_WithSymlinkedFolder_LeavesOutsideUntouched()
+    {
+        await ManagedLoadoutWith(("bin/x64/original.exe", "vanilla"));
+        var outside = TemporaryFileManager.CreateFolder().Path;
+        var canary = outside.Combine("precious.txt");
+        await canary.WriteAllTextAsync("user data");
+        File.CreateSymbolicLink(GameFile("bin/linked").ToString(), outside.ToString());
+
+        await Synchronizer.ResetToOriginalGameState(GameInstallation);
+
+        canary.FileExists.Should().BeTrue();
+        GameFile("bin/x64/original.exe").FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeepCleanAndUi_SeeTheList()
+    {
+        await ManagedLoadoutWith(("bin/x64/original.exe", "vanilla"));
+        var metadata = GameRegistry.ForceGetMetadata(GameInstallation);
+        GameBaselineFile.TryGetVanillaFiles(metadata, out var files).Should().BeTrue();
+        files.Select(f => (GamePath)f.Path).Should().Contain(new GamePath(LocationId.Game, "bin/x64/original.exe"));
+    }
 }

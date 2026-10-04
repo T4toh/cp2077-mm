@@ -127,7 +127,7 @@ public interface ILoadoutSynchronizer
     Task<Sdk.Games.GameInstallMetadata.ReadOnly> UpdateBaseline(Loadout.ReadOnly loadout);
     ValueTask BuildProcessRun(Loadout.ReadOnly loadout, Sdk.Games.GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken);
 
-    Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds);
+    Task ResetToOriginalGameState(GameInstallation installation);
 
     /// <summary>
     /// Returns true if the path should be ignored by the synchronizer when backing up or restoring files. This does not mean

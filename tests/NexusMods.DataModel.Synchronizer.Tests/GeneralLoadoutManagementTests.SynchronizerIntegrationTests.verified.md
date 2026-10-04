@@ -218,6 +218,7 @@ The loadouts have been deleted and the game folder should be back to its initial
 
 ## 11 - Game Unmanaged:
 The loadouts have been deleted and the game folder should be back to its initial state.
-### Current State - (0)
+### Current State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
+| `bin/originalGameFile.txt` | 0x673E3C493921A2D5 | 12 B |

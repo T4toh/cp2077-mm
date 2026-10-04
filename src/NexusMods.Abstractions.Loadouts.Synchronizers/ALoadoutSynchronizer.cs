@@ -479,10 +479,9 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var locations = loadout.InstallationInstance.Locations;
         EnsureDiskChangesStayInside(syncTree, locations);
 
-        // A Steam patch the hash database doesn't know drops the vanilla files from the Game layer, so original game
-        // files show up as leftovers to delete. Adding files stays possible; deleting waits for the vanilla list.
-        if (loadout.Installation.Store == GameStore.Steam && syncTree.Values.Any(node => node.Actions.HasFlag(Actions.DeleteFromDisk)))
-            EnsureVanillaDataKnown(loadout.Installation.Store, loadout.LocatorIds.ToArray(), "borrar archivos del juego");
+        // Without the vanilla list every original game file looks like a leftover: deleting waits for the list
+        if (syncTree.Values.Any(node => node.Actions.HasFlag(Actions.DeleteFromDisk)))
+            EnsureVanillaDataKnown(Sdk.Games.GameInstallMetadata.Load(Connection.Db, gameMetadataId), "borrar archivos del juego");
         HashSet<GamePath> foldersWithDeletedFiles = [];
         EntityId? overridesGroup = null;
 
@@ -565,12 +564,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         return loadout;
     }
 
-    private void EnsureVanillaDataKnown(GameStore store, LocatorId[] locatorIds, string operation)
+    private static void EnsureVanillaDataKnown(Sdk.Games.GameInstallMetadata.ReadOnly metadata, string operation)
     {
-        var unknown = _fileHashService.UnknownLocatorIds(store, locatorIds);
-        if (unknown.Length == 0) return;
+        if (GameBaselineFile.TryGetVanillaFiles(metadata, out _)) return;
         throw new InvalidOperationException(
-            $"No se puede {operation}: no hay lista de archivos originales para esta versión del juego ({store}: {string.Join(", ", unknown)}). " +
+            $"No se puede {operation}: todavía no hay lista de archivos originales para {metadata.Name}. " +
             "Sin esa lista tModManager borraría archivos del juego, así que no hace nada.");
     }
 
@@ -1549,13 +1547,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         return new();
     }
 
-    public async Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds)
+    public async Task ResetToOriginalGameState(GameInstallation installation)
     {
-        // The reset deletes everything that isn't in the vanilla list: with no list, that's the whole game
-        EnsureVanillaDataKnown(installation.LocatorResult.Store, locatorIds, "restaurar la carpeta del juego");
-
-        var gameState = _fileHashService.GetGameFiles((installation.LocatorResult.Store, locatorIds));
         var metadata = await ReindexState(installation);
+        // The reset deletes everything that isn't in the vanilla list: with no list, that's the whole game
+        EnsureVanillaDataKnown(metadata, "restaurar la carpeta del juego");
+        GameBaselineFile.TryGetVanillaFiles(metadata, out var gameState);
 
         var diskStateEntries = DiskStateEntry.FindByGame(metadata.Db, metadata);
 
@@ -1587,7 +1584,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 Loadout = part,
                 SourceItemType = LoadoutSourceItemType.Game,
             };
-            desiredState.Add(gameFile.Path, syncNode);
+            desiredState.Add((GamePath)gameFile.Path, syncNode);
         }
 
         // Merge the states into a tree. Passing in the current state as the current and previous state. 
