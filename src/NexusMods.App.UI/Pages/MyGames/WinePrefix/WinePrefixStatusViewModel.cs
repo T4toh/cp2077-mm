@@ -3,6 +3,7 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Text;
+using NexusMods.Games.RedEngine.Cyberpunk2077;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
 using NexusMods.UI.Sdk;
@@ -20,6 +21,9 @@ public class WinePrefixStatusViewModel : AViewModel<IWinePrefixStatusViewModel>,
     ];
 
     private static readonly ImmutableHashSet<string> RequiredWinetricksPackages = ["d3dcompiler_47", "vcrun2022"];
+
+    /// <summary>The requirements above (and the view's labels) are Cyberpunk's; other games get no panel yet.</summary>
+    public static bool AppliesTo(IGameData game) => game.GameId == Cyberpunk2077Game.GameId;
 
     private readonly ILinuxCompatabilityDataProvider? _linuxCompat;
     private readonly IRuntimeDependency? _protontricks;

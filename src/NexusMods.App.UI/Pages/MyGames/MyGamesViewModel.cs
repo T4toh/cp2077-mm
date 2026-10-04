@@ -400,11 +400,11 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                     .SubscribeWithErrorLogging()
                     .DisposeWith(d);
 
-                // Create Wine prefix status panel for the first installed game
+                // Wine prefix status panel for the game whose requirements it checks
                 // We observe the source list directly to update this
                 _sourceList.Connect()
                     .ToCollection()
-                    .Select(list => list.FirstOrDefault())
+                    .Select(list => list.FirstOrDefault(installation => WinePrefixStatusViewModel.AppliesTo(installation.Game)))
                     .Subscribe(firstInstallation =>
                     {
                         if (firstInstallation is not null)
