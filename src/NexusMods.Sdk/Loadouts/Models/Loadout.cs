@@ -74,7 +74,7 @@ public partial class Loadout : IModelDefinition
             {
                 var gameId = Installation.GameId;
                 var games = Db.Connection.ServiceProvider.GetServices<IGameData>();
-                return games.First(game => game.NexusModsGameId == gameId);
+                return games.First(game => game.GameId == gameId);
             }
         }
 

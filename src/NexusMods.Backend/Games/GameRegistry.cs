@@ -99,7 +99,7 @@ internal class GameRegistry : IGameRegistry
         var metadata = loadout.Installation;
         foreach (var installation in LocateGameInstallations())
         {
-            if (installation.Game.NexusModsGameId != metadata.GameId) continue;
+            if (!IsInstallOf(installation.Game, metadata)) continue;
             if (installation.LocatorResult.Store != metadata.Store) continue;
             if (!string.Equals(installation.Locations[LocationId.Game].Path.ToString(), metadata.Path, StringComparison.OrdinalIgnoreCase)) continue;
 
@@ -111,18 +111,16 @@ internal class GameRegistry : IGameRegistry
         return false;
     }
 
+    private static bool IsInstallOf(IGameData game, GameInstallMetadata.ReadOnly metadata) =>
+        GameInstallMetadata.GameId.TryGetValue(metadata, out var gameId)
+            ? gameId == game.GameId
+            // Migrations older than _0011 look installs up before it fills GameId: match the attribute it replaced
+            : GameInstallMetadata.LegacyNexusModsGameId.TryGetValue(metadata, out var nexusModsGameId) && game.NexusModsGameId == nexusModsGameId;
+
     public bool TryGetMetadata(GameInstallation installation, out GameInstallMetadata.ReadOnly result)
     {
-        // TODO: use game id instead of nexus mods game id
-        var gameId = installation.Game.NexusModsGameId;
-        if (!gameId.HasValue)
-        {
-            result = default(GameInstallMetadata.ReadOnly);
-            return false;
-        }
-
         var path = installation.Locations[LocationId.Game].Path.ToString();
-        var allMetadata = GameInstallMetadata.FindByGameId(_connection.Db, gameId.Value);
+        var allMetadata = GameInstallMetadata.FindByGameId(_connection.Db, installation.Game.GameId);
         foreach (var metadata in allMetadata)
         {
             if (metadata.Store != installation.LocatorResult.Store) continue;

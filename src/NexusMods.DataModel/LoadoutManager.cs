@@ -61,7 +61,7 @@ internal partial class LoadoutManager : ILoadoutManager
             {
                 Store = installation.LocatorResult.Store,
                 Path = installation.Locations[LocationId.Game].Path.ToString(),
-                GameId = installation.Game.NexusModsGameId.Value,
+                GameId = installation.Game.GameId,
                 Name = installation.Game.DisplayName,
             };
 

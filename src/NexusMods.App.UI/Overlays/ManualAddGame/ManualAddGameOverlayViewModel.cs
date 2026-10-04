@@ -1,5 +1,6 @@
 using Avalonia.Platform.Storage;
 using NexusMods.Paths;
+using NexusMods.Sdk.Games;
 using NexusMods.UI.Sdk;
 using R3;
 
@@ -7,6 +8,8 @@ namespace NexusMods.App.UI.Overlays;
 
 public class ManualAddGameOverlayViewModel : AOverlayViewModel<IManualAddGameOverlayViewModel, ManualAddGameOverlayResult>, IManualAddGameOverlayViewModel
 {
+    public IReadOnlyList<IGameData> Games { get; }
+    public BindableReactiveProperty<IGameData?> SelectedGame { get; }
     public BindableReactiveProperty<string> GamePath { get; } = new(value: string.Empty);
     public BindableReactiveProperty<string> WinePrefix { get; } = new(value: string.Empty);
     
@@ -15,13 +18,16 @@ public class ManualAddGameOverlayViewModel : AOverlayViewModel<IManualAddGameOve
     public ReactiveCommand<Unit> CommandCancel { get; }
     public ReactiveCommand<Unit> CommandAdd { get; }
 
-    public ManualAddGameOverlayViewModel(IAvaloniaInterop avaloniaInterop)
+    public ManualAddGameOverlayViewModel(IAvaloniaInterop avaloniaInterop, IEnumerable<IGameData> games)
     {
+        Games = games.OrderBy(game => game.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToArray();
+        SelectedGame = new BindableReactiveProperty<IGameData?>(Games.Count == 1 ? Games[0] : null);
+
         CommandBrowseGamePath = new ReactiveCommand(async (_, _) =>
         {
             var options = new FolderPickerOpenOptions
             {
-                Title = "Select Cyberpunk 2077 Installation Folder",
+                Title = SelectedGame.Value is { } game ? $"Select the {game.DisplayName} installation folder" : "Select the game installation folder",
                 AllowMultiple = false
             };
             var result = await avaloniaInterop.OpenFolderPickerAsync(options);
@@ -49,8 +55,8 @@ public class ManualAddGameOverlayViewModel : AOverlayViewModel<IManualAddGameOve
         
         CommandAdd = new ReactiveCommand(_ => 
         {
-            if (string.IsNullOrWhiteSpace(GamePath.Value)) return;
-            Complete(result: new ManualAddGameOverlayResult(Confirmed: true, GamePath: GamePath.Value, WinePrefix: WinePrefix.Value));
+            if (SelectedGame.Value is not { } game || string.IsNullOrWhiteSpace(GamePath.Value)) return;
+            Complete(result: new ManualAddGameOverlayResult(Confirmed: true, Game: game, GamePath: GamePath.Value, WinePrefix: WinePrefix.Value));
         });
     }
 }

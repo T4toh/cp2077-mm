@@ -15,7 +15,7 @@ internal class ManuallyAddedLocator : IGameLocator
     private readonly IServiceProvider _serviceProvider;
     private readonly IConnection _connection;
     private readonly IFileSystem _fileSystem;
-    private readonly FrozenDictionary<NexusModsGameId, IGameData> _registeredGames;
+    private readonly FrozenDictionary<GameId, IGameData> _registeredGames;
 
     public ManuallyAddedLocator(IServiceProvider serviceProvider)
     {
@@ -25,9 +25,7 @@ internal class ManuallyAddedLocator : IGameLocator
 
         _registeredGames = serviceProvider
             .GetServices<IGameData>()
-            .Where(x => x.NexusModsGameId.HasValue)
-            .Select(x => new KeyValuePair<NexusModsGameId, IGameData>(x.NexusModsGameId.Value, x))
-            .ToFrozenDictionary();
+            .ToFrozenDictionary(x => x.GameId);
     }
 
     public IEnumerable<GameLocatorResult> Locate()
@@ -35,7 +33,8 @@ internal class ManuallyAddedLocator : IGameLocator
         var entities = ManuallyAddedGame.All(_connection.Db);
         foreach (var entity in entities)
         {
-            if (!_registeredGames.TryGetValue(entity.GameId, out var game)) continue;
+            // An entry added before GameId existed whose Nexus id matched no registered game has none
+            if (!ManuallyAddedGame.GameId.TryGetValue(entity, out var gameId) || !_registeredGames.TryGetValue(gameId, out var game)) continue;
 
             ILinuxCompatabilityDataProvider? linuxCompatProvider = null;
             if (entity.Contains(ManuallyAddedGame.WinePrefix) && !string.IsNullOrWhiteSpace(entity.WinePrefix))

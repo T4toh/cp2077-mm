@@ -3,8 +3,8 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x626E7928B9D18CEC
-   - Total attributes: 193
+   - Fingerprint: 0x3CBCF930E912C4EA
+   - Total attributes: 195
    - Total namespaces: 64
    
 ## Attributes
@@ -71,6 +71,7 @@ models in the app, then validate the tests to update this file.
 | NexusMods.Loadouts.DiskStateEntry/LastModified                                     | Int64                   | False   | False | False     | 
 | NexusMods.Loadouts.DiskStateEntry/Path                                             | Tuple3_Ref_UShort_Utf8I | False   | False | False     | 
 | NexusMods.Loadouts.DiskStateEntry/Size                                             | UInt64                  | False   | False | False     | 
+| NexusMods.Loadouts.GameMetadata/Game                                               | UInt64                  | True    | False | False     | 
 | NexusMods.Loadouts.GameMetadata/GameId                                             | UInt32                  | True    | False | False     | 
 | NexusMods.Loadouts.GameMetadata/InitialDiskStateTransaction                        | Reference               | False   | False | False     | 
 | NexusMods.Loadouts.GameMetadata/LastScannedDiskStateTransaction                    | Reference               | False   | False | False     | 
@@ -199,6 +200,7 @@ models in the app, then validate the tests to update this file.
 | NexusMods.Resources.PersistedResource/Data                                         | Blob                    | False   | False | False     | 
 | NexusMods.Resources.PersistedResource/ExpiresAt                                    | Int64                   | False   | False | False     | 
 | NexusMods.Resources.PersistedResource/ResourceIdentifierHash                       | UInt64                  | False   | False | False     | 
+| NexusMods.StandardGameLocators.ManuallyAddedGame/Game                              | UInt64                  | True    | False | False     | 
 | NexusMods.StandardGameLocators.ManuallyAddedGame/GameId                            | UInt32                  | True    | False | False     | 
 | NexusMods.StandardGameLocators.ManuallyAddedGame/Path                              | Utf8                    | True    | False | False     | 
 | NexusMods.StandardGameLocators.ManuallyAddedGame/Version                           | Utf8                    | False   | False | False     | 
