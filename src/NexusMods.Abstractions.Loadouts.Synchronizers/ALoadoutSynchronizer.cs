@@ -1407,6 +1407,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             var primaryFile = loadout.InstallationInstance.Game.GetPrimaryFile(loadout.InstallationInstance);
             if (!fromDisk.ContainsKey(primaryFile))
             {
+                // The button reports the refusal (failure toast); automatic rebuilds only warn
+                if (adoptExternalChanges)
+                    throw new InvalidOperationException(
+                        $"La lista de archivos originales de {loadout.InstallationInstance.Game.DisplayName} no se actualizó: " +
+                        $"{primaryFile} no está en la carpeta del juego o lo pone un mod. Se mantiene la lista anterior.");
                 Logger.LogWarning("No se rearmó la lista de archivos originales de {Game}: falta {PrimaryFile} en la carpeta del juego. Se mantiene la lista anterior",
                     loadout.InstallationInstance.Game.DisplayName, primaryFile);
                 return metadata;

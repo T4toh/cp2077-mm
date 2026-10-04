@@ -269,7 +269,9 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
         // The game folder reads as empty (drive not mounted, folder half gone): a list from it makes every original a leftover
         GameFile("bin/x64/Cyberpunk2077.exe").Delete();
         GameFile("bin/x64/original.exe").Delete();
-        await SynchronizerService.UpdateBaseline(loadout.LoadoutId);
+        // The button says so instead of reporting success with the old list
+        var press = () => SynchronizerService.UpdateBaseline(loadout.LoadoutId);
+        await press.Should().ThrowAsync<InvalidOperationException>().WithMessage("*no se actualizó*Cyberpunk2077.exe*");
 
         ListPaths().Should().Equal(before);
         GameInstallMetadata.BaselineFromDisk.Get(GameRegistry.ForceGetMetadata(GameInstallation)).Should().BeTrue();
@@ -282,7 +284,7 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
 
         // No list, so the apply guard refuses the first sync's deletions
         var manage = () => ManagedLoadoutWith(("bin/x64/original.exe", "vanilla"));
-        await manage.Should().ThrowAsync<InvalidOperationException>();
+        await manage.Should().ThrowAsync<InvalidOperationException>().WithMessage("No se puede borrar archivos del juego*");
 
         GameFile("bin/x64/original.exe").FileExists.Should().BeTrue();
         var metadata = GameRegistry.ForceGetMetadata(GameInstallation);
