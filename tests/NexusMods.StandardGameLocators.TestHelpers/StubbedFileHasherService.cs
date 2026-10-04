@@ -120,14 +120,30 @@ public class StubbedFileHasherService : IFileHashesService
         return _current!;
     }
 
+    /// <summary>
+    /// Makes the next <see cref="GetGameFiles"/> enumeration throw, like a database read failing in the middle of a sync.
+    /// </summary>
+    public bool FailNextGetGameFiles { get; set; }
+
+    /// <summary>
+    /// Locator IDs the database learned after the fact (a hash database update): they resolve to StubbedGameState.zip.
+    /// </summary>
+    public HashSet<LocatorId> LearnedLocatorIds { get; } = [];
+
     public IEnumerable<GameFileRecord> GetGameFiles(LocatorIdsWithGameStore locatorIdsWithGameStore)
     {
+        if (FailNextGetGameFiles)
+        {
+            FailNextGetGameFiles = false;
+            throw new IOException("Stubbed failure reading the hash database");
+        }
+
         var (_, locatorIds) = locatorIdsWithGameStore;
 
         var firstLocatorId = locatorIds.First();
         if (!_versionFiles.TryGetValue(firstLocatorId, out var fileIds))
         {
-            if (firstLocatorId == "3976631895")
+            if (firstLocatorId == "3976631895" || LearnedLocatorIds.Contains(firstLocatorId))
                 fileIds = _versionFiles[LocatorId.From("StubbedGameState.zip")];
         }
         

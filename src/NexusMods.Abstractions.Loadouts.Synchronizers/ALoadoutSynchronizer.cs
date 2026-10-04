@@ -672,6 +672,11 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         foreach (var id in locatorsToAdd)
             tx.Add(loadout, Loadout.LocatorIds, id);
 
+        // The vanilla list belongs to the old version: drop the marker with the IDs, so a rebuild that fails after this
+        // commit leaves "no list" (deletions blocked, next sync rebuilds) instead of the old list passing for the new one
+        if (Sdk.Games.GameInstallMetadata.BaselineFromDisk.TryGetValue(loadout.Installation, out var fromDisk))
+            tx.Retract(loadout.InstallationId, Sdk.Games.GameInstallMetadata.BaselineFromDisk, fromDisk);
+
         var result = await tx.Commit();
         return loadout.Rebase(result.Db);
     }
