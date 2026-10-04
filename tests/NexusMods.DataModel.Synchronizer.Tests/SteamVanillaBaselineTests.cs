@@ -9,6 +9,7 @@ using NexusMods.Games.Generic;
 using NexusMods.Games.RedEngine;
 using NexusMods.Games.RedEngine.Cyberpunk2077;
 using NexusMods.Games.TestFramework;
+using NexusMods.Hashing.xxHash3;
 using NexusMods.Paths;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -130,5 +131,33 @@ public class SteamVanillaBaselineTests(ITestOutputHelper helper) : AIsolatedGame
         GameFile("config.ini").FileExists.Should().BeTrue();
         GameInstallMetadata.BaselineFromDisk.Get(GameRegistry.ForceGetMetadata(GameInstallation)).Should().BeFalse();
         ListPaths().Should().Equal(NexusPaths("not-in-the-db-yet"));
+    }
+
+    [Fact]
+    public async Task KnownVersion_SteamPatchToAnUnknownVersion_DeletesNoOriginalAndAdoptsTheChange()
+    {
+        await WriteStubbedGameFiles("StubbedGameState.zip");
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        var loadout = await Synchronizer.Synchronize(await CreateLoadout());
+        GameInstallMetadata.BaselineFromDisk.Get(GameRegistry.ForceGetMetadata(GameInstallation)).Should().BeFalse();
+        var originals = NexusPaths("StubbedGameState.zip");
+        ListPaths().Should().Equal(originals);
+
+        // Steam patches to a version the hash database doesn't know: an original changes. The stubbed Nexus list has
+        // no Cyberpunk2077.exe (a real one does), so the patch brings it: a disk list is only saved with it
+        Locator.LocatorIds = [LocatorId.From("unknown-patch")];
+        await WriteGameFile("config.ini", "patched");
+        await WriteGameFile("bin/x64/Cyberpunk2077.exe", "primary file");
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+
+        foreach (var path in originals)
+            GameInstallation.Locations.ToAbsolutePath(path).FileExists.Should().BeTrue($"{path} is an original");
+        (await GameFile("config.ini").ReadAllTextAsync()).Should().Be("patched");
+        var metadata = GameRegistry.ForceGetMetadata(GameInstallation);
+        GameInstallMetadata.BaselineFromDisk.Get(metadata).Should().BeTrue();
+        GameBaselineFile.TryGetVanillaFiles(metadata, out var files).Should().BeTrue();
+        files.Single(f => (GamePath)f.Path == new GamePath(LocationId.Game, "config.ini")).Hash.Should().Be("patched".xxHash3AsUtf8());
+        files.Select(f => (GamePath)f.Path).Should().Contain(originals);
+        Overrides(loadout).Should().BeEmpty();
     }
 }
