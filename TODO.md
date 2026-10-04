@@ -146,7 +146,7 @@ El core heredado de upstream ya es multi-juego (`IGame`, `SteamLocator`, API de 
 - [x] **Identidad del juego = `GameId`**: atributos nuevos `.../Game` en `GameInstallMetadata` y `ManuallyAddedGame`; migración `_0011` los completa desde el id de Nexus (mapeo histórico fijo 3333 → CP, no construye juegos). El id de Nexus viejo queda como `LegacyNexusModsGameId`, que solo lee la migración y `GameRegistry` (para migraciones anteriores a `_0011`). `StubbedGame` ya no tiene id de Nexus y se puede gestionar al lado de CP (`GameWithoutNexusModsIdTests`)
 - [x] **Botones de Essentials** y **panel de Wine prefix** solo para el juego que tiene lista/requisitos (el gate sigue siendo "es CP", en un solo lugar cada uno, hasta la fase 2)
 - [x] **Borrados globales** del Storage Manager: siguen siendo de todos los juegos, ahora lo dicen los textos. Acotarlos va con "Storage Manager por juego"
-- [ ] **Fixture de 2 juegos general:** no hizo falta una base común; cada test registra el segundo juego que necesita. Quedan los Verify huérfanos de Skyrim/FO4 y `RedModInstallerTests.*` en TestFramework (CLAUDE.md dice no borrar `.verified.` a mano: decidir)
+- [x] **Fixture de 2 juegos:** no hizo falta una base común; cada test registra el segundo juego que necesita. Borrados los 30 Verify huérfanos de TestFramework (Skyrim/FO4, colecciones viejas, `RedModInstallerTests.*` duplicado): ningún test los generaba
 
 **Fase 2: con Witcher 3 en marcha, abstraer recién cuando haya dos casos reales:**
 
