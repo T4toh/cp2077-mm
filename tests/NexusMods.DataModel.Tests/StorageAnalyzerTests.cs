@@ -4,6 +4,7 @@ using NexusMods.Abstractions.Library;
 using NexusMods.DataModel.Storage;
 using NexusMods.Games.TestFramework;
 using NexusMods.Paths;
+using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Settings;
 using Xunit;
@@ -36,6 +37,52 @@ public class StorageAnalyzerTests(ITestOutputHelper helper) : ACyberpunkIsolated
         recorded.FileExists.Should().BeFalse();
         usersOwn.FileExists.Should().BeTrue();
         nestedFile.FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteDownloadsAsync_InOwnFolder_AlsoDeletesUnrecordedDownloads()
+    {
+        // After a database reset the old downloads are no longer recorded but still fill tModManager's folder
+        var analyzer = (StorageAnalyzer)ServiceProvider.GetRequiredService<IStorageAnalyzer>();
+        var downloads = ServiceProvider.GetRequiredService<ISettingsManager>().Get<DownloadsSettings>().Folder.ToPath(FileSystem);
+        downloads.CreateDirectory();
+        analyzer.DefaultDownloadsFolderProvider = () => downloads;
+
+        var unrecorded = downloads.Combine("Running Man.zip");
+        await File.WriteAllTextAsync(unrecorded.ToString(), "old download");
+        var partial = downloads.Combine($"mod.zip.tmp-{Guid.NewGuid():N}");
+        await File.WriteAllTextAsync(partial.ToString(), "half written");
+        var outside = TemporaryFileManager.CreateFolder().Path.Combine("canary.txt");
+        await File.WriteAllTextAsync(outside.ToString(), "must survive");
+        var link = downloads.Combine("linked.zip");
+        File.CreateSymbolicLink(link.ToString(), outside.ToString());
+
+        await analyzer.DeleteDownloadsAsync();
+
+        unrecorded.FileExists.Should().BeFalse();
+        File.Exists(link.ToString()).Should().BeFalse();
+        partial.FileExists.Should().BeTrue();
+        outside.FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteDownloadsAsync_OwnFolderLinkedElsewhere_DeletesOnlyRecorded()
+    {
+        // The default folder made a symlink to ~/Downloads must not empty ~/Downloads
+        var analyzer = (StorageAnalyzer)ServiceProvider.GetRequiredService<IStorageAnalyzer>();
+        var downloads = ServiceProvider.GetRequiredService<ISettingsManager>().Get<DownloadsSettings>().Folder.ToPath(FileSystem);
+        var usersFolder = TemporaryFileManager.CreateFolder().Path;
+        if (downloads.DirectoryExists()) downloads.DeleteDirectoryNoFollow();
+        downloads.Parent.CreateDirectory();
+        Directory.CreateSymbolicLink(downloads.ToString(), usersFolder.ToString());
+        analyzer.DefaultDownloadsFolderProvider = () => downloads;
+
+        var usersOwn = usersFolder.Combine("tax-return.pdf");
+        await File.WriteAllTextAsync(usersOwn.ToString(), "not a mod");
+
+        await analyzer.DeleteDownloadsAsync();
+
+        usersOwn.FileExists.Should().BeTrue();
     }
 
     [Fact]

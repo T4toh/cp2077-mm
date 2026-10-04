@@ -16,8 +16,11 @@ public record DownloadsSettings : ISettings
         .ConfigureDefault(CreateDefault)
         .ConfigureBackend(StorageBackendOptions.Use(StorageBackends.Json));
 
+    /// <summary>tModManager's own downloads folder: nothing but downloads lives there.</summary>
+    public static ConfigurablePath DefaultFolder => new(KnownPath.XDG_DATA_HOME, $"{ApplicationConstants.DataDirectoryName}/Downloads");
+
     public static DownloadsSettings CreateDefault(IServiceProvider serviceProvider) => new()
     {
-        Folder = new ConfigurablePath(KnownPath.XDG_DATA_HOME, $"{ApplicationConstants.DataDirectoryName}/Downloads"),
+        Folder = DefaultFolder,
     };
 }
