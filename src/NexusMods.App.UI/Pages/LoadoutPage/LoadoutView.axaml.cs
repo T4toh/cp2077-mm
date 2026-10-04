@@ -75,6 +75,9 @@ public partial class LoadoutView : R3UserControl<ILoadoutViewModel>
                 this.BindCommand(ViewModel, vm => vm.CommandOpenEssentialModsPage, view => view.EssentialModsButton)
                     .AddTo(disposables);
 
+                this.OneWayBind(ViewModel, vm => vm.HasEssentialMods, view => view.EssentialModsButton.IsVisible)
+                    .AddTo(disposables);
+
                 this.BindCommand(ViewModel, vm => vm.CommandRemoveItem, view => view.DeleteButton)
                     .AddTo(disposables);
 

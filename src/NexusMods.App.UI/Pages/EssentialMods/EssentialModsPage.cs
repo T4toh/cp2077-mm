@@ -4,6 +4,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.Abstractions.Serialization.Attributes;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
 using NexusMods.UI.Sdk.Icons;
 using NexusMods.Games.RedEngine.Cyberpunk2077;
@@ -35,12 +36,15 @@ public class EssentialModsPageFactory : APageFactory<IEssentialModsViewModel, Es
             loadout.InstallationInstance.Game.NexusModsGameId.Value);
     }
 
+    /// <summary>Whether <paramref name="game"/> has an essential mods list. Gates the page and its buttons.</summary>
+    public static bool IsAvailableFor(IGameData game) => game.GameId == Cyberpunk2077Game.GameId;
+
     public override IEnumerable<PageDiscoveryDetails?> GetDiscoveryDetails(IWorkspaceContext workspaceContext)
     {
         if (workspaceContext is not LoadoutContext loadoutContext) yield break;
         
         var loadout = Loadout.Load(ServiceProvider.GetRequiredService<IConnection>().Db, loadoutContext.LoadoutId);
-        if (loadout.InstallationInstance.Game.GameId != Cyberpunk2077Game.GameId) yield break;
+        if (!IsAvailableFor(loadout.InstallationInstance.Game)) yield break;
 
         yield return new PageDiscoveryDetails
         {

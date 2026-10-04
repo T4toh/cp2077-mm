@@ -37,6 +37,8 @@ public interface ILibraryViewModel : IPageViewModelInterface
     ReactiveCommand<Unit> OpenNexusModsCommand { get; }
     ReactiveCommand<Unit> OpenNexusModsCollectionsCommand { get; }
     ReactiveCommand<Unit> OpenEssentialModsCommand { get; }
+
+    bool HasEssentialMods { get; }
     
     IStorageProvider? StorageProvider { get; set; }
 }

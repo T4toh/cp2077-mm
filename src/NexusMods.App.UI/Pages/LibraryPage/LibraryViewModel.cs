@@ -75,6 +75,7 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
     public ReactiveCommand<Unit> OpenNexusModsCommand { get; }
     public ReactiveCommand<Unit> OpenNexusModsCollectionsCommand { get; }
     public ReactiveCommand<Unit> OpenEssentialModsCommand { get; }
+    public bool HasEssentialMods { get; }
 
     [Reactive] public int SelectionCount { get; private set; }
     
@@ -246,6 +247,7 @@ public class LibraryViewModel : APageViewModel<ILibraryViewModel>, ILibraryViewM
             osInterop.OpenUri(gameUri);
         });
 
+        HasEssentialMods = EssentialModsPageFactory.IsAvailableFor(game);
         OpenEssentialModsCommand = new ReactiveCommand<Unit>(execute: _ =>
         {
             var pageData = new PageData
