@@ -66,6 +66,7 @@ public class FileExtractor : IFileExtractor
             try
             {
                 await extractor.ExtractAllAsync(sFn, dest, token);
+                MakeOwnerAccessible(dest.ToString());
                 return;
             }
             catch (PathException e)
@@ -80,6 +81,31 @@ public class FileExtractor : IFileExtractor
         }
 
         throw new FileExtractionException($"No Extractors found for file {sFn.FileName}");
+    }
+
+    /// <summary>
+    /// Gives the owner read/write on every extracted file (and list/enter on every folder). Archives can carry
+    /// unix mode 0 (seen in a Nexus mod), 7z restores it as-is, and hashing the extracted files then fails.
+    /// Symlinks are skipped, so nothing outside <paramref name="root"/> is touched.
+    /// </summary>
+    internal static void MakeOwnerAccessible(string root)
+    {
+        if (OperatingSystem.IsWindows() || !Directory.Exists(root)) return;
+
+        foreach (var entry in new DirectoryInfo(root).EnumerateFileSystemInfos())
+        {
+            if (entry.LinkTarget is not null) continue;
+
+            if (entry is DirectoryInfo dir)
+            {
+                dir.UnixFileMode |= UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+                MakeOwnerAccessible(dir.FullName);
+            }
+            else
+            {
+                entry.UnixFileMode |= UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            }
+        }
     }
 
     /// <inheritdoc/>

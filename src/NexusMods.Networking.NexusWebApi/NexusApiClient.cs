@@ -183,8 +183,13 @@ public class NexusApiClient : INexusApiClient
     {
         var metaData = ResponseMetadata.FromHttpHeaders(result);
 
-        _logger.LogInformation("Nexus API call finished: {Runtime} - Remaining Limit: {RemainingLimit}",
-            metaData.Runtime, Math.Max(metaData.DailyRemaining, metaData.HourlyRemaining));
+        // A missing x-rl-* header parses as 0, so only log a limit the server actually sent
+        var endpoint = result.RequestMessage?.RequestUri?.GetLeftPart(UriPartial.Path);
+        if (result.Headers.Contains("x-rl-daily-remaining") || result.Headers.Contains("x-rl-hourly-remaining"))
+            _logger.LogInformation("Nexus API call finished: {Endpoint} {Runtime} - Remaining Limit: {RemainingLimit}",
+                endpoint, metaData.Runtime, Math.Max(metaData.DailyRemaining, metaData.HourlyRemaining));
+        else
+            _logger.LogInformation("Nexus API call finished: {Endpoint} {Runtime} (no rate limit headers)", endpoint, metaData.Runtime);
 
         return metaData;
     }

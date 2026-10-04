@@ -45,6 +45,7 @@ internal class StorageAnalyzer : IStorageAnalyzer
         _fileStore = fileStore;
         LegacyDownloadsFolderProvider = () => LegacyDataDetector.LegacyDownloadsFolder(fileSystem);
         BackupsFolderProvider = () => GameBackups.Root(fileSystem);
+        DefaultDownloadsFolderProvider = () => DownloadsSettings.DefaultFolder.ToPath(fileSystem);
     }
 
     /// <summary>Test seam: overridden in tests so they never touch the real <c>~/.local/share</c>.</summary>
@@ -52,6 +53,9 @@ internal class StorageAnalyzer : IStorageAnalyzer
 
     /// <summary>Test seam, same purpose as <see cref="LegacyDownloadsFolderProvider"/>: Deep Clean's <c>Backups</c> folder.</summary>
     internal Func<AbsolutePath> BackupsFolderProvider { get; set; }
+
+    /// <summary>Test seam: tModManager's own downloads folder (<see cref="DownloadsSettings.DefaultFolder"/>).</summary>
+    internal Func<AbsolutePath> DefaultDownloadsFolderProvider { get; set; }
 
     /// <inheritdoc />
     public Task<StorageStats> GetStorageStatsAsync(CancellationToken cancellationToken = default)
@@ -185,11 +189,18 @@ internal class StorageAnalyzer : IStorageAnalyzer
         var downloads = _settingsManager.Get<DownloadsSettings>().Folder.ToPath(_fileSystem);
         if (!downloads.DirectoryExists()) return Task.CompletedTask;
 
-        // Only the downloads the library recorded: the folder is configurable and may hold the user's own files
-        foreach (var libraryFile in LibraryFile.All(_connection.Db))
+        // tModManager's own folder holds nothing but downloads, recorded or not (a database reset forgets them all):
+        // empty it. A folder the user picked (or one linked elsewhere, e.g. to ~/Downloads) may hold their own
+        // files, so there only the downloads the library recorded go.
+        var ownFolder = downloads == DefaultDownloadsFolderProvider() && new DirectoryInfo(downloads.ToString()).LinkTarget is null;
+        var files = ownFolder
+            ? downloads.EnumerateFiles("*", recursive: false)
+            : LibraryFile.All(_connection.Db)
+                .Where(libraryFile => LibraryFile.DownloadPath.TryGetValue(libraryFile, out _))
+                .Select(libraryFile => downloads.Combine(LibraryFile.DownloadPath.Get(libraryFile)));
+
+        foreach (var file in files.ToArray())
         {
-            if (!LibraryFile.DownloadPath.TryGetValue(libraryFile, out var relativePath)) continue;
-            var file = downloads.Combine(relativePath);
             if (!SafePath.IsStrictlyInside(downloads, file) || !file.FileExists || IsPartialDownload(file)) continue;
             file.Delete();
         }

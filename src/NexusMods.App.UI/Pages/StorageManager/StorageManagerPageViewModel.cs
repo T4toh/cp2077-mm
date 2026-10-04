@@ -111,7 +111,7 @@ internal class StorageManagerPageViewModel : APageViewModel<IStorageManagerPageV
                 title: "Borrar descargas",
                 new StandardDialogParameters
                 {
-                    Text = "Se borran las descargas originales que tModManager registró en su carpeta de descargas, de todos los juegos (otros archivos de esa carpeta no se tocan). Vas a tener que volver a bajarlas para reinstalar o reconstruir el store.",
+                    Text = "Se borran las descargas originales, de todos los juegos. En la carpeta de descargas de tModManager se borra todo; si elegiste otra carpeta, solo las descargas que tModManager registró (otros archivos de esa carpeta no se tocan). Vas a tener que volver a bajarlas para reinstalar o reconstruir el store.",
                 },
                 buttonDefinitions:
                 [

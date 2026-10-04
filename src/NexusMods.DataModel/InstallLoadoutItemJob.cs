@@ -23,6 +23,8 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
     public ILibraryItemInstaller? FallbackInstaller { get; init; }
     public LibraryItem.ReadOnly LibraryItem { get; init; }
     public Optional<LoadoutItemGroupId> ParentGroupId { get; set; }
+
+    private static readonly SemaphoreSlim MutableCollectionLock = new(1, 1);
     public LoadoutId LoadoutId { get; init; }
     
     public required ITransaction Transaction { get; init; }
@@ -65,31 +67,41 @@ internal class InstallLoadoutItemJob : IJobDefinitionWithStart<InstallLoadoutIte
     {
         if (!ParentGroupId.HasValue)
         {
-            var loadoutReadOnly = Loadout.Load(Connection.Db, LoadoutId);
-            var mutableCollection = loadoutReadOnly.MutableCollections().FirstOrDefault();
-            if (mutableCollection == default)
+            // ponytail: one lock for every loadout, only held on this rare path (no editable collection left)
+            await MutableCollectionLock.WaitAsync(context.CancellationToken);
+            try
             {
-                Logger.LogWarning("No mutable collection found in loadout {LoadoutId}; creating a default 'My Mods' group", LoadoutId);
-                using var createTx = Connection.BeginTransaction();
-                _ = new CollectionGroup.New(createTx, out var newGroupId)
+                // Re-read under the lock: a parallel install may have just created the group
+                var loadoutReadOnly = Loadout.Load(Connection.Db, LoadoutId);
+                var mutableCollection = loadoutReadOnly.MutableCollections().FirstOrDefault();
+                if (mutableCollection == default)
                 {
-                    IsReadOnly = false,
-                    LoadoutItemGroup = new LoadoutItemGroup.New(createTx, newGroupId)
+                    Logger.LogWarning("No mutable collection found in loadout {LoadoutId}; creating a default 'My Mods' group", LoadoutId);
+                    using var createTx = Connection.BeginTransaction();
+                    _ = new CollectionGroup.New(createTx, out var newGroupId)
                     {
-                        IsGroup = true,
-                        LoadoutItem = new LoadoutItem.New(createTx, newGroupId)
+                        IsReadOnly = false,
+                        LoadoutItemGroup = new LoadoutItemGroup.New(createTx, newGroupId)
                         {
-                            Name = "My Mods",
-                            LoadoutId = LoadoutId,
+                            IsGroup = true,
+                            LoadoutItem = new LoadoutItem.New(createTx, newGroupId)
+                            {
+                                Name = "My Mods",
+                                LoadoutId = LoadoutId,
+                            },
                         },
-                    },
-                };
-                var createResult = await createTx.Commit();
-                ParentGroupId = LoadoutItemGroupId.From(createResult[newGroupId]);
+                    };
+                    var createResult = await createTx.Commit();
+                    ParentGroupId = LoadoutItemGroupId.From(createResult[newGroupId]);
+                }
+                else
+                {
+                    ParentGroupId = LoadoutItemGroupId.From(mutableCollection.CollectionId);
+                }
             }
-            else
+            finally
             {
-                ParentGroupId = LoadoutItemGroupId.From(mutableCollection.CollectionId);
+                MutableCollectionLock.Release();
             }
         }
 

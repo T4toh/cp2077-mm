@@ -799,7 +799,7 @@ After asking design, we're choosing to simply open the mod page for now.
         await _modUpdateService.CheckAndUpdateModPages(token, notify: true);
     }
 
-    private async ValueTask InstallItems(LibraryItemId[] ids, LoadoutItemGroupId targetLoadoutGroup, bool useAdvancedInstaller, CancellationToken cancellationToken)
+    private async ValueTask InstallItems(LibraryItemId[] ids, Optional<LoadoutItemGroupId> targetLoadoutGroup, bool useAdvancedInstaller, CancellationToken cancellationToken)
     {
         var db = _connection.Db;
         var items = ids
@@ -813,8 +813,6 @@ After asking design, we're choosing to simply open the mod page for now.
             body: (i, innerCancellationToken) => InstallLibraryItem(items[i], _loadout, targetLoadoutGroup, innerCancellationToken, useAdvancedInstaller),
             cancellationToken: cancellationToken
         );
-        
-        var targetCollection = LoadoutItem.Load(db, targetLoadoutGroup);
     }
 
     private LibraryItemId[] GetSelectedIds()
@@ -842,7 +840,12 @@ After asking design, we're choosing to simply open the mod page for now.
             });
     }
 
-    private LoadoutItemGroupId GetInstallationTarget() => (SelectedInstallationTarget?.Id ?? _installationTargets[0].Id).Value;
+    // No editable collection left (Deep Clean on an old version, or "My Mods" deleted by hand): the install job creates one
+    private Optional<LoadoutItemGroupId> GetInstallationTarget()
+    {
+        var target = SelectedInstallationTarget ?? _installationTargets.FirstOrDefault();
+        return target is null ? Optional<LoadoutItemGroupId>.None : LoadoutItemGroupId.From(target.Id.Value);
+    }
 
     private ValueTask InstallSelectedItems(bool useAdvancedInstaller, CancellationToken cancellationToken)
     {
@@ -852,14 +855,13 @@ After asking design, we're choosing to simply open the mod page for now.
     private async ValueTask InstallLibraryItem(
         LibraryItem.ReadOnly libraryItem,
         LoadoutId loadout,
-        LoadoutItemGroupId targetLoadoutGroup,
+        Optional<LoadoutItemGroupId> targetLoadoutGroup,
         CancellationToken cancellationToken,
         bool useAdvancedInstaller = false)
     {
         try
         {
             await _loadoutManager.InstallItem(libraryItem, loadout, parent: targetLoadoutGroup, installer: useAdvancedInstaller ? _advancedInstaller : null);
-            var targetCollection  = LoadoutItem.Load(_connection.Db, targetLoadoutGroup);
         }
         catch (OperationCanceledException)
         {

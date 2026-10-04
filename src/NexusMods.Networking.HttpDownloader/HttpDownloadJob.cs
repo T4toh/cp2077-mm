@@ -38,14 +38,17 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
     public required ILogger Logger { get; init; }
 
     /// <summary>
-    /// The uri of the download page.
+    /// The uri of the file itself (for Nexus, the CDN link); the only one requested.
     /// </summary>
     public required Uri Uri { get; init; }
     
     /// <summary>
-    /// The uri of the download page.
+    /// The uri of the download page (for Nexus, the mod page). Only stored and logged, never downloaded.
     /// </summary>
     public required Uri DownloadPageUri { get; init; }
+
+    // The CDN query is a signed, per-user link (md5, expires, user_id): keep it out of the logs
+    private string LoggableUri => Uri.GetLeftPart(UriPartial.Path);
     
     /// <summary>
     /// The destination of the download.
@@ -185,7 +188,7 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
         {
             // NOTE(erri120): We asked the server whether it supports range requests, the server responded with yes,
             // then we do a range request, and suddenly the server changed its mind and says no...
-            Logger.LogWarning("Server `{ServerName}` responded with 200 to a valid range request for download from `{PageUri}`. The download will be reset", response.Headers.Server.ToString(), DownloadPageUri);
+            Logger.LogWarning("Server `{ServerName}` responded with 200 to a valid range request for `{FileUri}` (page `{PageUri}`). The download will be reset", response.Headers.Server.ToString(), LoggableUri, DownloadPageUri);
 
             // NOTE(erri120): The only thing we can do here is to reset everything and start from scratch.
             _state.TotalBytesDownloaded = Size.Zero;
@@ -203,7 +206,7 @@ public record HttpDownloadJob : IJobDefinitionWithStart<HttpDownloadJob, Absolut
         }
         catch (Exception e)
         {
-            Logger.LogWarning(e, "Exception while downloading from `{PageUri}`, downloaded `{DownloadedBytes}` from `{TotalBytes}` bytes", DownloadPageUri, outputStream.Position, outputStream.Length);
+            Logger.LogWarning(e, "Exception while downloading `{FileUri}` (page `{PageUri}`), downloaded `{DownloadedBytes}` from `{TotalBytes}` bytes", LoggableUri, DownloadPageUri, outputStream.Position, outputStream.Length);
             throw;
         }
         finally
