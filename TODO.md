@@ -124,9 +124,14 @@ Intento anterior falló por acoplamiento a Cyberpunk filtrado fuera de `Games.Re
 - [x] ~~**CI propio:**~~ sacado el 2026-09-25 (fallaba y se prefiere probar local; la suite equivalente es `./dev.sh` opción 4). Era: GitHub Actions, `.github/workflows/ci.yaml` (ubuntu, `dotnet build -warnaserror`, xUnit vía `dotnet test` con filtro, TUnit vía `dotnet run`). Primera corrida verde: 1175 tests xUnit + 94 TUnit en ~4.5 min. Único arreglo necesario: ordenar hijos antes de `Verify` en `PathBasedInstallerTests` (orden de enumeración difiere entre ext4 y APFS)
 - [ ] **Desacoplar Cyberpunk del core** (relevo del 2026-10-03, detalle abajo). Dos reglas: **nada de CP fuera de `Games.RedEngine`** y **nada atado a Nexus**: Nexus Mods es una fuente de mods más (la más popular), no la única; KOTOR vive sobre todo en Deadly Stream, otros mods en GitHub. No hace falta inventar ya una abstracción de "fuentes" (se diseña cuando haya una segunda fuente real), pero no sumar acople nuevo y sacar el que se toque.
 - [ ] **Juegos a agregar, en orden** (pedido 2026-09-24; Witcher 3 arranca después de la fase 1 del desacople):
-  1. **The Witcher 3** (next-gen; el parche nuevo ya salió, avisado 2026-10-03; preparándose para el DLC): mods en `mods/` + `dlc/`, merges de scripts (Script Merger), menús en `bin/config/r4game/user_config_matrix/pc/`
+  1. **The Witcher 3 Remastered (5.x)** (salió 2026-09-29; expansión *Songs of the Past* en 2027). Investigado 2026-10-03, detalle en "Witcher 3: lo investigado" abajo. El merge de scripts/bundles va último: la edición es muy nueva y las herramientas de la comunidad cambian día a día
   2. **Skyrim, la versión más nueva en Steam** (puede esperar, decidido 2026-10-03: primero los juegos que se van a jugar. Referencia: [Corkscrew](https://corkscrewmodmanager.com/), GPL-3, Rust/Tauri, ya cubre Skyrim SE/AE + Fallout 4 en Linux/macOS con colecciones, Wabbajack, LOOT y FOMOD; beta v0.9.x) (Special/Anniversary Edition): SKSE, `plugins.txt`/load order, FOMOD (ya existe), Proton. Fallout 4 comparte motor y queda casi gratis después
-  3. **KOTOR 1 y 2**: juegos viejos que hoy se modean a mano sí o sí (overrides en `Override/`, TSLPatcher/HoloPatcher con instrucciones por mod, orden de instalación estricto). El valor está en automatizar eso
+  3. **KOTOR 1 y 2**: juegos viejos que hoy se modean a mano sí o sí (overrides en `Override/`, TSLPatcher/HoloPatcher con instrucciones por mod, orden de instalación estricto). El valor está en automatizar eso. Investigado 2026-10-03:
+     - Steam 32370 / 208580. TSL nativo tiene dos `override` y los parches de exe de la comunidad son solo Windows: TSL por Proton. En Linux todo a minúsculas; Workshop de TSL vacío
+     - 25-45% de los mods son patchers que editan `.2da`/`dialog.tlk`/`.mod` según lo instalado antes, sin desinstalación: necesita las piezas 3 y 8 de abajo completas
+     - HoloPatcher (PyKotor, LGPL) corre sin interfaz en Linux y es case-aware: invocarlo como proceso. KOTORModSync es BSL (no reutilizable) y su repo da 404. Referencia GPL: `ChristopherVR/kotor-mod-manager` (convierte los mod builds de `kotor.neocities.org` a JSON)
+     - Fuente principal Deadly Stream: sin API, login + CSRF, 55 descargas/día; los términos no dicen nada de bots (preguntar)
+     - Esfuerzo XL (MVP M sin reordenar)
 - [ ] **Requisitos de cada juego como datos, no como wiki** (pedido 2026-10-03): lo que hoy hay que ir a leer a la wiki de cada juego (paquetes de protontricks como `vcrun2022`/`d3dcompiler_47`, DLL overrides, opciones de lanzamiento de Steam, archivos de config a tocar, pasos tras recrear el prefix) declarado por juego, y que la app lo muestre como checklist con estado real y, donde se pueda, un botón que lo haga (`protontricks <appid> -q ...`). Hoy está hardcodeado en `WinePrefixRequirementsEmitter` de CP2077; generalizarlo es parte del desacople (que cada `IGame` declare sus requisitos y el health check sea genérico)
 - **No recuperar `Games.CreationEngine` de upstream**: se sacó a propósito porque no gustaba cómo estaba hecho. Escribir cada juego desde cero sobre el core desacoplado; el código viejo (history de NexusMods.App) sirve como mucho de referencia
 - [ ] **Referencia Vortex:** `Nexus-Mods/vortex-games` (GPL-3) tiene una carpeta `game-*` por juego (100+) con las reglas de layout/instalación de cada uno; la de Cyberpunk es `E1337Kat/cyberpunk2077_ext_redux` (~25 tipos de layout vs nuestros 4 instaladores). No es código portable (TypeScript/Electron/Windows), son reglas a leer. Para CP2077 sirven: layouts "arreglables" (`.archive` suelto → `archive/pc/mod/`, Redscript sin subcarpeta → `r6/scripts/<mod>/`, DLL suelta → `red4ext/plugins/<mod>/`, REDmod sin `mods/`), mods envueltos en carpeta extra, archivos protegidos (`inputContexts.xml`, `inputUserMappings.xml`, `options.json`) con confirmación, core mods por versión (RED4ext `winmm.dll` vs `d3d11.dll`), CET exige `init.lua`
@@ -162,6 +167,54 @@ El core heredado de upstream ya es multi-juego (`IGame`, `SteamLocator`, API de 
 - [ ] **Menores:** `LegacyDataDetector.LegacyBackupsFolder` (código muerto), referencias duplicadas en `App.csproj` (líneas 23/25 y 24/26), `FileType.Cyberpunk2077AppearancePreset` en `Sdk/FileExtractor/Signatures.cs` (mover a RedEngine), `FileHashesService.cs:434` busca versiones por nombre sin filtrar por juego, textos (Welcome, `.desktop`, metainfo, pupnet), PNG de diseño `cyberpunk_game.png`
 
 Ya genérico, no tocar: `SteamLocator`, Protontricks, API de Nexus y cookies, nxm, mapeo dominio→juego, migración `_0010`, semáforo del `SynchronizerService` (serializa entre juegos: más lento, correcto). Library ya separa `LocalFile` de `NexusModsLibraryItem`: una fuente nueva es otro tipo de item + su descargador.
+
+### Piezas genéricas para el segundo juego (decidido 2026-10-03)
+
+No se escribe código de Witcher 3 ni de KOTOR hasta que estas piezas existan. Cada una va al core, se prueba primero con CP2077 (que ya tiene un caso real para casi todas) y después la usa W3. Nexus sigue siendo la fuente por defecto, pero ninguna pieza depende de él. Lo que nos diferencia es Linux: herramientas de Windows corriendo en el prefix correcto, Proton y mayúsculas, que es justo lo que Vortex no hace.
+
+| # | Pieza | Prueba con CP2077 | Uso en W3 | Después |
+|---|---|---|---|---|
+| 1 | Lista vanilla sin la base de Nexus (= "Lista de archivos originales" de la fase 2; la base local **no trae W3**) | después de cada parche la app no aplica | poder sacar mods | cualquier juego |
+| 2 | Ubicaciones dentro del prefix, con whitelist de archivos gestionados (hoy el reset borra todo lo no vanilla de cualquier ubicación) + test con symlink | saves, `AppData/Local/.../UserSettings.json`; vuelve AppData | `Documents/The Witcher 3` | saves/config de cualquier juego |
+| 3 | Mods locales de primera clase (= "Archivos locales fuera de Descargas") + metadata opcional de fuente/URL/versión | archivos agregados a mano | mods de mod.io/GitHub/foros | KOTOR |
+| 4 | Primer uso real de `IIntrinsicFile` (archivo base + bloques por mod; `Ingest` de lo que cambia el juego) | `inputUserMappings.xml`, `options.json` | `mods.settings`, `dx12user.settings`/`input.settings`, XML de menús | `plugins.txt` |
+| 5 | Load order que se escribe a archivo (variedad de sort order + writer) | `modlist` de REDmod | `Priority` de `mods.settings` | Skyrim, orden de patchers KOTOR |
+| 6 | Requisitos del prefix como datos (= item de la fase 2) | `WinePrefixRequirementsEmitter` | `dinput8=n,b` para ASI, aviso DLSS bajo Proton | cualquier juego |
+| 7 | Runner de herramientas Windows en el prefix (generaliza `GameToolRunner`) | deploy de REDmod | Script Merger, `wcc_lite` | HoloPatcher, xEdit |
+| 8 | Archivos derivados: grupo generado con fuentes + hashes, se marca viejo y se regenera | **salida del deploy de REDmod** (hoy entra como "External Changes" y nada la invalida) | `mod0000_MergedFiles` | patchers de KOTOR, bashed patch |
+| 9 | Merge 3-way de texto propio (vanilla de base, N-way, archivos con marcadores) | sin equivalente (redscript usa anotaciones) | `.ws` sin Wine | juegos con scripts de texto |
+
+Arquetipos para elegir juegos futuros (cada candidato lleva una ficha: app ID, layout y prefix, arquetipo, herramientas externas, fuentes, qué hacen Vortex/MO2/el manager de la comunidad, piezas que faltan):
+
+- **Archivos sueltos superpuestos** (CP2077, muchos Unity/Unreal): instaladores + 1, 2
+- **Carpetas de mod + archivo de orden** (W3, Stardew/SMAPI): + 4, 5
+- **Plugins con load order** (Skyrim, Fallout 4): + 5, 7 (xEdit, LOOT), 8 (bashed patch)
+- **Cadena de patchers** (KOTOR, Infinity Engine/WeiDU): + 3, 7, 8 re-ejecutándose en orden
+
+### Witcher 3: lo investigado (2026-10-03)
+
+**Juego**
+- 5.00 Remastered: solo DX12 (`bin/x64_dx12/witcher3.exe`), scripts/XML/csv/w3strings en UTF-8 (antes UTF-16LE), formato de `.bundle` nuevo (registros 0x140 → 0x130), filelists de menús eliminados, mod.io integrado (dónde guarda en PC: sin documentar)
+- REDkit 5.0: overrides por scope (puede volver innecesario el Script Merger), `precompiled.rsblob`, XML con `onConflict`
+- Ediciones: re 5.x, ng 4.04 y og 1.32 (betas de Steam). Detección: `launcher-configuration.json` con `remasteredEdition`, exe DX11 = legacy, `bin/config/base/freecamera.ini` = 5.x. Sonda: `content/content0/scripts/game/r4Game.ws`
+- Steam 292030 (+499450 GOTY), DLC 378649/378648. ProtonDB Platinum. 5.00 detecta Wine y apaga DLSS/RT/FG; arreglado en Proton Experimental 2026-10-02: diagnóstico
+
+**Dónde va cada cosa**
+- `mods/mod*/content/` (nombre con `mod` adelante, 63 caracteres como máximo en 5.x), `dlc/<nombre>/content/` (no va en `mods.settings`), menús en `bin/config/r4game/user_config_matrix/pc/` (en 4.x registrar `name.xml;` en `dx11filelist.txt`/`dx12filelist.txt`, UTF-16), `bin/config/base/*.ini`
+- Prefix `compatdata/292030/.../Documents/The Witcher 3/`: `mods.settings`, `input.settings`, `dx12user.settings`, `user.settings` (solo legacy), `gamesaves/`. No existen hasta la primera corrida
+- **`[ContentManager/Mods] EnabledLocal=false`** en `dx12user.settings` apaga todo `mods/`: diagnóstico obligatorio; no pisar esas claves
+
+**Load order:** sin `mods.settings`, orden ordinal sin mayúsculas por carpeta, gana el primero. `mods.settings`: `[carpeta] Enabled=0|1 Priority=1..9999`, menor gana, únicas; el juego agrega solo las carpetas desconocidas. Deshabilitar = `Enabled=0` (no renombrar a `~`). `mod0000_MergedFiles` siempre primero
+
+**Instaladores** (Vortex + TW3MM, sin mayúsculas, en orden): rechazar archivos con `WitcherScriptMerger.exe`; XML de menú (saltear copias "backup"); mixto `mod*`+`dlc*`; `…/mods/modX` (quitar lo anterior); `content/` suelto → `mods/mod<Archivo>/content`; todo bajo `dlc*`. No desplegar readmes, `*.part.txt`, `__MACOSX`
+
+**Settings:** fragmentos `input.settings.part.txt`, `user.settings.part.txt`, `dx12user.settings.part.txt` (Vortex/Settings Updater) + regex sobre readmes `.txt` (`[Context]` + `IK_*=(Action=…)`, TW3MM). Merge por sección/clave sobre una base, preservando lo que el usuario cambió en el juego; detectar choques de acción/tecla. En 5.x todo va a `dx12user.settings`
+
+**Scripts y bundles:** conflicto = mismo `content/scripts/<ruta>` en dos o más mods habilitados. Solo hace falta merge si dos o más traen el archivo completo (los que usan `@(wrapMethod|replaceMethod|addMethod|addField)` no). Avisar si la copia del mod no tiene muchas líneas del vanilla actual (umbral SM-FAE: 50, o 10 y 10%). Bundles: leer en C# se puede; escribir `.bundle`/`metadata.store` solo con `wcc_lite` bajo Proton. Primera versión: avisar y correr Script Merger Remastered (Nexus 13076) en el prefix
+
+**Referencias:** Vortex `extensions/games/game-witcher3` (GPL-3: `installers.ts`, `edition.ts`, `menumod.ts`, `contentManager.ts`, `modSettingsPriority.ts`, `scriptStyle.ts`); `Systemcluster/The-Witcher-3-Mod-manager` (BSD-2, soporta Proton); Script Merger IDCs/SM-FAE (GPL-2, confirmar si es "o posterior"); `TheValiantOne/WitcherScriptMerger` (.NET 10, sin interfaz, DiffPlex); W3MM (MIT, merge N-way en `script_merge.rs`; su `mods.settings` está mal)
+
+**Sin verificar:** dónde guarda mod.io y cómo ordena contra los locales, orden de las carpetas DLC, si `--launcher-skip` sigue andando en 5.x, si el compilador de REDkit corre sin interfaz bajo Wine, impacto de *Songs of the Past*
 
 ## 🧬 Herencia de upstream a nivel repo
 
