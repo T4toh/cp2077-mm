@@ -119,6 +119,12 @@ public interface ILoadoutSynchronizer
     FileDiffTree LoadoutToDiskDiff(Loadout.ReadOnly loadout, List<PathPartPair> previousState, List<PathPartPair> lastScannedState);
 
     Task<Sdk.Games.GameInstallMetadata.ReadOnly> ReindexState(GameInstallation installation);
+
+    /// <summary>
+    /// Reindexes the game and rebuilds the installation's original file list (GameBaselineFile): from the Nexus hash
+    /// database when it knows the installed version, otherwise from the disk (BaselineRule).
+    /// </summary>
+    Task<Sdk.Games.GameInstallMetadata.ReadOnly> UpdateBaseline(Loadout.ReadOnly loadout);
     ValueTask BuildProcessRun(Loadout.ReadOnly loadout, Sdk.Games.GameInstallMetadata.ReadOnly state, CancellationToken cancellationToken);
 
     Task ResetToOriginalGameState(GameInstallation installation, LocatorId[] locatorIds);

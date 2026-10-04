@@ -1085,10 +1085,18 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
     public virtual async Task<Loadout.ReadOnly> Synchronize(Loadout.ReadOnly loadout, SynchronizeLoadoutJob? job = null)
     {
         loadout = loadout.Rebase();
-        
+        var previousLocatorIds = loadout.LocatorIds.ToHashSet();
+
         // Update locator IDs before building the sync tree
         loadout = await UpdateLocatorIds(loadout);
-        
+
+        // No list yet (new or pre-existing install) or a new game version: rebuild it before anything is compared
+        if (!loadout.Installation.Contains(Sdk.Games.GameInstallMetadata.BaselineFromDisk) || !previousLocatorIds.SetEquals(loadout.LocatorIds))
+        {
+            await UpdateBaseline(loadout);
+            loadout = loadout.Rebase();
+        }
+
         // If we are swapping loadouts, then we need to synchronize the previous loadout first to ingest
         // any changes, then we can apply the new loadout.
         if (Sdk.Games.GameInstallMetadata.LastSyncedLoadout.TryGetValue(loadout.Installation, out var lastAppliedId) && lastAppliedId != loadout.Id)
@@ -1325,6 +1333,83 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             };
         }
         await tx.Commit();
+    }
+
+    /// <inheritdoc />
+    public async Task<Sdk.Games.GameInstallMetadata.ReadOnly> UpdateBaseline(Loadout.ReadOnly loadout)
+    {
+        var metadata = await ReindexState(loadout.InstallationInstance);
+        var store = metadata.Store;
+        var locatorIds = loadout.LocatorIds.Distinct().ToArray();
+        var nexusKnows = store == GameStore.Steam && _fileHashService.UnknownLocatorIds(store, locatorIds).Length == 0;
+
+        IEnumerable<(GamePath Path, Hash Hash, Size Size)> files;
+        if (nexusKnows)
+        {
+            files = _fileHashService.GetGameFiles((store, locatorIds)).Select(f => (f.Path, f.Hash, f.Size));
+        }
+        else
+        {
+            var previous = new Dictionary<GamePath, (Hash Hash, Size Size)>();
+            foreach (var entry in GameBaselineFile.FindByGame(metadata.Db, metadata))
+                previous[entry.Path] = (entry.Hash, entry.Size);
+            var disk = DiskStateEntry.FindByGame(metadata.Db, metadata).Select(e => ((GamePath)e.Path, e.Hash, e.Size));
+            // The disk holds the last synced loadout's files, not `loadout`'s when switching loadouts
+            var onDisk = loadout.Rebase();
+            if (Sdk.Games.GameInstallMetadata.LastSyncedLoadout.TryGetValue(metadata, out var lastSyncedId) && Loadout.Load(metadata.Db, lastSyncedId) is { } lastSynced && lastSynced.IsValid())
+                onDisk = lastSynced;
+            files = BaselineRule.Apply(previous, disk, OwnedPaths(onDisk)).Select(kv => (kv.Key, kv.Value.Hash, kv.Value.Size));
+        }
+
+        using var tx = Connection.BeginTransaction();
+        foreach (var old in GameBaselineFile.FindByGame(metadata.Db, metadata))
+            tx.Delete(old, recursive: false);
+        var count = 0;
+        foreach (var (path, hash, size) in files)
+        {
+            _ = new GameBaselineFile.New(tx)
+            {
+                Path = path.ToGamePathParentTuple(metadata.Id),
+                Hash = hash,
+                Size = size,
+                GameId = metadata.Id,
+            };
+            count++;
+        }
+        tx.Add(metadata.Id, Sdk.Games.GameInstallMetadata.BaselineFromDisk, !nexusKnows);
+        await tx.Commit();
+
+        Logger.LogInformation("Lista de archivos originales de {Game}: {Count} archivos, desde {Source}",
+            loadout.InstallationInstance.Game.DisplayName, count, nexusKnows ? "la base de Nexus" : "el disco");
+        return Sdk.Games.GameInstallMetadata.Load(Connection.Db, metadata.Id);
+    }
+
+    /// <summary>
+    /// Paths the loadout owns, for <see cref="BaselineRule"/>: mod files with their hash; External Changes, files
+    /// deleted on purpose and files the app generates with null (their previous original is kept as is).
+    /// </summary>
+    private Dictionary<GamePath, Hash?> OwnedPaths(Loadout.ReadOnly loadout)
+    {
+        var owned = new Dictionary<GamePath, Hash?>();
+        foreach (var row in WinningFilesQuery(loadout.Db, loadout))
+        {
+            var path = new GamePath(row.Location, row.Path);
+            switch (ToItemType(row.ItemType))
+            {
+                case LoadoutSourceItemType.Loadout: owned[path] = row.Hash; break;
+                case LoadoutSourceItemType.Deleted:
+                case LoadoutSourceItemType.Intrinsic: owned[path] = null; break;
+                case LoadoutSourceItemType.Game: break;
+            }
+        }
+
+        foreach (var overrides in LoadoutOverridesGroup.FindByOverridesFor(loadout.Db, loadout.Id))
+        {
+            foreach (var item in overrides.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
+                owned[item.TargetPath] = null;
+        }
+
+        return owned;
     }
 
     /// <summary>

@@ -17,12 +17,14 @@ A new loadout has been created and has been synchronized, so the 'Last Synced St
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
-### Last Synced State - (0)
+### Last Synced State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Current State - (0)
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
+### Current State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
 ### Loadout A - (0)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -35,13 +37,15 @@ New files have been added to the game folder by the user or the game, but the lo
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
-### Last Synced State - (0)
+### Last Synced State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Current State - (1)
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
+### Current State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/newFileInGameFolderA.txt} | 0x3FB1DBAC894B6380 | 25 B |
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
 ### Loadout A - (0)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -54,14 +58,16 @@ After the loadout has been synchronized, the new file should be added to the loa
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
-### Last Synced State - (1)
+### Last Synced State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/newFileInGameFolderA.txt} | 0x3FB1DBAC894B6380 | 25 B |
-### Current State - (1)
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
+### Current State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/newFileInGameFolderA.txt} | 0x3FB1DBAC894B6380 | 25 B |
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
 ### Loadout A - (1)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -75,14 +81,16 @@ A new loadout is created, but it has not been synchronized yet. So again the 'La
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
-### Last Synced State - (1)
+### Last Synced State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/newFileInGameFolderA.txt} | 0x3FB1DBAC894B6380 | 25 B |
-### Current State - (1)
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
+### Current State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/newFileInGameFolderA.txt} | 0x3FB1DBAC894B6380 | 25 B |
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
 ### Loadout A - (1)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -100,12 +108,14 @@ loadout are different from the previous loadout due to the new file only being i
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
-### Last Synced State - (0)
+### Last Synced State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Current State - (0)
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
+### Current State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
 ### Loadout A - (1)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -122,14 +132,16 @@ A new file has been added to the game folder and B loadout has been synchronized
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
-### Last Synced State - (1)
+### Last Synced State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/newFileInGameFolderB.txt} | 0xC6B738DF31EA91BB | 28 B |
-### Current State - (1)
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
+### Current State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/newFileInGameFolderB.txt} | 0xC6B738DF31EA91BB | 28 B |
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
 ### Loadout A - (1)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -147,14 +159,16 @@ Now we switch back to the A loadout, and the new file should be removed from the
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
-### Last Synced State - (1)
+### Last Synced State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/newFileInGameFolderA.txt} | 0x3FB1DBAC894B6380 | 25 B |
-### Current State - (1)
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
+### Current State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/newFileInGameFolderA.txt} | 0x3FB1DBAC894B6380 | 25 B |
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
 ### Loadout A - (1)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -172,14 +186,16 @@ Loadout A has been copied to Loadout C, and the contents should match.
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
-### Last Synced State - (1)
+### Last Synced State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/newFileInGameFolderA.txt} | 0x3FB1DBAC894B6380 | 25 B |
-### Current State - (1)
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
+### Current State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/newFileInGameFolderA.txt} | 0x3FB1DBAC894B6380 | 25 B |
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
 ### Loadout A - (1)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |

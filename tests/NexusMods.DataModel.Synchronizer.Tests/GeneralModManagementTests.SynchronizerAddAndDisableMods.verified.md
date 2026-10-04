@@ -17,12 +17,14 @@ Added a new loadout and synced it.
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
-### Last Synced State - (0)
+### Last Synced State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Current State - (0)
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
+### Current State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
 ### Loadout A - (0)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -35,18 +37,20 @@ Added ModA to Loadout A and synced it.
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
-### Last Synced State - (3)
+### Last Synced State - (4)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/mods/modA/meshA.txt} | 0x47209A52BBA83A91 | 23 B |
 | {Game, bin/mods/modA/textureA.txt} | 0x2D2FFBBAF1C5ED90 | 26 B |
 | {Game, bin/mods/shared/shared.txt} | 0x0E1ADF094A2D7E0A | 26 B |
-### Current State - (3)
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
+### Current State - (4)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/mods/modA/meshA.txt} | 0x47209A52BBA83A91 | 23 B |
 | {Game, bin/mods/modA/textureA.txt} | 0x2D2FFBBAF1C5ED90 | 26 B |
 | {Game, bin/mods/shared/shared.txt} | 0x0E1ADF094A2D7E0A | 26 B |
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
 ### Loadout A - (3)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -62,7 +66,7 @@ Added ModB to Loadout A and synced it.
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
-### Last Synced State - (5)
+### Last Synced State - (6)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/mods/modA/meshA.txt} | 0x47209A52BBA83A91 | 23 B |
@@ -70,7 +74,8 @@ Added ModB to Loadout A and synced it.
 | {Game, bin/mods/modB/meshB.txt} | 0xEDBA825443602167 | 23 B |
 | {Game, bin/mods/modB/textureB.txt} | 0x2A4D644D5A59D225 | 26 B |
 | {Game, bin/mods/shared/shared.txt} | 0x0E1ADF094A2D7E0A | 26 B |
-### Current State - (5)
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
+### Current State - (6)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/mods/modA/meshA.txt} | 0x47209A52BBA83A91 | 23 B |
@@ -78,6 +83,7 @@ Added ModB to Loadout A and synced it.
 | {Game, bin/mods/modB/meshB.txt} | 0xEDBA825443602167 | 23 B |
 | {Game, bin/mods/modB/textureB.txt} | 0x2A4D644D5A59D225 | 26 B |
 | {Game, bin/mods/shared/shared.txt} | 0x0E1ADF094A2D7E0A | 26 B |
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
 ### Loadout A - (6)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -97,18 +103,20 @@ Files from ModA should still be present.
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
-### Last Synced State - (3)
+### Last Synced State - (4)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/mods/modA/meshA.txt} | 0x47209A52BBA83A91 | 23 B |
 | {Game, bin/mods/modA/textureA.txt} | 0x2D2FFBBAF1C5ED90 | 26 B |
 | {Game, bin/mods/shared/shared.txt} | 0x0E1ADF094A2D7E0A | 26 B |
-### Current State - (3)
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
+### Current State - (4)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/mods/modA/meshA.txt} | 0x47209A52BBA83A91 | 23 B |
 | {Game, bin/mods/modA/textureA.txt} | 0x2D2FFBBAF1C5ED90 | 26 B |
 | {Game, bin/mods/shared/shared.txt} | 0x0E1ADF094A2D7E0A | 26 B |
+| {Game, bin/originalGameFile.txt} | 0x673E3C493921A2D5 | 12 B |
 ### Loadout A - (6)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |

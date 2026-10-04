@@ -180,7 +180,9 @@ public class StubbedFileHasherService : IFileHashesService
             return true;
         }
 
-        throw new NotSupportedException($"Unknown locator metadata: {locatorId}");
+        // A version the database doesn't know (e.g. a simulated Steam patch): no vanity version, like the real service
+        version = VanityVersion.DefaultValue;
+        return false;
     }
 
     public LocatorId[] GetLocatorIdsForVersionDefinition(GameStore gameStore, VersionDefinition.ReadOnly versionDefinition) => [];

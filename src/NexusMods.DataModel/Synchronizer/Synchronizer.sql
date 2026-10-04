@@ -64,16 +64,17 @@ WHERE
 CREATE OR REPLACE MACRO synchronizer.WinningFiles(db) as TABLE
 WITH all_files AS
 (
-  -- Game files on Layer 0
+  -- Game files on Layer 0: the installation's original file list (GameBaselineFile)
   SELECT
-    Loadout,
+    loadout.Id Loadout,
     NULL Id,
-    {Location: nma_fnv1a_hash_short('Game'), Path: Path} Path,
-    Hash,
-    Size,
+    {Location: baseline.Path.Item2, Path: baseline.Path.Item3} Path,
+    baseline.Hash,
+    baseline.Size,
     'Game'::synchronizer.ItemType ItemType,
-    0 Layer 
-  FROM file_hashes.loadout_files(db)
+    0 Layer
+  FROM MDB_GAMEBASELINEFILE(Db => db) baseline
+  INNER JOIN MDB_LOADOUT(Db => db) loadout ON loadout.Installation = baseline.Game
   UNION
   -- Loadout files on Layer 1
   SELECT
