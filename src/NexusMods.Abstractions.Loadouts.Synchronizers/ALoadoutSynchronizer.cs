@@ -683,6 +683,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     private async ValueTask<Loadout.ReadOnly> ReprocessOverrides(Loadout.ReadOnly loadout)
     {
+        // A disk-made list (or none) is the only judge of what is original: the hash database may know some depots
+        // the list lacks, and dropping an override there makes the file a leftover. The rebuild once the database
+        // knows the whole version does this job instead
+        if (!Sdk.Games.GameInstallMetadata.BaselineFromDisk.TryGetValue(loadout.Installation, out var fromDisk) || fromDisk)
+            return loadout;
+
         // Make a lookup set of the new files based on current locator IDs
         var versionFiles = _fileHashService
             .GetGameFiles((loadout.Installation.Store, loadout.LocatorIds.ToArray()))

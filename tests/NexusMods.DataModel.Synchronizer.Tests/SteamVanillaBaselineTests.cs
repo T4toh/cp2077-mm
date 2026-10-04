@@ -200,6 +200,26 @@ public class SteamVanillaBaselineTests(ITestOutputHelper helper) : AIsolatedGame
     }
 
     [Fact]
+    public async Task ListFromDisk_PartiallyKnownIds_ExternalChangeAtAKnownDepotPath_Survives()
+    {
+        // One depot the hash database knows, one it doesn't: the version isn't known, so the list comes from the disk
+        Locator.LocatorIds = [LocatorId.From("StubbedGameState.zip"), LocatorId.From("unknown-depot")];
+        await WriteGameFile("bin/x64/Cyberpunk2077.exe", "primary file");
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        var loadout = await Synchronizer.Synchronize(await CreateLoadout());
+        GameInstallMetadata.BaselineFromDisk.Get(GameRegistry.ForceGetMetadata(GameInstallation)).Should().BeTrue();
+        NexusPaths("StubbedGameState.zip").Should().Contain(new GamePath(LocationId.Game, "config.ini"));
+
+        // A file at a path the known depot lists, but not in the disk list: an External Change, not an original
+        await WriteGameFile("config.ini", "user edit");
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        await Synchronizer.Synchronize(loadout.Rebase());
+
+        (await GameFile("config.ini").ReadAllTextAsync()).Should().Be("user edit");
+        Overrides(loadout.Rebase()).Should().Contain(new GamePath(LocationId.Game, "config.ini"));
+    }
+
+    [Fact]
     public async Task KnownVersion_SteamPatchToAnUnknownVersion_DeletesNoOriginalAndAdoptsTheChange()
     {
         await WriteStubbedGameFiles("StubbedGameState.zip");
