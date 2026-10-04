@@ -95,9 +95,6 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         IGameRegistry gameRegistry,
         IToolManager toolManager) : base(windowManager)
     {
-        var settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
-        var experimentalSettings = settingsManager.Get<ExperimentalSettings>();
-
         var libraryDataProviders = serviceProvider.GetServices<ILibraryDataProvider>().ToArray();
 
         _collectionDownloader = serviceProvider.GetRequiredService<CollectionDownloader>();
@@ -213,13 +210,8 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                 _refreshSignal
                     .Subscribe(_ =>
                     {
-                        var games = gameRegistry.LocateGameInstallations()
-                            .Where(game =>
-                            {
-                                if (experimentalSettings.EnableAllGames) return true;
-                                return experimentalSettings.SupportedGames.Contains(game.Game.GameId);
-                            });
-                        
+                        var games = gameRegistry.LocateGameInstallations();
+
                         _sourceList.Edit(innerList =>
                         {
                             innerList.Clear();
