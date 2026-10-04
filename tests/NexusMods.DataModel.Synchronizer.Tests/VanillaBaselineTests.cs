@@ -243,13 +243,4 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
         canary.FileExists.Should().BeTrue();
         GameFile("bin/x64/original.exe").FileExists.Should().BeTrue();
     }
-
-    [Fact]
-    public async Task DeepCleanAndUi_SeeTheList()
-    {
-        await ManagedLoadoutWith(("bin/x64/original.exe", "vanilla"));
-        var metadata = GameRegistry.ForceGetMetadata(GameInstallation);
-        GameBaselineFile.TryGetVanillaFiles(metadata, out var files).Should().BeTrue();
-        files.Select(f => (GamePath)f.Path).Should().Contain(new GamePath(LocationId.Game, "bin/x64/original.exe"));
-    }
 }

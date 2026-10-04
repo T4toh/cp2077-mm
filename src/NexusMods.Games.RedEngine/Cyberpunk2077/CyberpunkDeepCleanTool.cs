@@ -108,6 +108,19 @@ public class CyberpunkDeepCleanTool : ITool
     }
 
     /// <summary>
+    /// The loose mod files Deep Clean moves: those not in the installation's vanilla list. Without a list nothing is
+    /// moved, since every original file would look like a leftover.
+    /// </summary>
+    internal static IReadOnlyList<RelativePath> LooseModFilesToMove(AbsolutePath gameRoot, GameInstallMetadata.ReadOnly installation, ILogger logger)
+    {
+        if (GameBaselineFile.TryGetVanillaFiles(installation, out var files))
+            return FindLooseModFiles(gameRoot, files.Select(f => (GamePath)f.Path).ToHashSet());
+
+        logger.LogWarning("Todavía no hay lista de archivos originales; se omite la búsqueda de archivos sueltos de mods");
+        return [];
+    }
+
+    /// <summary>
     /// Directory where this game's Deep Clean backups are stored, outside the game folder.
     /// </summary>
     public static AbsolutePath BackupsRoot(IFileSystem fs) => GameBackups.ForGame(fs, Cyberpunk2077Game.GameId);
@@ -216,13 +229,7 @@ public class CyberpunkDeepCleanTool : ITool
             if (!MoveToBackup(gamePath, gamePath.Combine(rel), backupDir.Combine(rel), ref backupCreated, backupDir)) failedMoves++;
         }
 
-        IReadOnlySet<GamePath> vanilla = new HashSet<GamePath>();
-        if (GameBaselineFile.TryGetVanillaFiles(loadout.Installation, out var vanillaFiles))
-            vanilla = vanillaFiles.Select(f => (GamePath)f.Path).ToHashSet();
-        else
-            _logger.LogWarning("Todavía no hay lista de archivos originales; se omite la búsqueda de archivos sueltos de mods");
-
-        foreach (var rel in FindLooseModFiles(gamePath, vanilla))
+        foreach (var rel in LooseModFilesToMove(gamePath, loadout.Installation, _logger))
         {
             if (!MoveToBackup(gamePath, gamePath.Combine(rel), backupDir.Combine(rel), ref backupCreated, backupDir)) failedMoves++;
         }
