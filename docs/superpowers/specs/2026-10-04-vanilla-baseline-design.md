@@ -1,6 +1,6 @@
 # Lista de archivos originales sin la base de Nexus (pieza 1)
 
-Fecha: 2026-10-04 · Estado: diseño aprobado, sin implementar
+Fecha: 2026-10-04 · Estado: diseño aprobado, sin implementar. Ajustado al escribir el plan (ver "Ajustes del plan")
 
 ## Objetivo
 
@@ -87,38 +87,42 @@ public partial class GameBaselineFile : IModelDefinition
 (Los nombres de atributos siguen el patrón de `DiskStateEntry`; se ajustan al implementar si el
 generador pide otra forma.)
 
-**"Nexus conoce la versión"** significa una sola cosa en todo el diseño: la base tiene archivos para
-**todos** los IDs de manifest del loadout (`UnknownLocatorIds` vacío). Un juego agregado a mano (sin
-IDs) nunca cuenta como conocido. No se mezclan fuentes: o todo Nexus o todo la foto.
+**Marca en la instalación:** `GameInstallMetadata.BaselineFromDisk` (`BooleanAttribute`, opcional).
+Presente = la lista ya se armó; `true` = salió del disco (versión desconocida), `false` = de Nexus.
 
-**Una sola función de lectura** en el core: "archivos originales de este loadout". Devuelve los de la
-base de Nexus si conoce la versión; si no, la foto de la instalación. Si no hay ninguna de las dos,
-devuelve "desconocido".
+**"Nexus conoce la versión"** significa una sola cosa en todo el diseño: la tienda es Steam y la base
+tiene archivos para **todos** los IDs de manifest del loadout (`UnknownLocatorIds` vacío). Es la misma
+condición que hoy usa el SQL (`Store = 'Steam'`). Un juego agregado a mano nunca cuenta como conocido.
 
-La usan:
-- el freno de `ALoadoutSynchronizer` (`EnsureVanillaDataKnown`), que pasa a exigir "Nexus conoce la
-  versión **o** hay foto" y aplica a **cualquier** tienda;
-- `ResetToOriginalGameState`;
-- `CyberpunkDeepCleanTool.ResolveVanilla`;
+**La lista es siempre `GameBaselineFile`.** Si Nexus conoce la versión, la lista se llena con los
+archivos de Nexus para esos IDs (la lista completa, igual que el layer 0 de hoy); si no, con la regla de
+la foto. No se mezclan fuentes y nadie más lee la base de Nexus para saber qué es original.
+
+La leen:
+- el layer 0 en SQL;
+- el freno de `ALoadoutSynchronizer` (`EnsureVanillaDataKnown`), que pasa a exigir "la lista existe"
+  y aplica a **cualquier** tienda;
+- `ResetToOriginalGameState` (pierde el parámetro de IDs: usa la lista de la instalación);
+- Deep Clean (reemplaza `ResolveVanilla`, que se borra);
 - `MyGamesViewModel.HasVanillaData`.
 
-**SQL:** el layer 0 de `WinningFiles` toma las filas de `file_hashes.loadout_files` solo para los
-loadouts cuya versión conoce Nexus, y las de la foto para el resto (`UNION` de las dos ramas con
-condiciones excluyentes). Hoy un loadout con algunos IDs conocidos y otros no recibe las filas
-parciales de Nexus; con el cambio recibe la foto. La foto guarda `GamePath` completo (ubicación +
-ruta), así que no se fuerza `Location = 'Game'` como en la rama de Nexus.
+`ReprocessOverrides` sigue con la base de Nexus.
+
+**SQL:** el layer 0 de `WinningFiles` pasa a ser solo `GameBaselineFile` unido a `Loadout` por la
+instalación; `file_hashes.loadout_files` sale de `Synchronizer.sql` (y sus macros, si no las usa nadie
+más). La lista guarda `GamePath` completo (ubicación + ruta).
 
 ### 2. Cuándo se toma la foto
 
 Disparadores, todos con la misma regla:
 
-1. **Al gestionar el juego:** en `ReindexState`, en la misma transacción que marca
-   `InitialDiskStateTransaction`, antes de armar el árbol de la primera sincronización.
-2. **Instalación existente sin foto:** al inicio de `Synchronize`, si la instalación no tiene foto.
-   (Cubre el Cyberpunk ya gestionado, sin migración.)
-3. **Parche de Steam con versión desconocida:** en `Synchronize`, si `UpdateLocatorIds` ve IDs
-   distintos a los anteriores y la base de Nexus no los conoce, se vuelve a tomar antes de armar el
-   árbol.
+1. **Al gestionar el juego y en instalaciones existentes:** en `Synchronize`, después de
+   `UpdateLocatorIds` y antes de armar el árbol, si la instalación no tiene la marca. La primera
+   sincronización de `CreateLoadout` pasa por acá, así que un juego nuevo nunca se sincroniza sin
+   lista. Cubre el Cyberpunk ya gestionado, sin migración.
+2. (Fusionado con el 1.)
+3. **Cambio de IDs de manifest:** en `Synchronize`, si `UpdateLocatorIds` cambió los IDs, se rearma la
+   lista (de Nexus si conoce la versión nueva, con la regla si no).
 4. **Botón "Actualicé el juego"** en el menú del juego en Mis juegos (junto a Deep Clean): reindexa y
    vuelve a tomar la foto. Para juegos agregados a mano, GOG, o si algo salió mal.
 
@@ -127,16 +131,20 @@ Disparadores, todos con la misma regla:
 | Situación en disco | Resultado en la foto |
 |---|---|
 | Ruta de un archivo de mod (layer 1) y hash en disco = hash del mod | se conserva la entrada anterior para esa ruta, si había |
-| Ruta en "External Changes" (layer 2) | se conserva la entrada anterior, si había |
+| Ruta en "External Changes" (layer 2), borrada a propósito (`Deleted`) o archivo intrínseco (layer 3, lo genera la app) | se conserva la entrada anterior, si había |
 | Cualquier otro archivo | entra con su hash y tamaño actuales |
 | Entrada anterior cuyo archivo ya no está y no es de un mod | sale |
 
-Si Nexus conoce la versión en ese momento, solo se guardan los archivos cuya ruta y hash
-coinciden con la lista de Nexus: la foto arranca limpia para el próximo parche desconocido.
+Si Nexus conoce la versión en ese momento, la lista es la de Nexus completa (ver sección 1): sirve
+de entrada anterior limpia para el próximo parche desconocido.
 
-**Aviso:** cuando la foto se toma sin que Nexus conozca la versión (disparadores 1-3), toast: "No
-conozco esta versión: tomo como original todo lo que hay en la carpeta. Si ya tenías mods puestos a
-mano, sacalos y tocá 'Actualicé el juego'".
+**Aviso:** los disparadores 1 y 3 corren en segundo plano dentro del sincronizador, que no puede
+mostrar toasts. Cuando la lista salió del disco, el widget del juego en Mis juegos dice "Versión
+desconocida: originales tomados del disco" en lugar de "versión desconocida", y el tooltip del botón
+"Actualicé el juego" explica qué hacer si había mods puestos a mano. El botón sí muestra un toast al
+terminar.
+
+**Al dejar de gestionar** el juego se borran la lista y la marca, junto con el estado de disco.
 
 **Límites conocidos (aceptados):**
 - Un mod tirado a mano entre la última sincronización y un parche desconocido queda como original:
@@ -157,14 +165,25 @@ Cada una tiene que fallar sin su parte del cambio:
    original parcheado se adopta, archivo borrado sale.
 4. Parche de Steam simulado (IDs nuevos desconocidos + un original modificado): no se borra nada y se
    adopta.
-5. Versión conocida por Nexus: la foto es la intersección; un mod preexistente no cuenta como
-   original (los tests actuales de `ExternalChangesTests` siguen pasando).
-6. `ResolveVanilla` de Deep Clean usa la foto cuando Nexus no conoce la versión.
+5. Versión conocida por Nexus (tienda Steam): la lista es la de Nexus; un archivo preexistente que
+   Nexus no lista no cuenta como original.
+6. Deep Clean y "¿hay lista?" leen la lista de la instalación (sin marca: no hay lista).
 7. Foto tomada sobre una instalación existente (disparador 2).
 8. Reset con foto y una carpeta symlink que apunta afuera: no la sigue.
 
 El modelo nuevo actualiza el snapshot de esquema de `NexusMods.DataModel.SchemaVersions.Tests`; no
 hace falta subir la versión de esquema (no hay migración).
+
+## Ajustes del plan (2026-10-04)
+
+Al leer el código para el plan cambiaron cuatro cosas de implementación, aprobadas junto con el plan:
+
+1. La lista es siempre `GameBaselineFile`; si Nexus conoce la versión se llena con la lista de Nexus
+   completa (antes: disco ∩ Nexus, y el SQL elegía entre dos ramas). El SQL deja de depender de Nexus.
+2. "Nexus conoce" exige tienda Steam, como el SQL de hoy. En los tests la tienda es `Unknown`, así que
+   los tests existentes pasan por la regla de la foto (hoy su layer 0 por SQL está siempre vacío).
+3. Aviso en el widget en lugar de toast para los disparadores automáticos.
+4. `ResetToOriginalGameState` pierde el parámetro de IDs.
 
 ## Orden de trabajo
 
