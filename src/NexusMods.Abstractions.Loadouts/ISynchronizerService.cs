@@ -60,7 +60,7 @@ public interface ISynchronizerService
     /// <summary>
     /// The "Actualicé el juego" action, serialized with other sync operations: rebuilds the vanilla file list of the
     /// loadout's installation (from the Nexus hash database when it knows the installed version, otherwise from the
-    /// disk, adopting External Changes that still match it).
+    /// disk, adopting External Changes that still match it). Throws when the disk list is refused (no primary file).
     /// </summary>
     public Task<GameInstallMetadata.ReadOnly> UpdateBaseline(LoadoutId loadoutId);
 }

@@ -122,8 +122,9 @@ public interface ILoadoutSynchronizer
 
     /// <summary>
     /// Reindexes the game and rebuilds the installation's original file list (GameBaselineFile): from the Nexus hash
-    /// database when it knows the installed version, otherwise from the disk (BaselineRule). A disk list without the
-    /// game's primary file is not saved (the previous list stays).
+    /// database when it knows the installed version (keeping previous entries it doesn't list that are still unchanged
+    /// on disk or under the loadout), otherwise from the disk (BaselineRule). A disk list without the game's primary
+    /// file is not saved (the previous list stays); with <paramref name="adoptExternalChanges"/> that throws.
     /// </summary>
     /// <param name="loadout">The loadout to rebuild the list for.</param>
     /// <param name="adoptExternalChanges">

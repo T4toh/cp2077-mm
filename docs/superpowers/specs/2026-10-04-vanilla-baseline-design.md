@@ -38,7 +38,7 @@ pueden sacar mods.
   completo la primera vez.
 - Login a Steam para bajar manifests de depots.
 - `ReprocessOverrides`: sigue usando solo la base de Nexus (es su mecanismo de "la base aprendió la
-  versión").
+  versión"), y solo corre cuando la lista salió de Nexus.
 - Arreglar `BuildHashesDb.cs:136` (revienta con juegos no registrados): deja de importar.
 
 ## Contexto (estado actual)
@@ -88,7 +88,8 @@ public partial class GameBaselineFile : IModelDefinition
 generador pide otra forma.)
 
 **Marca en la instalación:** `GameInstallMetadata.BaselineFromDisk` (`BooleanAttribute`, opcional).
-Presente = la lista ya se armó; `true` = salió del disco (versión desconocida), `false` = de Nexus.
+Presente = la lista ya se armó; `true` = salió del disco (versión desconocida), `false` = de Nexus
+(más las entradas conservadas de la lista anterior, ver abajo).
 
 **"Nexus conoce la versión"** significa una sola cosa en todo el diseño: la tienda es Steam y la base
 tiene archivos para **todos** los IDs de manifest del loadout (`UnknownLocatorIds` vacío). Es la misma
@@ -96,7 +97,9 @@ condición que hoy usa el SQL (`Store = 'Steam'`). Un juego agregado a mano nunc
 
 **La lista es siempre `GameBaselineFile`.** Si Nexus conoce la versión, la lista se llena con los
 archivos de Nexus para esos IDs (la lista completa, igual que el layer 0 de hoy); si no, con la regla de
-la foto. No se mezclan fuentes y nadie más lee la base de Nexus para saber qué es original.
+la foto. Al rearmar desde Nexus, las entradas de la lista anterior que Nexus no lista (de una lista del
+disco, o adoptadas por el botón) se conservan si el disco las tiene sin cambios o la ruta es del loadout:
+nada que era original pasa a ser un sobrante. Nadie más lee la base de Nexus para saber qué es original.
 
 La leen:
 - el layer 0 en SQL;
@@ -106,7 +109,9 @@ La leen:
 - Deep Clean (reemplaza `ResolveVanilla`, que se borra);
 - `MyGamesViewModel.HasVanillaData`.
 
-`ReprocessOverrides` sigue con la base de Nexus.
+`ReprocessOverrides` sigue con la base de Nexus, pero no corre mientras la lista salió del disco (o no
+hay lista): con IDs conocidos a medias sacaría de las overrides archivos que la lista no tiene, y el
+próximo sync los borraría. Su trabajo lo hace el rearmado cuando la base aprende la versión.
 
 **SQL:** el layer 0 de `WinningFiles` pasa a ser solo `GameBaselineFile` unido a `Loadout` por la
 instalación; `file_hashes.loadout_files` sale de `Synchronizer.sql` (y sus macros, si no las usa nadie
@@ -142,14 +147,14 @@ la base de Nexus aprende esa versión después (mismos IDs), se rearma desde Nex
 | Cualquier otro archivo | entra con su hash y tamaño actuales |
 | Entrada anterior cuyo archivo ya no está y no es de un mod | sale |
 
-Si Nexus conoce la versión en ese momento, la lista es la de Nexus completa (ver sección 1): sirve
-de entrada anterior limpia para el próximo parche desconocido.
+Si Nexus conoce la versión en ese momento, la lista es la de Nexus completa más lo conservado de la
+lista anterior (ver sección 1): sirve de entrada anterior para el próximo parche desconocido.
 
 **Aviso:** los disparadores 1 y 3 corren en segundo plano dentro del sincronizador, que no puede
 mostrar toasts. Cuando la lista salió del disco, el widget del juego en Mis juegos dice "Versión
 desconocida: originales tomados del disco" en lugar de "versión desconocida", y el tooltip del botón
 "Actualicé el juego" explica qué hacer si había mods puestos a mano. El botón sí muestra un toast al
-terminar.
+terminar, y uno de error si la lista del disco se rechaza (falta el archivo principal o lo pone un mod).
 
 **Al dejar de gestionar** el juego se borran la lista y la marca, junto con el estado de disco.
 
@@ -161,6 +166,9 @@ terminar.
   quedan como originales. En Cyberpunk es más común que el mod tirado a mano. El botón "Actualicé el
   juego" hace lo mismo con los que ya estaban en "External Changes" fuera de rutas de mods.
 - Un original borrado a mano sale de la foto; el reset ya no lo recupera.
+- Lo que la lista conserva al rearmar desde Nexus (entradas que Nexus no lista) sigue como original
+  mientras siga igual en disco, también tras parches conocidos: incluye archivos de una versión vieja
+  que Steam no borró. El sync no los borra y el reset no los saca.
 - En una instalación existente sin foto y con versión desconocida, un original pisado por un mod no
   entra a la foto (no hay entrada anterior); el reset no lo restaura aunque su backup exista.
 
