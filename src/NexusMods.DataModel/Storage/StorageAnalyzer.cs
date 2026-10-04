@@ -107,11 +107,12 @@ internal class StorageAnalyzer : IStorageAnalyzer
         var db = _connection.Db;
         var loadouts = Loadout.All(db).Where(l => l.IsVisible()).ToArray();
 
-        // ponytail: one loadout only. Each synced run makes its own snapshot and prunes older ones, so with 3+
-        // loadouts the first snapshot (the only one holding unmanaged files) is deleted. Keep all snapshots of a
-        // run before lifting this.
-        if (!skipSync && loadouts.Length > 1)
-            throw new InvalidOperationException($"Super Clean con {loadouts.Length} loadouts no es seguro todavía: borrá los loadouts que no uses y volvé a intentar.");
+        // ponytail: one loadout per game. Each synced run makes its own snapshot and prunes the game's older ones, so
+        // with 3+ loadouts of one game the first snapshot (the only one holding unmanaged files) is deleted. Games
+        // have separate backup folders, so different games don't collide. Keep all snapshots of a run before lifting this.
+        var crowded = loadouts.GroupBy(loadout => loadout.InstallationInstance.Game.GameId).FirstOrDefault(game => game.Count() > 1);
+        if (!skipSync && crowded is not null)
+            throw new InvalidOperationException($"Super Clean con {crowded.Count()} loadouts de {crowded.First().InstallationInstance.Game.DisplayName} no es seguro todavía: borrá los loadouts que no uses y volvé a intentar.");
 
         foreach (var loadout in loadouts)
         {
