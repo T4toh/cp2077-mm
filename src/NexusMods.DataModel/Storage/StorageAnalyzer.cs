@@ -53,8 +53,6 @@ internal class StorageAnalyzer : IStorageAnalyzer
     /// <summary>Test seam, same purpose as <see cref="LegacyDownloadsFolderProvider"/>: Deep Clean's <c>Backups</c> folder.</summary>
     internal Func<AbsolutePath> BackupsFolderProvider { get; set; }
 
-    private const string CyberpunkSteamAppId = "1091500";
-
     /// <inheritdoc />
     public Task<StorageStats> GetStorageStatsAsync(CancellationToken cancellationToken = default)
     {
@@ -278,19 +276,22 @@ internal class StorageAnalyzer : IStorageAnalyzer
     }
 
     /// <inheritdoc />
-    public Task DeleteProtonPrefixAsync(AbsolutePath steamLibraryRoot, CancellationToken cancellationToken = default)
+    public Task DeleteProtonPrefixAsync(GameInstallation installation, CancellationToken cancellationToken = default)
     {
-        var steamApps = steamLibraryRoot.Combine("steamapps");
-        if (!steamApps.DirectoryExists())
+        var appId = installation.LocatorResult.StoreIdentifier;
+        var winePrefix = installation.LocatorResult.LinuxCompatabilityDataProvider?.WinePrefixDirectoryPath;
+        if (installation.LocatorResult.Store != GameStore.Steam || winePrefix is null)
         {
-            _logger.LogWarning("No se encontró steamapps en {Root}; no se borra el prefix de Proton", steamLibraryRoot);
+            _logger.LogWarning("{Game} no tiene prefix de Proton de Steam; no se borra nada", installation.Game.DisplayName);
             return Task.CompletedTask;
         }
 
-        var prefix = steamApps.Combine($"compatdata/{CyberpunkSteamAppId}");
-        if (!prefix.ToString().EndsWith($"steamapps/compatdata/{CyberpunkSteamAppId}", StringComparison.Ordinal))
+        // The locator reports <lib>/steamapps/compatdata/<appid>/pfx; the whole compatdata/<appid> folder goes.
+        var prefix = winePrefix.Value.Parent;
+        if (appId.Length == 0 || !appId.All(char.IsAsciiDigit) ||
+            !prefix.ToString().EndsWith($"steamapps/compatdata/{appId}", StringComparison.Ordinal))
         {
-            _logger.LogWarning("Ruta de prefix inesperada {Prefix}; no se borra", prefix);
+            _logger.LogWarning("Ruta de prefix inesperada {Prefix} para el appid {AppId}; no se borra", prefix, appId);
             return Task.CompletedTask;
         }
 

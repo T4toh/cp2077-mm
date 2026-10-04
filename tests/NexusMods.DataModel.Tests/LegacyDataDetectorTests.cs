@@ -1,9 +1,12 @@
+using System.Collections.Immutable;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NexusMods.DataModel.LegacyData;
 using NexusMods.DataModel.Storage;
 using NexusMods.Games.TestFramework;
 using NexusMods.Paths;
+using NexusMods.Sdk;
+using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Settings;
 using Xunit;
@@ -347,29 +350,51 @@ public class LegacyDownloadsMoveTests(ITestOutputHelper helper) : ACyberpunkIsol
     }
 
     [Fact]
-    public async Task DeleteProtonPrefixAsync_MissingSteamapps_DoesNothing()
+    public async Task DeleteProtonPrefixAsync_NotASteamInstall_DoesNothing()
     {
         var analyzer = (StorageAnalyzer)ServiceProvider.GetRequiredService<IStorageAnalyzer>();
-        var steamLibraryRoot = TemporaryFileManager.CreateFolder().Path;
+        var library = TemporaryFileManager.CreateFolder().Path;
+        var prefix = library.Combine("steamapps/compatdata/1091500");
+        prefix.Combine("pfx").CreateDirectory();
 
-        await analyzer.DeleteProtonPrefixAsync(steamLibraryRoot);
+        await analyzer.DeleteProtonPrefixAsync(Install(library, "1091500", GameStore.ManuallyAdded));
 
-        steamLibraryRoot.DirectoryExists().Should().BeTrue();
+        prefix.DirectoryExists().Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("../1091500")]
+    [InlineData("")]
+    public async Task DeleteProtonPrefixAsync_UnexpectedAppId_DoesNothing(string appId)
+    {
+        var analyzer = (StorageAnalyzer)ServiceProvider.GetRequiredService<IStorageAnalyzer>();
+        var library = TemporaryFileManager.CreateFolder().Path;
+        var prefix = library.Combine("steamapps/compatdata/1091500");
+        prefix.Combine("pfx").CreateDirectory();
+
+        await analyzer.DeleteProtonPrefixAsync(Install(library, appId, GameStore.Steam, prefix.Combine("pfx")));
+
+        prefix.DirectoryExists().Should().BeTrue();
     }
 
     [Fact]
-    public async Task DeleteProtonPrefixAsync_DeletesExpectedPrefix()
+    public async Task DeleteProtonPrefixAsync_DeletesOnlyThisGamesPrefix()
     {
         var analyzer = (StorageAnalyzer)ServiceProvider.GetRequiredService<IStorageAnalyzer>();
-        var steamLibraryRoot = TemporaryFileManager.CreateFolder().Path;
-        var prefix = steamLibraryRoot.Combine("steamapps/compatdata/1091500");
-        prefix.CreateDirectory();
-        await File.WriteAllTextAsync(prefix.Combine("registry.reg").ToString(), "wine prefix data");
+        var library = TemporaryFileManager.CreateFolder().Path;
+        var cyberpunk = library.Combine("steamapps/compatdata/1091500");
+        var witcher = library.Combine("steamapps/compatdata/292030");
+        foreach (var prefix in new[] { cyberpunk, witcher })
+        {
+            prefix.Combine("pfx").CreateDirectory();
+            await File.WriteAllTextAsync(prefix.Combine("pfx/system.reg").ToString(), "wine prefix data");
+        }
 
-        await analyzer.DeleteProtonPrefixAsync(steamLibraryRoot);
+        await analyzer.DeleteProtonPrefixAsync(Install(library, "292030", GameStore.Steam));
 
-        prefix.DirectoryExists().Should().BeFalse();
-        steamLibraryRoot.Combine("steamapps").DirectoryExists().Should().BeTrue();
+        witcher.DirectoryExists().Should().BeFalse();
+        cyberpunk.Combine("pfx/system.reg").FileExists.Should().BeTrue();
+        library.Combine("steamapps/compatdata").DirectoryExists().Should().BeTrue();
     }
 
     [Fact]
@@ -377,18 +402,37 @@ public class LegacyDownloadsMoveTests(ITestOutputHelper helper) : ACyberpunkIsol
     {
         // Every Wine prefix ships dosdevices/z: -> /. Following it deletes the user's disk.
         var analyzer = (StorageAnalyzer)ServiceProvider.GetRequiredService<IStorageAnalyzer>();
-        var steamLibraryRoot = TemporaryFileManager.CreateFolder().Path;
+        var library = TemporaryFileManager.CreateFolder().Path;
         var outside = TemporaryFileManager.CreateFolder().Path;
         var canary = outside.Combine("sub/canary.txt");
         canary.Parent.CreateDirectory();
         await File.WriteAllTextAsync(canary.ToString(), "must survive");
-        var prefix = steamLibraryRoot.Combine("steamapps/compatdata/1091500");
+        var prefix = library.Combine("steamapps/compatdata/1091500");
         prefix.Combine("pfx/dosdevices").CreateDirectory();
         File.CreateSymbolicLink(prefix.Combine("pfx/dosdevices/z:").ToString(), outside.ToString());
 
-        await analyzer.DeleteProtonPrefixAsync(steamLibraryRoot);
+        await analyzer.DeleteProtonPrefixAsync(Install(library, "1091500", GameStore.Steam));
 
         prefix.DirectoryExists().Should().BeFalse();
         canary.FileExists.Should().BeTrue();
+    }
+
+    /// <summary>The installation as the Steam locator reports it: the prefix is <c>compatdata/&lt;appid&gt;/pfx</c>.</summary>
+    private GameInstallation Install(AbsolutePath library, string appId, GameStore store, AbsolutePath? winePrefix = null) =>
+        GameInstallation with
+        {
+            LocatorResult = GameInstallation.LocatorResult with
+            {
+                Store = store,
+                StoreIdentifier = appId,
+                LinuxCompatabilityDataProvider = new PrefixAt(winePrefix ?? library.Combine($"steamapps/compatdata/{appId}/pfx")),
+            },
+        };
+
+    private class PrefixAt(AbsolutePath winePrefix) : ILinuxCompatabilityDataProvider
+    {
+        public AbsolutePath WinePrefixDirectoryPath => winePrefix;
+        public ValueTask<ImmutableArray<WineDllOverride>> GetWineDllOverrides(CancellationToken cancellationToken) => ValueTask.FromResult(ImmutableArray<WineDllOverride>.Empty);
+        public ValueTask<ImmutableHashSet<string>> GetInstalledWinetricksComponents(CancellationToken cancellationToken) => ValueTask.FromResult(ImmutableHashSet<string>.Empty);
     }
 }

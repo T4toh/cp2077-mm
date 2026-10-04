@@ -1,3 +1,4 @@
+using NexusMods.Sdk.Games;
 using NexusMods.Paths;
 
 namespace NexusMods.DataModel.Storage;
@@ -62,8 +63,9 @@ public interface IStorageAnalyzer
     Task<int> MoveLegacyDownloadsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Borra el prefix de Proton de Cyberpunk 2077 (<c>steamapps/compatdata/1091500</c>) bajo la
-    /// biblioteca de Steam indicada. No hace nada si la ruta no coincide con lo esperado.
+    /// Borra el prefix de Proton de <paramref name="installation"/> (<c>steamapps/compatdata/&lt;appid&gt;</c>, la
+    /// ruta que encontró el locator de Steam). No hace nada si no es una instalación de Steam o si la ruta no
+    /// coincide con lo esperado.
     /// </summary>
-    Task DeleteProtonPrefixAsync(AbsolutePath steamLibraryRoot, CancellationToken cancellationToken = default);
+    Task DeleteProtonPrefixAsync(GameInstallation installation, CancellationToken cancellationToken = default);
 }

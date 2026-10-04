@@ -5,6 +5,7 @@ using NexusMods.App.UI.Overlays;
 using NexusMods.DataModel.Storage;
 using NexusMods.Paths;
 using NexusMods.Sdk;
+using NexusMods.Sdk.Games;
 using NSubstitute;
 using R3;
 
@@ -81,9 +82,9 @@ public class LegacyCleanupOverlayTests
     {
         var storage = Substitute.For<IStorageAnalyzer>();
         storage.GetLegacyDownloadsAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult((3, Size.From(2048))));
-        var root = FileSystem.Shared.FromUnsanitizedFullPath("/games/SteamLibrary");
+        var install = SteamInstall("1091500");
         var restarts = 0;
-        var vm = CreateVm(storage, () => root, () => restarts++);
+        var vm = CreateVm(storage, () => install, () => restarts++);
 
         vm.Step.Value.Should().Be(1);
         vm.CommandNext.Execute(Unit.Default);
@@ -100,7 +101,7 @@ public class LegacyCleanupOverlayTests
         vm.CommandNext.Execute(Unit.Default);
         vm.Step.Value.Should().Be(4);
         storage.Received(1).RunDeepCleanWithoutSyncOnAllLoadoutsAsync(Arg.Any<CancellationToken>());
-        storage.Received(1).DeleteProtonPrefixAsync(root, Arg.Any<CancellationToken>());
+        storage.Received(1).DeleteProtonPrefixAsync(install, Arg.Any<CancellationToken>());
         restarts.Should().Be(0);
 
         vm.CommandNext.Execute(Unit.Default);
@@ -136,7 +137,7 @@ public class LegacyCleanupOverlayTests
         vm.CommandNext.Execute(Unit.Default);
         vm.Step.Value.Should().Be(4);
         vm.Message.Value.Should().Contain("prefix de Proton no se borró");
-        storage.DidNotReceiveWithAnyArgs().DeleteProtonPrefixAsync(default);
+        storage.DidNotReceiveWithAnyArgs().DeleteProtonPrefixAsync(default!);
         restarts.Should().Be(0);
     }
 
@@ -170,12 +171,12 @@ public class LegacyCleanupOverlayTests
     {
         var storage = Substitute.For<IStorageAnalyzer>();
         storage.GetLegacyDownloadsAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult((0, Size.Zero)));
-        storage.DeleteProtonPrefixAsync(Arg.Any<AbsolutePath>(), Arg.Any<CancellationToken>()).Returns(
+        storage.DeleteProtonPrefixAsync(Arg.Any<GameInstallation>(), Arg.Any<CancellationToken>()).Returns(
             _ => throw new UnauthorizedAccessException("permiso denegado"),
             _ => Task.CompletedTask
         );
-        var root = FileSystem.Shared.FromUnsanitizedFullPath("/games/SteamLibrary");
-        var vm = CreateVm(storage, () => root, () => { });
+        var install = SteamInstall("1091500");
+        var vm = CreateVm(storage, () => install, () => { });
         vm.CommandNext.Execute(Unit.Default);
         vm.CommandNext.Execute(Unit.Default);
         vm.DeleteProtonPrefix.Value = true;
@@ -188,7 +189,7 @@ public class LegacyCleanupOverlayTests
         vm.Step.Value.Should().Be(4);
         vm.CleanupSkipped.Value.Should().BeFalse();
         storage.Received(1).RunDeepCleanWithoutSyncOnAllLoadoutsAsync(Arg.Any<CancellationToken>());
-        storage.Received(2).DeleteProtonPrefixAsync(root, Arg.Any<CancellationToken>());
+        storage.Received(2).DeleteProtonPrefixAsync(install, Arg.Any<CancellationToken>());
         storage.DidNotReceive().RunDeepCleanOnAllLoadoutsAsync(Arg.Any<CancellationToken>());
     }
 
@@ -197,7 +198,7 @@ public class LegacyCleanupOverlayTests
     {
         var os = Substitute.For<IOSInterop>();
         os.When(x => x.OpenUri(Arg.Any<Uri>())).Do(_ => throw new InvalidOperationException("sin portal"));
-        var vm = new LegacyCleanupOverlayViewModel(Substitute.For<IStorageAnalyzer>(), os, NullLogger.Instance, () => null, () => { }, () => { });
+        var vm = new LegacyCleanupOverlayViewModel(Substitute.For<IStorageAnalyzer>(), os, NullLogger.Instance, () => SteamInstall("1091500"), () => { }, () => { });
 
         vm.CommandVerifySteam.Execute(Unit.Default);
 
@@ -205,11 +206,33 @@ public class LegacyCleanupOverlayTests
         vm.Message.Value.Should().Contain("sin portal");
     }
 
-    private static LegacyCleanupOverlayViewModel CreateVm(IStorageAnalyzer storage, Func<AbsolutePath?> steamLibraryRoot, Action restart) => new(
+    [Fact]
+    public void VerifySteam_WithoutASteamInstall_SaysSoInsteadOfGuessingTheGame()
+    {
+        var os = Substitute.For<IOSInterop>();
+        var vm = new LegacyCleanupOverlayViewModel(Substitute.For<IStorageAnalyzer>(), os, NullLogger.Instance, () => null, () => { }, () => { });
+
+        vm.CommandVerifySteam.Execute(Unit.Default);
+
+        os.DidNotReceiveWithAnyArgs().OpenUri(default!);
+        vm.Message.Value.Should().Contain("No se encontró el juego en Steam");
+    }
+
+    private static GameInstallation SteamInstall(string appId) => new(new GameLocatorResult
+    {
+        Game = Substitute.For<IGameData>(),
+        Path = FileSystem.Shared.FromUnsanitizedFullPath("/games/SteamLibrary/steamapps/common/Game"),
+        Store = GameStore.Steam,
+        StoreIdentifier = appId,
+        LocatorIds = [],
+        Locator = Substitute.For<IGameLocator>(),
+    }, default);
+
+    private static LegacyCleanupOverlayViewModel CreateVm(IStorageAnalyzer storage, Func<GameInstallation?> steamInstallation, Action restart) => new(
         storage,
         Substitute.For<IOSInterop>(),
         NullLogger.Instance,
-        steamLibraryRoot,
+        steamInstallation,
         restart,
         quit: () => throw new InvalidOperationException("quit")
     );

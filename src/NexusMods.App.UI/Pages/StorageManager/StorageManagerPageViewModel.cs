@@ -139,13 +139,13 @@ internal class StorageManagerPageViewModel : APageViewModel<IStorageManagerPageV
         {
             if (IsBusy) return;
 
-            var steamLibraryRoot = SteamPaths.LibraryRoot(serviceProvider);
-            if (steamLibraryRoot is null)
+            var installations = SteamPaths.Installations(serviceProvider);
+            if (installations.Length == 0)
             {
                 await windowManager.ShowDialog(
                     DialogFactory.CreateStandardDialog(
                         title: "Prefix de Proton",
-                        new StandardDialogParameters { Text = "No se encontró la instalación de Steam del juego." },
+                        new StandardDialogParameters { Text = "No hay juegos de Steam gestionados." },
                         buttonDefinitions: [DialogStandardButtons.Ok]
                     ),
                     DialogWindowType.Modal
@@ -153,11 +153,31 @@ internal class StorageManagerPageViewModel : APageViewModel<IStorageManagerPageV
                 return;
             }
 
+            var installation = installations[0];
+            if (installations.Length > 1)
+            {
+                var pick = await windowManager.ShowDialog(
+                    DialogFactory.CreateStandardDialog(
+                        title: "Borrar prefix de Proton",
+                        new StandardDialogParameters { Text = "¿De qué juego?" },
+                        buttonDefinitions:
+                        [
+                            new DialogButtonDefinition("Cancelar", ButtonDefinitionId.Cancel, ButtonAction.Reject),
+                            ..installations.Select((install, i) => new DialogButtonDefinition(install.Game.DisplayName, ButtonDefinitionId.From($"game-{i}"), ButtonAction.Accept)),
+                        ]
+                    ),
+                    DialogWindowType.Modal
+                );
+                var picked = Enumerable.Range(0, installations.Length).FirstOrDefault(i => pick.ButtonId == ButtonDefinitionId.From($"game-{i}"), -1);
+                if (picked < 0) return;
+                installation = installations[picked];
+            }
+
             var dialog = DialogFactory.CreateStandardDialog(
                 title: "Borrar prefix de Proton",
                 new StandardDialogParameters
                 {
-                    Text = "Se borra steamapps/compatdata/1091500. Steam lo recrea al lanzar el juego. Se pierden los saves que no estén sincronizados con la nube y toda la configuración del prefix. Cerrá el juego antes de continuar.",
+                    Text = $"Se borra steamapps/compatdata/{installation.LocatorResult.StoreIdentifier} ({installation.Game.DisplayName}). Steam lo recrea al lanzar el juego. Se pierden los saves que no estén sincronizados con la nube y toda la configuración del prefix. Cerrá el juego antes de continuar.",
                 },
                 buttonDefinitions:
                 [
@@ -172,7 +192,7 @@ internal class StorageManagerPageViewModel : APageViewModel<IStorageManagerPageV
             IsBusy = true;
             try
             {
-                await storageAnalyzer.DeleteProtonPrefixAsync(steamLibraryRoot.Value, ct);
+                await storageAnalyzer.DeleteProtonPrefixAsync(installation, ct);
                 await RefreshStatsAsync(storageAnalyzer, ct);
             }
             finally
