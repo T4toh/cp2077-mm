@@ -1093,8 +1093,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         // Update locator IDs before building the sync tree
         loadout = await UpdateLocatorIds(loadout);
 
-        // No list yet (new or pre-existing install) or a new game version: rebuild it before anything is compared
-        if (!loadout.Installation.Contains(Sdk.Games.GameInstallMetadata.BaselineFromDisk) || !previousLocatorIds.SetEquals(loadout.LocatorIds))
+        // No list yet (new or pre-existing install), a new game version, or a list taken from the disk for a version the
+        // hash database has learned since (ReprocessOverrides would drop External Changes the disk list doesn't hold)
+        var installation = loadout.Installation;
+        if (!Sdk.Games.GameInstallMetadata.BaselineFromDisk.TryGetValue(installation, out var fromDisk)
+            || !previousLocatorIds.SetEquals(loadout.LocatorIds)
+            || (fromDisk && NexusKnowsVersion(installation.Store, loadout.LocatorIds.Distinct().ToArray())))
         {
             await UpdateBaseline(loadout);
             loadout = loadout.Rebase();
@@ -1344,7 +1348,7 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         var metadata = await ReindexState(loadout.InstallationInstance);
         var store = metadata.Store;
         var locatorIds = loadout.LocatorIds.Distinct().ToArray();
-        var nexusKnows = store == GameStore.Steam && _fileHashService.UnknownLocatorIds(store, locatorIds).Length == 0;
+        var nexusKnows = NexusKnowsVersion(store, locatorIds);
 
         IEnumerable<(GamePath Path, Hash Hash, Size Size)> files;
         if (nexusKnows)
@@ -1392,6 +1396,12 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             loadout.InstallationInstance.Game.DisplayName, count, nexusKnows ? "la base de Nexus" : "el disco");
         return Sdk.Games.GameInstallMetadata.Load(Connection.Db, metadata.Id);
     }
+
+    /// <summary>
+    /// The Nexus hash database has the vanilla files of this version: Steam, and every locator ID known.
+    /// </summary>
+    private bool NexusKnowsVersion(GameStore store, LocatorId[] locatorIds) =>
+        store == GameStore.Steam && _fileHashService.UnknownLocatorIds(store, locatorIds).Length == 0;
 
     /// <summary>
     /// Paths the loadout owns, for <see cref="BaselineRule"/>: mod files with their hash; External Changes, files
