@@ -41,7 +41,7 @@
 
                 <!-- DetectedGame -->
                 <Grid x:Name="DetectedGameStackPanel"
-                      ColumnDefinitions="*, 6, Auto, 6, Auto, 6, Auto"
+                      ColumnDefinitions="*, 6, Auto, 6, Auto"
                       IsVisible="False">
 
                     <controls:StandardButton x:Name="AddGameButton"
@@ -88,7 +88,7 @@
 
                 <!-- ManagedGame -->
                 <Grid x:Name="ManagedGameGrid"
-                      ColumnDefinitions="*, 6, Auto, 6, Auto"
+                      ColumnDefinitions="*, 6, Auto, 6, Auto, 6, Auto"
                       IsVisible="False"
                       VerticalAlignment="Center"
                       HorizontalAlignment="Stretch">
