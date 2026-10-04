@@ -124,7 +124,14 @@ Disparadores, todos con la misma regla:
 3. **Cambio de IDs de manifest:** en `Synchronize`, si `UpdateLocatorIds` cambió los IDs, se rearma la
    lista (de Nexus si conoce la versión nueva, con la regla si no).
 4. **Botón "Actualicé el juego"** en el menú del juego en Mis juegos (junto a Deep Clean): reindexa y
-   vuelve a tomar la foto. Para juegos agregados a mano, GOG, o si algo salió mal.
+   vuelve a tomar la foto. Para juegos agregados a mano, GOG, o si algo salió mal. Como es una acción
+   explícita, al rearmar desde el disco adopta los "External Changes" que siguen iguales en disco
+   (archivos, no borrados, fuera de rutas de mods y de archivos intrínsecos) y los saca de las overrides.
+
+Una lista armada desde el disco que no tiene el archivo principal del juego (`GetPrimaryFile`) no se
+guarda: queda la anterior (o ninguna). Al cambiar los IDs se borra la marca junto con los IDs viejos,
+así un rearmado que falla deja "sin lista" en lugar de la lista vieja. Si la lista salió del disco y
+la base de Nexus aprende esa versión después (mismos IDs), se rearma desde Nexus.
 
 **Regla**, sobre el disco recién indexado y la foto anterior (vacía la primera vez):
 
@@ -149,6 +156,10 @@ terminar.
 **Límites conocidos (aceptados):**
 - Un mod tirado a mano entre la última sincronización y un parche desconocido queda como original:
   no se borra, pero el reset tampoco lo saca.
+- Lo mismo con los archivos que los mods crean o cambian mientras el juego corre (configs de CET,
+  `db.sqlite3`, `final.redscripts.bk`) entre la última sincronización y un rearmado por cambio de IDs:
+  quedan como originales. En Cyberpunk es más común que el mod tirado a mano. El botón "Actualicé el
+  juego" hace lo mismo con los que ya estaban en "External Changes" fuera de rutas de mods.
 - Un original borrado a mano sale de la foto; el reset ya no lo recupera.
 - En una instalación existente sin foto y con versión desconocida, un original pisado por un mod no
   entra a la foto (no hay entrada anterior); el reset no lo restaura aunque su backup exista.
