@@ -1371,7 +1371,18 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                 var applied = Loadout.Load(metadata.Db.Connection.AsOf(TxId.From(appliedTx.Value)), lastSyncedId);
                 if (applied.IsValid()) onDisk = applied;
             }
-            files = BaselineRule.Apply(previous, disk, OwnedPaths(onDisk)).Select(kv => (kv.Key, kv.Value.Hash, kv.Value.Size));
+            var fromDisk = BaselineRule.Apply(previous, disk, OwnedPaths(onDisk));
+
+            // An empty or half-read folder (drive not mounted, game being deleted) would make every original a leftover
+            var primaryFile = loadout.InstallationInstance.Game.GetPrimaryFile(loadout.InstallationInstance);
+            if (!fromDisk.ContainsKey(primaryFile))
+            {
+                Logger.LogWarning("No se rearmó la lista de archivos originales de {Game}: falta {PrimaryFile} en la carpeta del juego. Se mantiene la lista anterior",
+                    loadout.InstallationInstance.Game.DisplayName, primaryFile);
+                return metadata;
+            }
+
+            files = fromDisk.Select(kv => (kv.Key, kv.Value.Hash, kv.Value.Size));
         }
 
         using var tx = Connection.BeginTransaction();

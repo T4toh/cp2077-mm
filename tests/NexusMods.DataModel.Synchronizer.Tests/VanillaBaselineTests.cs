@@ -44,6 +44,9 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
         files.Select(f => (GamePath)f.Path).Should().Equal(path);
     }
 
+    // The fixture's game folder starts with the executable: a disk list without it is not saved
+    private static readonly GamePath Primary = new(LocationId.Game, "bin/x64/Cyberpunk2077.exe");
+
     private AbsolutePath GameFile(string path) => GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, path));
 
     private async Task<Loadout.ReadOnly> ManagedLoadoutWith(params (string Path, string Content)[] files)
@@ -70,7 +73,7 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
 
         GameFile("bin/x64/original.exe").FileExists.Should().BeTrue();
         GameFile("r6/config/settings.ini").FileExists.Should().BeTrue();
-        ListPaths().Should().Equal(new GamePath(LocationId.Game, "bin/x64/original.exe"), new GamePath(LocationId.Game, "r6/config/settings.ini"));
+        ListPaths().Should().BeEquivalentTo([Primary, new GamePath(LocationId.Game, "bin/x64/original.exe"), new GamePath(LocationId.Game, "r6/config/settings.ini")]);
         GameInstallMetadata.BaselineFromDisk.Get(GameRegistry.ForceGetMetadata(GameInstallation)).Should().BeTrue();
     }
 
@@ -83,7 +86,7 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
 
         await Synchronizer.Synchronize(loadout.Rebase());
 
-        ListPaths().Should().Equal(new GamePath(LocationId.Game, "bin/x64/original.exe"));
+        ListPaths().Should().BeEquivalentTo([Primary, new GamePath(LocationId.Game, "bin/x64/original.exe")]);
     }
 
     [Fact]
@@ -111,7 +114,7 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
 
         GameFile("bin/x64/original.exe").FileExists.Should().BeTrue();
         GameBaselineFile.TryGetVanillaFiles(GameRegistry.ForceGetMetadata(GameInstallation), out var files).Should().BeTrue();
-        files.Single().Hash.Should().Be("v2".xxHash3AsUtf8());
+        files.Single(f => (GamePath)f.Path != Primary).Hash.Should().Be("v2".xxHash3AsUtf8());
     }
 
     [Fact]
@@ -132,7 +135,7 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
 
         GameFile("r6/config/settings.ini").FileExists.Should().BeTrue();
         GameBaselineFile.TryGetVanillaFiles(GameRegistry.ForceGetMetadata(GameInstallation), out var files).Should().BeTrue();
-        files.Single().Hash.Should().Be("v2".xxHash3AsUtf8());
+        files.Single(f => (GamePath)f.Path != Primary).Hash.Should().Be("v2".xxHash3AsUtf8());
     }
 
     [Fact]
@@ -150,7 +153,7 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
 
         await Synchronizer.Synchronize(loadout.Rebase());
 
-        ListPaths().Should().Equal(new GamePath(LocationId.Game, "bin/x64/original.exe"));
+        ListPaths().Should().BeEquivalentTo([Primary, new GamePath(LocationId.Game, "bin/x64/original.exe")]);
     }
 
     [Fact]
@@ -190,7 +193,7 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
 
         await Synchronizer.Synchronize(loadoutB.Rebase());
 
-        ListPaths().Should().Equal(new GamePath(LocationId.Game, "bin/x64/original.exe"));
+        ListPaths().Should().BeEquivalentTo([Primary, new GamePath(LocationId.Game, "bin/x64/original.exe")]);
     }
 
     [Fact]
@@ -211,7 +214,7 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
         locator.LocatorIds = [LocatorId.From("unknown-v2")];
         await Synchronizer.Synchronize(loadout.Rebase());
 
-        ListPaths().Should().Equal(new GamePath(LocationId.Game, "bin/x64/original.exe"));
+        ListPaths().Should().BeEquivalentTo([Primary, new GamePath(LocationId.Game, "bin/x64/original.exe")]);
         GameFile("bin/x64/mod.dll").FileExists.Should().BeFalse();
     }
 
@@ -255,5 +258,35 @@ public class VanillaBaselineTests(ITestOutputHelper helper) : ACyberpunkIsolated
 
         canary.FileExists.Should().BeTrue();
         GameFile("bin/x64/original.exe").FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RebuildWithoutThePrimaryFile_KeepsThePreviousList()
+    {
+        var loadout = await ManagedLoadoutWith(("bin/x64/Cyberpunk2077.exe", "exe"), ("bin/x64/original.exe", "vanilla"));
+        var before = ListPaths();
+
+        // The game folder reads as empty (drive not mounted, folder half gone): a list from it makes every original a leftover
+        GameFile("bin/x64/Cyberpunk2077.exe").Delete();
+        GameFile("bin/x64/original.exe").Delete();
+        await SynchronizerService.UpdateBaseline(loadout.LoadoutId);
+
+        ListPaths().Should().Equal(before);
+        GameInstallMetadata.BaselineFromDisk.Get(GameRegistry.ForceGetMetadata(GameInstallation)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task FirstListWithoutThePrimaryFile_IsNotSaved_AndNothingIsDeleted()
+    {
+        GameFile("bin/x64/Cyberpunk2077.exe").Delete();
+
+        // No list, so the apply guard refuses the first sync's deletions
+        var manage = () => ManagedLoadoutWith(("bin/x64/original.exe", "vanilla"));
+        await manage.Should().ThrowAsync<InvalidOperationException>();
+
+        GameFile("bin/x64/original.exe").FileExists.Should().BeTrue();
+        var metadata = GameRegistry.ForceGetMetadata(GameInstallation);
+        metadata.Contains(GameInstallMetadata.BaselineFromDisk).Should().BeFalse();
+        GameBaselineFile.FindByGame(metadata.Db, metadata).Should().BeEmpty();
     }
 }

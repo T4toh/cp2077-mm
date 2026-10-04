@@ -1,14 +1,17 @@
 ﻿## 1 - Loadout A Synced:
 Loadout A has been synchronized, and the game folder should match the loadout.
-### Initial State - (0)
+### Initial State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Last Synced State - (0)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Last Synced State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Current State - (0)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Current State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
 ### Loadout A - (0)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -20,15 +23,18 @@ Loadout A has been synchronized, and the game folder should match the loadout.
 
 ## 2 - Loadout A Mod Added:
 A mod has been added but not yet synced, so only the loadout has the file.
-### Initial State - (0)
+### Initial State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Last Synced State - (0)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Last Synced State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Current State - (0)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Current State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
 ### Loadout A - (2)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -42,18 +48,21 @@ A mod has been added but not yet synced, so only the loadout has the file.
 
 ## 3 - Loadout A Synced:
 Loadout A has been synchronized, and the game folder should match the loadout.
-### Initial State - (0)
+### Initial State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Last Synced State - (2)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Last Synced State - (3)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
 | {Game, bin/x64/ThisIsATestFile.txt} | 0x673E3C493921A2D5 | 12 B |
-### Current State - (2)
+### Current State - (3)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
 | {Game, bin/x64/ThisIsATestFile.txt} | 0x673E3C493921A2D5 | 12 B |
 ### Loadout A - (2)
 | Path | Hash | Size | Disabled | Deleted |
@@ -68,17 +77,20 @@ Loadout A has been synchronized, and the game folder should match the loadout.
 
 ## 4 - Deleted file from disk:
 A mod file has been deleted from disk, so that information should be synced to the loadout.
-### Initial State - (0)
+### Initial State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Last Synced State - (1)
-| Path | Hash | Size |
-| --- | --- | --- |
-| {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
-### Current State - (1)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Last Synced State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Current State - (2)
+| Path | Hash | Size |
+| --- | --- | --- |
+| {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
 ### Loadout A - (3)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -93,17 +105,20 @@ A mod file has been deleted from disk, so that information should be synced to t
 
 ## 5 - Disabled the mod group:
 The mod has been disabled, but not yet synched
-### Initial State - (0)
+### Initial State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Last Synced State - (1)
-| Path | Hash | Size |
-| --- | --- | --- |
-| {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
-### Current State - (1)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Last Synced State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Current State - (2)
+| Path | Hash | Size |
+| --- | --- | --- |
+| {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
 ### Loadout A - (3)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -118,15 +133,18 @@ The mod has been disabled, but not yet synched
 
 ## 6 - Loadout A Synced:
 Loadout A has been synchronized, the mod files shouldn't show back up.
-### Initial State - (0)
+### Initial State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Last Synced State - (0)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Last Synced State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Current State - (0)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Current State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
 ### Loadout A - (3)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -141,15 +159,18 @@ Loadout A has been synchronized, the mod files shouldn't show back up.
 
 ## 6 - Enable the mod group:
 Re-enable the mod.
-### Initial State - (0)
+### Initial State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Last Synced State - (0)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Last Synced State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Current State - (0)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Current State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
 ### Loadout A - (3)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -164,17 +185,20 @@ Re-enable the mod.
 
 ## 7 - Loadout A Synced:
 Re-enable the mod.
-### Initial State - (0)
+### Initial State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Last Synced State - (1)
-| Path | Hash | Size |
-| --- | --- | --- |
-| {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
-### Current State - (1)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Last Synced State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Current State - (2)
+| Path | Hash | Size |
+| --- | --- | --- |
+| {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
 ### Loadout A - (3)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -189,15 +213,18 @@ Re-enable the mod.
 
 ## 8 - Loadout B Synced:
 Loadout B has been synchronized, the file should still be deleted as well as the other mod file.
-### Initial State - (0)
+### Initial State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Last Synced State - (0)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Last Synced State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Current State - (0)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Current State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
 ### Loadout A - (3)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
@@ -212,17 +239,20 @@ Loadout B has been synchronized, the file should still be deleted as well as the
 
 ## 9 - Loadout A Synced:
 Loadout A has been synchronized, the file should still be deleted but the other file in the mod should be back.
-### Initial State - (0)
+### Initial State - (1)
 | Path | Hash | Size |
 | --- | --- | --- |
-### Last Synced State - (1)
-| Path | Hash | Size |
-| --- | --- | --- |
-| {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
-### Current State - (1)
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Last Synced State - (2)
 | Path | Hash | Size |
 | --- | --- | --- |
 | {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
+### Current State - (2)
+| Path | Hash | Size |
+| --- | --- | --- |
+| {Game, bin/x64/And Another One.txt} | 0xC72C2583631D647F | 19 B |
+| {Game, bin/x64/Cyberpunk2077.exe} | 0xFD3B1C3AD313E4A7 | 17 B |
 ### Loadout A - (3)
 | Path | Hash | Size | Disabled | Deleted |
 | --- | --- | --- | --- | --- |
