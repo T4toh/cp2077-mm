@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NexusMods.Abstractions.Loadouts;
 using NexusMods.Games.RedEngine.Cyberpunk2077;
 using NexusMods.Games.TestFramework;
+using NexusMods.Paths;
+using NexusMods.Sdk.Games;
 
 namespace NexusMods.Games.RedEngine.Tests;
 
@@ -40,5 +42,51 @@ public class CyberpunkDeepCleanDbTests(ITestOutputHelper helper) : ACyberpunkIso
             .Where(g => !new[] { g }.OfTypeLoadoutOverridesGroup().Any())
             .Select(g => g.AsLoadoutItem().Name);
         remaining.Should().Equal("My Mods");
+    }
+
+    private AbsolutePath GameRoot => GameInstallation.Locations[LocationId.Game].Path;
+
+    private async Task Touch(string rel)
+    {
+        var path = GameRoot.Combine(rel);
+        path.Parent.CreateDirectory();
+        await path.WriteAllTextAsync(rel);
+    }
+
+    // Original files on disk before managing, a sync builds the vanilla list, then a mod drops loose files by hand
+    private async Task<GameInstallMetadata.ReadOnly> ListedInstallWithLooseModFiles()
+    {
+        await Touch("REDprelauncher.exe");
+        await Touch("engine/config/platform/pc/user.ini");
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        await Synchronizer.Synchronize(await CreateLoadout());
+        await Touch("FlatlinedExit_readme.txt");
+        await Touch("r6/cache/final.redscripts.bk");
+        return GameRegistry.ForceGetMetadata(GameInstallation);
+    }
+
+    [Fact]
+    public async Task LooseModFiles_WithTheList_MovesOnlyFilesNotInIt()
+    {
+        var metadata = await ListedInstallWithLooseModFiles();
+
+        var found = CyberpunkDeepCleanTool.LooseModFilesToMove(GameRoot, metadata, NullLogger.Instance).Select(p => p.ToString());
+
+        found.Should().BeEquivalentTo("FlatlinedExit_readme.txt", "r6/cache/final.redscripts.bk");
+    }
+
+    [Fact]
+    public async Task LooseModFiles_WithoutTheList_MovesNothing()
+    {
+        var metadata = await ListedInstallWithLooseModFiles();
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Retract(metadata.Id, GameInstallMetadata.BaselineFromDisk, GameInstallMetadata.BaselineFromDisk.Get(metadata));
+            await tx.Commit();
+        }
+
+        var found = CyberpunkDeepCleanTool.LooseModFilesToMove(GameRoot, GameRegistry.ForceGetMetadata(GameInstallation), NullLogger.Instance);
+
+        found.Should().BeEmpty();
     }
 }

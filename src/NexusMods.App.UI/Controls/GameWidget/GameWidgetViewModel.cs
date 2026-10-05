@@ -3,7 +3,9 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Media.Imaging;
 using Microsoft.Extensions.Logging;
+using NexusMods.Abstractions.Games;
 using NexusMods.Abstractions.Games.FileHashes;
+using NexusMods.Abstractions.Loadouts;
 using NexusMods.App.UI.Resources;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Settings;
@@ -18,7 +20,7 @@ public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidget
 {
     private readonly ILogger<GameWidgetViewModel> _logger;
 
-    public GameWidgetViewModel(ILogger<GameWidgetViewModel> logger, ISettingsManager settingsManager, IFileHashesService fileHashesService)
+    public GameWidgetViewModel(ILogger<GameWidgetViewModel> logger, ISettingsManager settingsManager, IFileHashesService fileHashesService, IGameRegistry gameRegistry)
     {
         _logger = logger;
 
@@ -26,6 +28,7 @@ public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidget
         ViewGameCommand = ReactiveCommand.Create(() => { });
         RemoveAllLoadoutsCommand = ReactiveCommand.Create(() => { });
         DeepCleanCommand = ReactiveCommand.Create(() => { });
+        UpdateBaselineCommand = ReactiveCommand.Create(() => { });
         DismissCommand = ReactiveCommand.Create(() => { });
 
         _image = this
@@ -51,7 +54,11 @@ public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidget
                         await fileHashesService.GetFileHashesDb();
                         var locatorIds = installation.LocatorResult.LocatorIds.ToArray();
                         if (!fileHashesService.TryGetVanityVersion((installation.LocatorResult.Store, locatorIds), out var vanityVersion))
-                            return Language.GameWidget_VersionUnknown;
+                        {
+                            var fromDisk = gameRegistry.TryGetMetadata(installation, out var metadata)
+                                && GameInstallMetadata.BaselineFromDisk.TryGetValue(metadata, out var value) && value;
+                            return fromDisk ? "Versión desconocida: originales tomados del disco" : Language.GameWidget_VersionUnknown;
+                        }
                         return $"Version: {vanityVersion.Value}";
                     })
                     .BindToVM(this, vm => vm.Version)
@@ -141,6 +148,8 @@ public class GameWidgetViewModel : AViewModel<IGameWidgetViewModel>, IGameWidget
     [Reactive] public ReactiveCommand<Unit, Unit> RemoveAllLoadoutsCommand { get; set; }
 
     [Reactive] public ReactiveCommand<Unit, Unit> DeepCleanCommand { get; set; }
+
+    [Reactive] public ReactiveCommand<Unit, Unit> UpdateBaselineCommand { get; set; }
 
     [Reactive] public ReactiveCommand<Unit, Unit> DismissCommand { get; set; }
 

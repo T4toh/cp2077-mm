@@ -24,6 +24,7 @@ public class GameWidgetDesignViewModel : AViewModel<IGameWidgetViewModel>, IGame
     public ReactiveCommand<Unit, Unit> ViewGameCommand { get; set; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> RemoveAllLoadoutsCommand { get; set; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> DeepCleanCommand { get; set; } = ReactiveCommand.Create(() => { });
+    public ReactiveCommand<Unit, Unit> UpdateBaselineCommand { get; set; } = ReactiveCommand.Create(() => { });
     public ReactiveCommand<Unit, Unit> DismissCommand { get; set; } = ReactiveCommand.Create(() => { });
     public bool IsDeepCleanAvailable { get; } = true;
     

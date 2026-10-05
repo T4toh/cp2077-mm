@@ -58,7 +58,7 @@ The solution (`NexusMods.App.sln`) is organized into layers:
 - **`NexusMods.Sdk`** — Shared utilities, `WineParser` (Lutris/WINEDLLOVERRIDES), `Md5Value`, settings infrastructure.
 - **`NexusMods.Abstractions.*`** — Interfaces and contracts for all subsystems (21 projects).
 - **`NexusMods.Games.RedEngine`** — Cyberpunk 2077 implementation (the only supported game). Includes `EssentialMods`, `CyberpunkDeepCleanTool`, diagnostic emitters (core mods, redundant folders, Wine prefix, REDmod, pattern-based dependencies).
-- **`NexusMods.Games.FileHashes`** — File hash database for game version detection (Steam only).
+- **`NexusMods.Games.FileHashes`** — File hash database for game version detection (Steam only; version names and the known-version vanilla list, optional).
 - **`NexusMods.Networking.Steam`** — Steam store integration (the only supported store).
 - **`NexusMods.Networking.NexusWebApi`** — Nexus Mods API integration + `FirefoxCookieReader` for cookie-based downloads.
 - **`NexusMods.Networking.HttpDownloader`** — HTTP download infrastructure.
@@ -80,7 +80,7 @@ These are custom features not present in upstream:
 
 1. **Cookie-based free downloads** (`FirefoxCookieReader.cs`, `NexusApiClient.cs`): Reads Firefox session cookies and invokes `curl` to bypass Cloudflare TLS fingerprinting. Allows free/supporter users to download collection mods without premium API. Firefox only: copies `cookies.sqlite` to a temp file and reads it via P/Invoke to `libsqlite3.so.0`. Calls to `GenerateDownloadUrl` are serialized (semaphore) to avoid Cloudflare challenge pages; the CDN download itself runs in parallel. Chrome/Chromium would need Secret Service decryption (see README).
 
-2. **Deep Clean tool** (`CyberpunkDeepCleanTool.cs`, `StorageAnalyzer.cs`): Moves mod directories to a timestamped backup under `tModManager/Backups/`, cleans old backups, removes mod groups from DB, rescans game folder. Also moves non-vanilla loose files (game root, `r6/cache`, `engine/config`, redmod tweaks, etc.) checked file-by-file against `IFileHashesService`'s vanilla set — except `r6/publishing`, which is skipped wholesale (the base depot ships vanilla files there too) and only diffed per-file. Accessed via Storage Manager page.
+2. **Deep Clean tool** (`CyberpunkDeepCleanTool.cs`, `StorageAnalyzer.cs`): Moves mod directories to a timestamped backup under `tModManager/Backups/`, cleans old backups, removes mod groups from DB, rescans game folder. Also moves non-vanilla loose files (game root, `r6/cache`, `engine/config`, redmod tweaks, etc.) checked file-by-file against the installation's vanilla list (`GameBaselineFile`) — except `r6/publishing`, which is skipped wholesale (the base depot ships vanilla files there too) and only diffed per-file. Accessed via Storage Manager page.
 
 3. **Storage Manager** (`IStorageAnalyzer`): Exposes `DeleteAllBackedUpFilesAsync`, `RunDeepCleanOnAllLoadoutsAsync` (and a no-sync variant for the legacy wizard), `DeleteArchivesAsync`, `DeletePhysicalFilesAsync` (backups only, never touches Downloads), `DeleteDownloadsAsync` (explicit, separate action), and `DeleteProtonPrefixAsync` (`steamapps/compatdata/1091500`) for granular storage cleanup.
 
@@ -154,6 +154,8 @@ The core mod management loop:
 2. **Synchronizer** — three-way diff: previous disk state vs. current game folder vs. desired loadout
 3. **Apply** — writes the diff to disk (backs up originals, deploys mod files)
 4. **SynchronizerService** — serializes sync operations via semaphore, exposes observable status
+
+Layer 0 (game files) is the installation's `GameBaselineFile` list: filled from the Nexus hash DB when it knows the installed Steam version (plus previous entries Nexus doesn't list whose path is still on disk, edited or not, or under the loadout, so nothing original becomes a leftover), otherwise from the disk (`BaselineRule`, mod ownership read from the last applied loadout), rebuilt when manifest IDs change (the marker is dropped with the old IDs, so a failed rebuild leaves no list), when a disk-made list's version becomes known to the hash DB, or with the "Actualicé el juego" button (`ISynchronizerService.UpdateBaseline`, serialized with syncs; on a disk rebuild it also adopts External Changes that still match the disk, outside mod and intrinsic paths). A disk list without the game's primary file is not saved. Layer 0, reset, Deep Clean, the apply guard and My Games read only the list; the hash DB is asked what is vanilla only by `UpdateBaseline` and by `ReprocessOverrides` (which moves External Changes at paths the DB lists into game files, and is skipped while the list came from the disk). Deep Clean picks loose files via `CyberpunkDeepCleanTool.LooseModFilesToMove`.
 
 Loadout data hierarchy: `Loadout` → `LoadoutItemGroup` (mod) → `LoadoutItem` → `LoadoutFile` (individual file with hash/size/path).
 
