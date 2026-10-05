@@ -60,4 +60,10 @@ public partial class GameInstallMetadata : IModelDefinition
     /// The last scanned disk state transaction ID
     /// </summary>
     public static readonly ReferenceAttribute<Transaction> LastScannedDiskStateTransaction = new(Namespace, nameof(LastScannedDiskStateTransaction)) { IsOptional = true };
+
+    /// <summary>
+    /// Set once the installation's original file list (GameBaselineFile) has been built: true when it came from the
+    /// disk because the Nexus hash database doesn't know the installed version, false when it came from that database.
+    /// </summary>
+    public static readonly BooleanAttribute BaselineFromDisk = new(Namespace, nameof(BaselineFromDisk)) { IsOptional = true };
 }

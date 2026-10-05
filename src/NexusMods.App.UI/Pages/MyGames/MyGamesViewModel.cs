@@ -50,7 +50,6 @@ using NexusMods.UI.Sdk;
 using NexusMods.UI.Sdk.Dialog;
 using NexusMods.UI.Sdk.Dialog.Enums;
 using GameInstallMetadata = NexusMods.Sdk.Games.GameInstallMetadata;
-using NexusMods.Abstractions.Games.FileHashes;
 
 namespace NexusMods.App.UI.Pages.MyGames;
 
@@ -68,7 +67,6 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     private readonly IServiceProvider _serviceProvider;
     private readonly ISynchronizerService _syncService;
     private readonly ILoadoutManager _loadoutManager;
-    private readonly IFileHashesService _fileHashesService;
     private readonly IGameRegistry _gameRegistry;
     private readonly IToolManager _toolManager;
     private readonly IWindowNotificationService _notificationService;
@@ -103,7 +101,6 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
         _overlayController = overlayController;
         _connection = conn;
         _loadoutManager = serviceProvider.GetRequiredService<ILoadoutManager>();
-        _fileHashesService = serviceProvider.GetRequiredService<IFileHashesService>();
         _gameRegistry = gameRegistry;
         _toolManager = toolManager;
         _logger = logger;
@@ -236,6 +233,27 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                                 {
                                     _logger.LogError(ex, "Error adding game");
                                     vm.State = GameWidgetState.DetectedGame;
+                                }
+                            });
+
+                            vm.UpdateBaselineCommand = ReactiveCommand.CreateFromTask(async () =>
+                            {
+                                try
+                                {
+                                    var loadoutId = GetLoadout(conn, installation);
+                                    if (!loadoutId.HasValue) return;
+                                    var metadata = await _syncService.UpdateBaseline(loadoutId.Value);
+                                    GameBaselineFile.TryGetVanillaFiles(metadata, out var files);
+                                    _notificationService.ShowToast($"Lista de archivos originales actualizada: {files.Count} archivos", ToastNotificationVariant.Success);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Error al actualizar la lista de archivos originales");
+                                    _notificationService.ShowToast("No se pudo actualizar la lista de archivos originales", ToastNotificationVariant.Failure);
+                                }
+                                finally
+                                {
+                                    _refreshSignal.OnNext(Unit.Default);
                                 }
                             });
 
@@ -612,7 +630,7 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
     }
     
     private bool HasVanillaData(GameInstallation installation) =>
-        _fileHashesService.UnknownLocatorIds(installation.LocatorResult.Store, installation.LocatorResult.LocatorIds.Distinct().ToArray()).Length == 0;
+        _gameRegistry.TryGetMetadata(installation, out var metadata) && GameBaselineFile.TryGetVanillaFiles(metadata, out _);
 
     private async Task CleanGameFolder(GameInstallation installation, Loadout.ReadOnly loadout)
     {

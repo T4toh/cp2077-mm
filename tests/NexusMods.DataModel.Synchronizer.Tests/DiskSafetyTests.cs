@@ -88,18 +88,24 @@ public class DiskSafetyTests(ITestOutputHelper helper) : ACyberpunkIsolatedGameT
     }
 
     [Fact]
-    public async Task ResetWithUnknownLocatorIds_RefusesAndDeletesNothing()
+    public async Task ResetWithoutVanillaList_RefusesAndDeletesNothing()
     {
-        // A Steam patch the hash database doesn't know, or a manually added game: no vanilla list at all
+        // No list (never synchronized since the list existed): resetting would delete the whole game
         var loadout = await ManagedLoadout();
         var original = GameInstallation.Locations.ToAbsolutePath(new GamePath(LocationId.Game, "bin/x64/original.exe"));
         original.Parent.CreateDirectory();
         await original.WriteAllTextAsync("vanilla");
         await Synchronizer.Synchronize(loadout);
+        var metadata = GameRegistry.ForceGetMetadata(GameInstallation);
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Retract(metadata.Id, GameInstallMetadata.BaselineFromDisk, GameInstallMetadata.BaselineFromDisk.Get(metadata));
+            await tx.Commit();
+        }
 
-        var act = () => Synchronizer.ResetToOriginalGameState(GameInstallation, [LocatorId.From("999999999999")]);
+        var act = () => Synchronizer.ResetToOriginalGameState(GameInstallation);
 
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*lista de archivos originales*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*lista de archivos originales*Actualicé el juego*");
         original.FileExists.Should().BeTrue();
     }
 }

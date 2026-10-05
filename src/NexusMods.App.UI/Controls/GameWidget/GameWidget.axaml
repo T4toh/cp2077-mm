@@ -88,7 +88,7 @@
 
                 <!-- ManagedGame -->
                 <Grid x:Name="ManagedGameGrid"
-                      ColumnDefinitions="*, 6, Auto, 6, Auto"
+                      ColumnDefinitions="*, 6, Auto, 6, Auto, 6, Auto"
                       IsVisible="False"
                       VerticalAlignment="Center"
                       HorizontalAlignment="Stretch">
@@ -110,7 +110,16 @@
                                              Command="{CompiledBinding DeepCleanCommand}"
                                              ToolTip.Tip="Deep Clean (Disable all mods)"/>
 
-                    <controls:StandardButton Grid.Column="4" x:Name="RemoveGameButton"
+                    <controls:StandardButton Grid.Column="4" x:Name="UpdateBaselineButton"
+                                             LeftIcon="{x:Static icons:IconValues.Update}"
+                                             ShowLabel="False"
+                                             ShowIcon="Left"
+                                             Type="Tertiary"
+                                             Fill="Weak"
+                                             Command="{CompiledBinding UpdateBaselineCommand}"
+                                             ToolTip.Tip="Actualicé el juego: vuelve a armar la lista de archivos originales (de la base de Nexus si conoce la versión; si no, del disco, y los cambios externos que siguen igual en disco pasan a ser originales). Si tenías mods puestos a mano fuera de tModManager, sacalos antes."/>
+
+                    <controls:StandardButton Grid.Column="6" x:Name="RemoveGameButton"
                                              LeftIcon="{x:Static icons:IconValues.DeleteForever}"
                                              ShowLabel="False"
                                              ShowIcon="Left"

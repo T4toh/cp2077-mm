@@ -3,9 +3,9 @@ This schema is written to a markdown file for both documentation and validation 
 models in the app, then validate the tests to update this file. 
 
 ## Statistics
-   - Fingerprint: 0x3CBCF930E912C4EA
-   - Total attributes: 195
-   - Total namespaces: 64
+   - Fingerprint: 0x4C4D8E4C59875D70
+   - Total attributes: 200
+   - Total namespaces: 65
    
 ## Attributes
 | AttributeId                                                                        | Type                    | Indexed | Many  | NoHistory | 
@@ -71,6 +71,11 @@ models in the app, then validate the tests to update this file.
 | NexusMods.Loadouts.DiskStateEntry/LastModified                                     | Int64                   | False   | False | False     | 
 | NexusMods.Loadouts.DiskStateEntry/Path                                             | Tuple3_Ref_UShort_Utf8I | False   | False | False     | 
 | NexusMods.Loadouts.DiskStateEntry/Size                                             | UInt64                  | False   | False | False     | 
+| NexusMods.Loadouts.GameBaselineFile/Game                                           | Reference               | False   | False | False     | 
+| NexusMods.Loadouts.GameBaselineFile/Hash                                           | UInt64                  | False   | False | False     | 
+| NexusMods.Loadouts.GameBaselineFile/Path                                           | Tuple3_Ref_UShort_Utf8I | False   | False | False     | 
+| NexusMods.Loadouts.GameBaselineFile/Size                                           | UInt64                  | False   | False | False     | 
+| NexusMods.Loadouts.GameMetadata/BaselineFromDisk                                   | UInt8                   | False   | False | False     | 
 | NexusMods.Loadouts.GameMetadata/Game                                               | UInt64                  | True    | False | False     | 
 | NexusMods.Loadouts.GameMetadata/GameId                                             | UInt32                  | True    | False | False     | 
 | NexusMods.Loadouts.GameMetadata/InitialDiskStateTransaction                        | Reference               | False   | False | False     | 
