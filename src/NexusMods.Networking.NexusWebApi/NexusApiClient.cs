@@ -224,7 +224,7 @@ public class NexusApiClient : INexusApiClient
         catch (System.Text.Json.JsonException)
         {
             // Cloudflare returned an HTML challenge page instead of JSON — treat as a transient failure.
-            _logger.LogDebug("GenerateDownloadUrl returned non-JSON for file {FileId} (Cloudflare challenge?), skipping", fileId);
+            _logger.LogWarning("Cloudflare sigue devolviendo su página de desafío para el archivo {FileId} después de reintentar; no se pudo generar el link de descarga", fileId);
             return null;
         }
 
@@ -271,16 +271,27 @@ public class NexusApiClient : INexusApiClient
 
     /// <summary>
     /// Calls the Nexus Mods GenerateDownloadUrl endpoint via curl to avoid .NET TLS fingerprint detection.
-    /// Returns the raw JSON response body, or null on failure.
+    /// Returns the raw response body (JSON, or Cloudflare's challenge page once the retries run out), or null on failure.
     /// </summary>
     private async Task<string?> CallCurlGenerateDownloadUrlAsync(string cookies, uint fileId, uint gameId, CancellationToken cancellationToken)
     {
-        // Serialize all curl calls to avoid Cloudflare rate-limiting (parallel requests → HTML challenge page).
-        var semaphoreAcquired = false;
+        // Serialize all curl calls to avoid Cloudflare rate-limiting (parallel requests → HTML challenge page);
+        // the throttle also spaces them out and retries the challenge page.
+        await _curlSemaphore.WaitAsync(cancellationToken);
         try
         {
-            await _curlSemaphore.WaitAsync(cancellationToken);
-            semaphoreAcquired = true; // semaphore is ours — must release in finally
+            return await GenerateDownloadUrlThrottle.Default.RunAsync(ct => RunCurlOnceAsync(cookies, fileId, gameId, ct), cancellationToken);
+        }
+        finally
+        {
+            _curlSemaphore.Release();
+        }
+    }
+
+    private async Task<string?> RunCurlOnceAsync(string cookies, uint fileId, uint gameId, CancellationToken cancellationToken)
+    {
+        try
+        {
             using var process = new System.Diagnostics.Process();
             process.StartInfo = new System.Diagnostics.ProcessStartInfo
             {
@@ -313,18 +324,10 @@ public class NexusApiClient : INexusApiClient
 
             return string.IsNullOrWhiteSpace(output) ? null : output.Trim();
         }
-        catch (OperationCanceledException)
-        {
-            throw; // propagate — semaphoreAcquired already reflects whether we hold it
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogDebug(ex, "Failed to call curl for GenerateDownloadUrl (file {FileId})", fileId);
             return null;
-        }
-        finally
-        {
-            if (semaphoreAcquired) _curlSemaphore.Release();
         }
     }
 }
