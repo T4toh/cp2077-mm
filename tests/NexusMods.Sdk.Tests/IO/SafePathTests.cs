@@ -31,6 +31,14 @@ public class SafePathTests
     }
 
     [Test]
+    public async Task ThrowIfParentSegment_NamesTheModAndPath()
+    {
+        SafePath.ThrowIfParentSegment(RelativePath.FromUnsanitizedInput("r6/scripts/x.reds"), "Mod");
+        var ex = Assert.Throws<InvalidOperationException>(() => SafePath.ThrowIfParentSegment(RelativePath.FromUnsanitizedInput("r6/../../x"), "Mod"));
+        await Assert.That(ex.Message).Contains("'Mod'").And.Contains("r6/../../x");
+    }
+
+    [Test]
     public async Task IsUnderSymlink_DetectsLinkedParentOnly()
     {
         var root = Directory.CreateTempSubdirectory("safepath-").FullName;

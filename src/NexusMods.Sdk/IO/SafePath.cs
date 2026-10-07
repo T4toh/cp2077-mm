@@ -29,6 +29,16 @@ public static class SafePath
     public static bool HasParentSegment(RelativePath path) => path.ToString().Split('/').Contains("..");
 
     /// <summary>
+    /// For installers that take a destination from the mod's own data (FOMOD XML, <c>collection.json</c>): refuse the
+    /// whole mod at install time, so it doesn't reach the loadout and make every apply fail in <c>ToAbsolutePath</c>.
+    /// </summary>
+    public static void ThrowIfParentSegment(RelativePath path, string modName)
+    {
+        if (HasParentSegment(path))
+            throw new InvalidOperationException($"'{modName}' quiere instalar `{path}`, fuera de la carpeta del juego: no se instala este mod");
+    }
+
+    /// <summary>
     /// True when any directory between <paramref name="root"/> (exclusive) and <paramref name="path"/> (exclusive)
     /// is a symbolic link, i.e. the path really lives somewhere else.
     /// </summary>

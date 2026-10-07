@@ -14,6 +14,7 @@ using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Paths;
 using NexusMods.Sdk;
 using NexusMods.Sdk.FileStore;
+using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Loadouts;
@@ -133,7 +134,7 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         foreach (var warning in instructions.Where(instruction => instruction.type == "unsupported"))
             _logger.LogWarning("Installer uses unsupported function: {}", warning.source);
 
-        InstructionsToLoadoutItems(transaction, loadout, loadoutGroup,instructions, fomodArchiveFiles, _fomodInstallationPath);
+        InstructionsToLoadoutItems(transaction, loadout, loadoutGroup, instructions, fomodArchiveFiles, _fomodInstallationPath, libraryArchive.AsLibraryFile().AsLibraryItem().Name);
         return new Success();
     }
 
@@ -204,13 +205,14 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         LoadoutItemGroup.New loadoutGroup,
         IList<Instruction> instructions,
         FrozenDictionary<RelativePath, LibraryArchiveFileEntry.ReadOnly> fomodArchiveFiles,
-        GamePath gamePath)
+        GamePath gamePath,
+        string modName)
     {
         foreach (var instruction in instructions)
         {
             if (instruction.type == "copy")
             {
-                ConvertInstructionCopy(transaction, instruction, loadoutGroup, loadoutId, fomodArchiveFiles, gamePath);
+                ConvertInstructionCopy(transaction, instruction, loadoutGroup, loadoutId, fomodArchiveFiles, gamePath, modName);
             }
             else if (instruction.type == "enableallplugins")
             {
@@ -234,10 +236,12 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
         LoadoutItemGroup.New loadoutGroup,
         LoadoutId loadoutId,
         FrozenDictionary<RelativePath, LibraryArchiveFileEntry.ReadOnly> fomodArchiveFiles,
-        GamePath gamePath)
+        GamePath gamePath,
+        string modName)
     {
         var src = RelativePath.FromUnsanitizedInput(instruction.source);
         var dest = RelativePath.FromUnsanitizedInput(instruction.destination);
+        SafePath.ThrowIfParentSegment(gamePath.Path.Join(dest), modName);
 
         if (!fomodArchiveFiles.TryGetValue(src, out var libraryArchiveFile))
         {
