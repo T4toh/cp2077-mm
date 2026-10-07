@@ -36,6 +36,9 @@ protect() {
   done
 }
 protect "$L"
+# "Instalar" in the Wine prefix panel runs protontricks, which rebuilds its wine bin dir here and downloads
+# the winetricks verbs (vcrun2022, d3dcompiler_47) into the second one
+for c in "$HOME/.cache/protontricks" "$HOME/.cache/winetricks"; do mkdir -p "$c"; args+=(--bind "$c" "$c"); done
 
 if [[ ${1:-} == --check ]]; then
   # Ancestors of the kept paths (~/.local/share, steamapps, ...) only accept new entries: everything already
@@ -51,7 +54,7 @@ if [[ ${1:-} == --check ]]; then
       [[ -d $d ]] || continue
       if touch "$d/.sandbox-probe" 2>/dev/null; then rm "$d/.sandbox-probe"; echo "FAIL escribible: $d"; bad=1; else echo "ro  $d"; fi
     done
-    exit $bad' _ "${KEEP[@]}"
+    exit $bad' _ "${KEEP[@]}" "$HOME/.cache/protontricks" "$HOME/.cache/winetricks"
 fi
 
 [[ -x $APP ]] || { echo "No existe $APP: compilar con dotnet build -c Release"; exit 1; }
