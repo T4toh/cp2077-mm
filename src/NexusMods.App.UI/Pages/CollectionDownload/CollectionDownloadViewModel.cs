@@ -128,6 +128,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                 {
                     if (!await loginManager.EnsureLoggedIn("Download Collection", cancellationToken)) return;
 
+                    await RescanBeforeDownload(collectionDownloader, cancellationToken);
                     await collectionDownloader.DownloadItems(_revision, itemType: CollectionDownloader.ItemType.Required, db: connection.Db,
                         cancellationToken: cancellationToken
                     );
@@ -140,6 +141,7 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
             .ToReactiveCommand<Unit>(
                 executeAsync: async (_, cancellationToken) =>
                 {
+                    await RescanBeforeDownload(collectionDownloader, cancellationToken);
                     await collectionDownloader.DownloadItems(_revision, itemType: CollectionDownloader.ItemType.Optional, db: connection.Db,
                         cancellationToken: cancellationToken
                     );
@@ -365,8 +367,8 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
                                     _isRescanning.OnNext(true);
                                     try
                                     {
-                                        await collectionDownloader.RescanDownloads(_revision, cancellationToken);
-                                        _notificationService.ShowToast("Rescan complete", ToastNotificationVariant.Success);
+                                        var matched = await collectionDownloader.RescanDownloads(_revision, cancellationToken);
+                                        _notificationService.ShowToast($"Rescan completo: {matched} archivo(s) de Descargas coinciden con la colección", ToastNotificationVariant.Success);
                                     }
                                     finally
                                     {
@@ -700,6 +702,21 @@ public sealed class CollectionDownloadViewModel : APageViewModel<ICollectionDown
     private readonly BehaviorSubject<bool> _canInstallOptionalItems = new(initialValue: false);
     public BindableReactiveProperty<bool> IsInstalling { get; } = new(value: false);
     private readonly BehaviorSubject<bool> _isRescanning = new(initialValue: false);
+
+    // After a database reset the downloads are still on disk: link them first so the collection doesn't download everything again
+    private async ValueTask RescanBeforeDownload(CollectionDownloader collectionDownloader, CancellationToken cancellationToken)
+    {
+        _isRescanning.OnNext(true);
+        try
+        {
+            _notificationService.ShowToast("Buscando en Descargas lo que ya está bajado…");
+            await collectionDownloader.RescanDownloads(_revision, cancellationToken);
+        }
+        finally
+        {
+            _isRescanning.OnNext(false);
+        }
+    }
 
     public BindableReactiveProperty<bool> IsUpdateAvailable { get; }
     public BindableReactiveProperty<Optional<RevisionNumber>> NewestRevisionNumber { get; } = new();

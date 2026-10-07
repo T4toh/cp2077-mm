@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reactive.Linq;
 using DynamicData;
@@ -52,6 +53,9 @@ public class CollectionDownloader
     private readonly IJobMonitor _jobMonitor;
     private readonly IGameDomainToGameIdMappingCache _mappingCache;
     private readonly IFileStore _fileStore;
+
+    // Downloads the library doesn't know (not in any collection) are hashed once per run of the app, not on every rescan
+    private readonly ConcurrentDictionary<(AbsolutePath Path, Size Size, DateTime LastWrite), Md5Value> _rescanMd5Cache = new();
 
     /// <summary>
     /// Constructor.
@@ -774,7 +778,11 @@ public class CollectionDownloader
             .Prepend(GetCollectionGroup(revision, targetLoadout, _connection.Db).Convert(static x => x.AsCollectionGroup()));
     }
 
-    public async ValueTask RescanDownloads(CollectionRevisionMetadata.ReadOnly revision, CancellationToken ct)
+    /// <summary>
+    /// Links the files already in the Downloads folder to the collection's downloads, so they aren't downloaded again.
+    /// Returns how many files matched.
+    /// </summary>
+    public async ValueTask<int> RescanDownloads(CollectionRevisionMetadata.ReadOnly revision, CancellationToken ct)
     {
         _logger.LogInformation("Starting rescan of Downloads folder for collection `{CollectionName}`", revision.Collection.Name);
         
@@ -783,10 +791,19 @@ public class CollectionDownloader
         if (!downloadsFolder.DirectoryExists())
         {
             _logger.LogWarning("Downloads folder does not exist: `{Path}`", downloadsFolder);
-            return;
+            return 0;
         }
 
         var db = _connection.Db;
+        // The library already has the MD5 of every download it registered: no need to hash those again
+        var knownMd5 = new Dictionary<RelativePath, (Size Size, Md5Value Md5)>();
+        foreach (var libraryFile in LibraryFile.All(db))
+        {
+            if (LibraryFile.DownloadPath.TryGetValue(libraryFile, out var downloadPath) && LibraryFile.Md5.TryGetValue(libraryFile, out var knownHash))
+                knownMd5.TryAdd(downloadPath, (libraryFile.Size, knownHash));
+        }
+
+        var matchedCount = 0;
         // Top level only (downloads are stored flat) and never through a symlinked folder or a backslash alias
         var files = downloadsFolder.EnumerateFiles("*", recursive: false).Where(f => SafePath.IsStrictlyInside(downloadsFolder, f)).ToArray();
         _logger.LogInformation("Found {Count} files in Downloads folder", files.Length);
@@ -798,14 +815,10 @@ public class CollectionDownloader
             try 
             {
                 // Skip files that are too small or likely not mods
-                if (file.FileInfo.Size < Size.From(1024)) continue;
+                var fileSize = file.FileInfo.Size;
+                if (fileSize < Size.From(1024)) continue;
 
-                // Hash the file
-                Md5Value md5;
-                await using (var stream = file.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
-                {
-                    md5 = await Md5Hasher.HashAsync(stream, cancellationToken: ct);
-                }
+                var md5 = await GetRescanMd5(file, fileSize, file.RelativeTo(downloadsFolder), knownMd5, ct);
 
                 // Check if already in library
                 var existingDatoms = db.Datoms(LibraryFile.Md5, md5);
@@ -830,8 +843,15 @@ public class CollectionDownloader
                         var currentFileName = file.FileName.ToString();
                         var currentFileNameWithoutExt = Path.GetFileNameWithoutExtension(currentFileName);
                         
-                        if (currentFileName.Equals(metadataName, StringComparison.OrdinalIgnoreCase) || 
-                            currentFileNameWithoutExt.Equals(metadataName, StringComparison.OrdinalIgnoreCase))
+                        var nameMatches = currentFileName.Equals(metadataName, StringComparison.OrdinalIgnoreCase) ||
+                                          currentFileNameWithoutExt.Equals(metadataName, StringComparison.OrdinalIgnoreCase);
+                        // ponytail: name (+ size when Nexus gave one) is all we have; the collection.json MD5 of Nexus files isn't stored yet
+                        // (an unknown size is stored as zero, see FragmentExtensions)
+                        var sizeMatches = !NexusModsFileMetadata.Size.TryGetValue(metadata, out var expectedSize) || expectedSize == Size.Zero || expectedSize == fileSize;
+                        if (nameMatches && !sizeMatches)
+                            _logger.LogDebug("`{FilePath}` has the name of `{DownloadName}` but not its size ({Size} vs {ExpectedSize}): not linking", file, download.Name, fileSize, expectedSize);
+
+                        if (nameMatches && sizeMatches)
                         {
                             _logger.LogInformation("Match found (Nexus) for `{DownloadName}`: `{FilePath}`", download.Name, file);
                             
@@ -902,7 +922,8 @@ public class CollectionDownloader
                     }
                 }
 
-                if (!matched)
+                if (matched) matchedCount++;
+                else
                 {
                     _logger.LogDebug("No match found in collection for `{FileName}` (MD5: {Hash})", file.FileName, md5);
                 }
@@ -913,7 +934,30 @@ public class CollectionDownloader
             }
         }
         
-        _logger.LogInformation("Rescan complete.");
+        _logger.LogInformation("Rescan complete: {Matched} of {Count} files matched the collection", matchedCount, files.Length);
+        return matchedCount;
+    }
+
+    private async ValueTask<Md5Value> GetRescanMd5(
+        AbsolutePath file,
+        Size size,
+        RelativePath relativePath,
+        Dictionary<RelativePath, (Size Size, Md5Value Md5)> knownMd5,
+        CancellationToken ct)
+    {
+        if (knownMd5.TryGetValue(relativePath, out var known) && known.Size == size) return known.Md5;
+
+        var key = (file, size, file.FileInfo.LastWriteTimeUtc);
+        if (_rescanMd5Cache.TryGetValue(key, out var cached)) return cached;
+
+        Md5Value md5;
+        await using (var stream = file.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            md5 = await Md5Hasher.HashAsync(stream, cancellationToken: ct);
+        }
+
+        _rescanMd5Cache[key] = md5;
+        return md5;
     }
 
     private static string DetectExtension(AbsolutePath file)
