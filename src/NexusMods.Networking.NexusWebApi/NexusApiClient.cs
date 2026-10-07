@@ -296,6 +296,7 @@ public class NexusApiClient : INexusApiClient
             process.StartInfo = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "curl",
+                RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -306,12 +307,15 @@ public class NexusApiClient : INexusApiClient
             args.Add("--max-time"); args.Add("30");
             args.Add("-X"); args.Add("POST");
             args.Add("https://www.nexusmods.com/Core/Libs/Common/Managers/Downloads?GenerateDownloadUrl");
-            args.Add("-H"); args.Add($"Cookie: {cookies}");
+            // The session cookie goes through stdin (`-H @-`, curl 7.55+): in argv any local user sees it with `ps`
+            args.Add("-H"); args.Add("@-");
             args.Add("-H"); args.Add("User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:135.0) Gecko/20100101 Firefox/135.0");
             args.Add("-H"); args.Add("X-Requested-With: XMLHttpRequest");
             args.Add("--data"); args.Add($"fid={fileId}&game_id={gameId}");
 
             process.Start();
+            await process.StandardInput.WriteLineAsync($"Cookie: {cookies}".AsMemory(), cancellationToken);
+            process.StandardInput.Close();
             var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
             await process.WaitForExitAsync(cancellationToken);
 
