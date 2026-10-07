@@ -37,6 +37,17 @@ public class AggregateProtontricksDependency : AggregateExecutableRuntimeDepende
         return await protontricks.MakeLaunchCommand(command, appId);
     }
 
+    /// <inheritdoc />
+    public async ValueTask<Command> MakeInstallCommand(long appId, IEnumerable<string> packages)
+    {
+        var availableDependencies = await GetAvailableDependenciesAsync();
+        var protontricks = availableDependencies.FirstOrDefault() as IProtontricksDependency;
+        if (protontricks == null)
+            throw new InvalidOperationException("No Protontricks implementation is available on this system");
+
+        return await protontricks.MakeInstallCommand(appId, packages);
+    }
+
     /// <summary>
     /// Gets whether any Protontricks implementation is available on the system.
     /// </summary>

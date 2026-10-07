@@ -12,4 +12,9 @@ public interface IProtontricksDependency
     /// protontricks-launch with the original command as the target.
     /// </summary>
     public ValueTask<Command> MakeLaunchCommand(Command command, long appId);
+
+    /// <summary>
+    /// Command that installs winetricks <paramref name="packages"/> in the prefix of <paramref name="appId"/> without prompts.
+    /// </summary>
+    public ValueTask<Command> MakeInstallCommand(long appId, IEnumerable<string> packages);
 }

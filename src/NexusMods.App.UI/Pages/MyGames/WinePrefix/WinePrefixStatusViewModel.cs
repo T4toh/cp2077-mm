@@ -3,6 +3,8 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Text;
+using CliWrap;
+using NexusMods.Games.Generic.Dependencies;
 using NexusMods.Games.RedEngine.Cyberpunk2077;
 using NexusMods.Sdk;
 using NexusMods.Sdk.Games;
@@ -20,13 +22,16 @@ public class WinePrefixStatusViewModel : AViewModel<IWinePrefixStatusViewModel>,
         new("version", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]),
     ];
 
-    private static readonly ImmutableHashSet<string> RequiredWinetricksPackages = ["d3dcompiler_47", "vcrun2022"];
+    public static readonly ImmutableHashSet<string> RequiredWinetricksPackages = ["d3dcompiler_47", "vcrun2022"];
 
     /// <summary>The requirements above (and the view's labels) are Cyberpunk's; other games get no panel yet.</summary>
     public static bool AppliesTo(IGameData game) => game.GameId == Cyberpunk2077Game.GameId;
 
+    private readonly GameInstallation _installation;
     private readonly ILinuxCompatabilityDataProvider? _linuxCompat;
     private readonly IRuntimeDependency? _protontricks;
+    private readonly IProcessRunner _processRunner;
+    private Command? _installCommand;
 
     [Reactive] public bool IsVisible { get; set; }
     [Reactive] public bool IsExpanded { get; set; }
@@ -37,18 +42,29 @@ public class WinePrefixStatusViewModel : AViewModel<IWinePrefixStatusViewModel>,
     [Reactive] public bool HasCorrectDllOverrides { get; set; }
     [Reactive] public string? DllOverridesInstructions { get; set; }
     [Reactive] public string? WinetricksInstructions { get; set; }
+    [Reactive] public string? ProtontricksCommandText { get; set; }
+    [Reactive] public bool IsInstallingPackages { get; set; }
+    [Reactive] public string? InstallError { get; set; }
 
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
+    public ReactiveCommand<Unit, Unit> InstallPackagesCommand { get; }
 
     public WinePrefixStatusViewModel(
         GameInstallation installation,
-        IEnumerable<IRuntimeDependency> runtimeDependencies)
+        IEnumerable<IRuntimeDependency> runtimeDependencies,
+        IProcessRunner processRunner)
     {
+        _processRunner = processRunner;
+        _installation = installation;
         _linuxCompat = installation.LocatorResult.LinuxCompatabilityDataProvider;
         _protontricks = runtimeDependencies
             .FirstOrDefault(d => d.DisplayName == "Protontricks");
 
         RefreshCommand = ReactiveCommand.CreateFromTask(RunChecksAsync);
+        InstallPackagesCommand = ReactiveCommand.CreateFromTask(
+            InstallPackagesAsync,
+            this.WhenAnyValue(vm => vm.IsInstallingPackages, vm => vm.ProtontricksCommandText, static (busy, command) => !busy && command is not null)
+        );
 
         this.WhenActivated(d =>
         {
@@ -87,19 +103,22 @@ public class WinePrefixStatusViewModel : AViewModel<IWinePrefixStatusViewModel>,
         IsVcRun2022Installed = installedPackages.Contains("vcrun2022");
 
         var missingPackages = RequiredWinetricksPackages.Except(installedPackages);
-        if (missingPackages.Count > 0)
-        {
-            var missingList = missingPackages.Select(x => $"* `{x}`").Aggregate((a, b) => $"{a}\n{b}");
-            WinetricksInstructions = $"""
-Usa [protontricks](https://github.com/Matoking/protontricks) para instalar los paquetes faltantes:
-
-{missingList}
-""";
-        }
-        else
+        _installCommand = null;
+        if (missingPackages.Count == 0)
         {
             WinetricksInstructions = null;
         }
+        else if (IsProtontricksInstalled && _protontricks is IProtontricksDependency protontricks && long.TryParse(_installation.LocatorResult.StoreIdentifier, out var appId))
+        {
+            // Native or Flatpak, whichever is installed: the copied command has to be the one that works here
+            _installCommand = await protontricks.MakeInstallCommand(appId, missingPackages.Order(StringComparer.Ordinal));
+            WinetricksInstructions = "Faltan paquetes en el prefix. Con el juego cerrado, instalalos con el botón o con este comando en una terminal:";
+        }
+        else
+        {
+            WinetricksInstructions = "Faltan paquetes en el prefix. Se instalan con protontricks, que no está instalado: https://github.com/Matoking/protontricks#installation (después, \"Verificar de nuevo\")";
+        }
+        ProtontricksCommandText = _installCommand is null ? null : $"{_installCommand.TargetFilePath} {_installCommand.Arguments}";
 
         // Check DLL overrides
         var existingOverrides = await _linuxCompat.GetWineDllOverrides(cancellationToken: ct);
@@ -144,5 +163,43 @@ WINEDLLOVERRIDES="{dllOverridesString}" %command%
 
         HasIssues = !IsProtontricksInstalled || !IsD3dCompiler47Installed || !IsVcRun2022Installed || !HasCorrectDllOverrides;
         IsExpanded = HasIssues;
+    }
+
+    private async Task InstallPackagesAsync(CancellationToken ct)
+    {
+        if (_installCommand is null) return;
+
+        IsInstallingPackages = true;
+        InstallError = null;
+        try
+        {
+            var stdout = new StringBuilder();
+            var stderr = new StringBuilder();
+            var command = _installCommand
+                .WithValidation(CommandResultValidation.None)
+                .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdout))
+                .WithStandardErrorPipe(PipeTarget.ToStringBuilder(stderr));
+
+            // logOutput: the full output also goes to ProcessLogs
+            var result = await _processRunner.RunAsync(command, logOutput: true, cancellationToken: ct);
+            if (result.ExitCode != 0)
+                InstallError = $"protontricks terminó con error (código {result.ExitCode}): {LastLines(stderr.Length > 0 ? stderr : stdout)}";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            InstallError = $"No se pudo correr protontricks: {ex.Message}";
+        }
+        finally
+        {
+            IsInstallingPackages = false;
+        }
+
+        await RunChecksAsync(ct);
+    }
+
+    private static string LastLines(StringBuilder output, int count = 5)
+    {
+        var lines = output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return string.Join("\n", lines.TakeLast(count));
     }
 }

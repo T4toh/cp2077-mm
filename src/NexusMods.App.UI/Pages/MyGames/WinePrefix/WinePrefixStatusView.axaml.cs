@@ -1,5 +1,6 @@
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using Avalonia.Controls;
 using Avalonia.ReactiveUI;
 using NexusMods.UI.Sdk.Icons;
 using ReactiveUI;
@@ -80,10 +81,13 @@ public partial class WinePrefixStatusView : ReactiveUserControl<IWinePrefixStatu
             // Instructions visibility
             this.WhenAnyValue(
                     v => v.ViewModel!.DllOverridesInstructions,
-                    v => v.ViewModel!.WinetricksInstructions)
+                    v => v.ViewModel!.WinetricksInstructions,
+                    v => v.ViewModel!.ProtontricksCommandText)
                 .Subscribe(tuple =>
                 {
-                    var (dllInstructions, wtInstructions) = tuple;
+                    var (dllInstructions, wtInstructions, command) = tuple;
+                    ProtontricksCommandText.Text = command ?? "";
+                    ProtontricksCommandPanel.IsVisible = command is not null;
                     DllOverridesInstructionsText.Text = dllInstructions ?? "";
                     DllOverridesInstructionsText.IsVisible = dllInstructions is not null;
                     WinetricksInstructionsText.Text = wtInstructions ?? "";
@@ -91,6 +95,23 @@ public partial class WinePrefixStatusView : ReactiveUserControl<IWinePrefixStatu
                     InstructionsBorder.IsVisible = dllInstructions is not null || wtInstructions is not null;
                 })
                 .DisposeWith(d);
+
+            this.WhenAnyValue(v => v.ViewModel!.IsInstallingPackages, v => v.ViewModel!.InstallError)
+                .Subscribe(tuple =>
+                {
+                    var (installing, error) = tuple;
+                    InstallStatusText.Text = installing ? "Instalando con protontricks… puede tardar unos minutos." : error ?? "";
+                    InstallStatusText.IsVisible = installing || error is not null;
+                })
+                .DisposeWith(d);
+
+            this.BindCommand(ViewModel!, vm => vm.InstallPackagesCommand, v => v.InstallPackagesButton)
+                .DisposeWith(d);
+
+            CopyProtontricksCommandButton.Command = ReactiveCommand.CreateFromTask(async () =>
+            {
+                await TopLevel.GetTopLevel(this)!.Clipboard!.SetTextAsync(ViewModel?.ProtontricksCommandText);
+            });
 
             // Refresh button
             this.BindCommand(ViewModel!, vm => vm.RefreshCommand, v => v.RefreshButton)

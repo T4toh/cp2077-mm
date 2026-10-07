@@ -6,6 +6,7 @@ using NexusMods.App.UI.Dialog.Enums;
 using NexusMods.App.UI.Helpers;
 using NexusMods.App.UI.Pages.StorageManager.Dialogs;
 using NexusMods.App.UI.Windows;
+using NexusMods.App.UI.Pages.MyGames.WinePrefix;
 using NexusMods.App.UI.WorkspaceSystem;
 using NexusMods.DataModel.Storage;
 using NexusMods.UI.Sdk.Dialog;
@@ -173,11 +174,15 @@ internal class StorageManagerPageViewModel : APageViewModel<IStorageManagerPageV
                 installation = installations[picked];
             }
 
+            // The prefix comes back without the packages the game needs; the Wine prefix panel in My Games installs them
+            var reinstallNote = WinePrefixStatusViewModel.AppliesTo(installation.Game)
+                ? $"\n\nDespués, cuando Steam lo recree, hay que volver a instalar {string.Join(" y ", WinePrefixStatusViewModel.RequiredWinetricksPackages.Order(StringComparer.Ordinal))}: el panel \"Wine prefix\" de Mis juegos lo detecta y los instala con un botón."
+                : "";
             var dialog = DialogFactory.CreateStandardDialog(
                 title: "Borrar prefix de Proton",
                 new StandardDialogParameters
                 {
-                    Text = $"Se borra steamapps/compatdata/{installation.LocatorResult.StoreIdentifier} ({installation.Game.DisplayName}). Steam lo recrea al lanzar el juego. Se pierden los saves que no estén sincronizados con la nube y toda la configuración del prefix. Cerrá el juego antes de continuar.",
+                    Text = $"Se borra steamapps/compatdata/{installation.LocatorResult.StoreIdentifier} ({installation.Game.DisplayName}). Steam lo recrea al lanzar el juego. Se pierden los saves que no estén sincronizados con la nube y toda la configuración del prefix. Cerrá el juego antes de continuar.{reinstallNote}",
                 },
                 buttonDefinitions:
                 [

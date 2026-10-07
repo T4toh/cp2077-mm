@@ -80,6 +80,25 @@
                                    Theme="{StaticResource BodySMNormalTheme}"
                                    Foreground="{StaticResource NeutralSubduedBrush}"
                                    TextWrapping="Wrap" />
+                        <Grid x:Name="ProtontricksCommandPanel" ColumnDefinitions="*, Auto, Auto">
+                            <SelectableTextBlock x:Name="ProtontricksCommandText"
+                                                 Grid.Column="0"
+                                                 FontFamily="monospace"
+                                                 VerticalAlignment="Center"
+                                                 TextWrapping="Wrap" />
+                            <Button x:Name="CopyProtontricksCommandButton"
+                                    Grid.Column="1"
+                                    Content="Copiar"
+                                    Margin="8,0,0,0" />
+                            <Button x:Name="InstallPackagesButton"
+                                    Grid.Column="2"
+                                    Content="Instalar"
+                                    Margin="8,0,0,0" />
+                        </Grid>
+                        <TextBlock x:Name="InstallStatusText"
+                                   Theme="{StaticResource BodySMNormalTheme}"
+                                   Foreground="{StaticResource NeutralSubduedBrush}"
+                                   TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
 

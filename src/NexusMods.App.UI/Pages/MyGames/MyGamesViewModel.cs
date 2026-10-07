@@ -428,7 +428,7 @@ public class MyGamesViewModel : APageViewModel<IMyGamesViewModel>, IMyGamesViewM
                         if (firstInstallation is not null)
                         {
                             var runtimeDeps = serviceProvider.GetServices<IRuntimeDependency>();
-                            WinePrefixStatus = new WinePrefixStatusViewModel(firstInstallation, runtimeDeps);
+                            WinePrefixStatus = new WinePrefixStatusViewModel(firstInstallation, runtimeDeps, serviceProvider.GetRequiredService<IProcessRunner>());
                             // We need to notify property changed for WinePrefixStatus but since it's a property without INPC support (simple property),
                             // and the view binds to it via viewmodel, we might need RaisePropertyChanged.
                             // But MyGamesViewModel is an APageViewModel which inherits ReactiveObject.
