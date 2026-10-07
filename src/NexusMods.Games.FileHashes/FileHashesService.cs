@@ -431,9 +431,13 @@ internal sealed class FileHashesService : IFileHashesService, IDisposable, IHost
     }
 
     /// <inheritdoc />
-    public bool TryGetLocatorIdsForVanityVersion(GameStore gameStore, VanityVersion version, out LocatorId[] commonIds)
+    public bool TryGetLocatorIdsForVanityVersion(GameInstallation installation, VanityVersion version, out LocatorId[] commonIds)
     {
-        if (!VersionDefinition.FindByName(Current, version.Value).TryGetFirst(out var versionDef))
+        var gameStore = installation.LocatorResult.Store;
+        // Version names repeat across games ("1.0", "2.1"): on Steam keep the definitions with a manifest of this app
+        var definitions = VersionDefinition.FindByName(Current, version.Value)
+            .Where(def => gameStore != GameStore.Steam || def.SteamManifests.Any(manifest => manifest.AppId.Value.ToString() == installation.LocatorResult.StoreIdentifier));
+        if (!definitions.TryGetFirst(out var versionDef))
         {
             commonIds = [];
             return false;

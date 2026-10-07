@@ -56,7 +56,7 @@ public static class LoadoutManagementVerbs
         [Option("v", "version", "Version to set")] string version,
         [Injected] IFileHashesService hasherService)
     {
-        if (!hasherService.TryGetLocatorIdsForVanityVersion(loadout.Installation.Store, VanityVersion.From(version), out var newCommonIds))
+        if (!hasherService.TryGetLocatorIdsForVanityVersion(loadout.InstallationInstance, VanityVersion.From(version), out var newCommonIds))
         {
             await renderer.Error("Version {0} not found", version);
             return -1;
