@@ -71,7 +71,14 @@ public class SimpleOverlayModInstaller : ALibraryArchiveInstaller
             if (!file.Value.Item.Path.InFolder(root)) continue;
 
             var relativePath = file.Value.Item.Path.RelativeTo(root);
-            
+
+            // A readme next to bin/, r6/... would land in the game root, where nothing reads it and only Deep Clean takes it out
+            if (relativePath.Depth == 0 && FolderlessModInstaller.IgnoreExtensions.Contains(relativePath.Extension))
+            {
+                Logger.LogDebug("Skipping {File}: documentation at the root of the mod", file.Value.Item.Path);
+                continue;
+            }
+
             // Heuristic: if 'plugins' is at the root of the mod, it usually belongs in 'bin/x64/plugins'
             if (relativePath.ToString().StartsWith("plugins", StringComparison.OrdinalIgnoreCase))
             {

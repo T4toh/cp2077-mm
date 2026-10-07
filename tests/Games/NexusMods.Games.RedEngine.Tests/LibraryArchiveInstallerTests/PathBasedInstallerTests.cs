@@ -28,6 +28,7 @@ public class PathBasedInstallerTests(ITestOutputHelper outputHelper) : ALibraryA
     {
         ( "Files Under No Folder", typeof(SimpleOverlayModInstaller), ["bin/x64/foo.exe", "archive/pc/mod/foo.archive"] ),
         ( "Files Under Sub Folders", typeof(SimpleOverlayModInstaller), ["mymod/bin/x64/foo.exe", "mymod/archive/pc/mod/foo.archive"] ),
+        ( "Readmes At The Root", typeof(SimpleOverlayModInstaller), ["bin/x64/foo.exe", "archive/pc/mod/foo.archive", "FlatlinedExit_readme.txt", "README.md", "preview.png", "screenshot.jpg"] ),
         ( "All Common Prefixes", typeof(SimpleOverlayModInstaller), ["bin/x64/foo.exe", "engine/foo.exe", "r6/foo.exe", "red4ext/foo.exe", "archive/pc/mod/foo.archive"] ),
         ( "Files with no folder", typeof(FolderlessModInstaller), ["folder/filea.archive", "fileb.archive"] ),
         ( "Ignored Extensions", typeof(FolderlessModInstaller), ["folder/filea.archive", "file.txt", "docs/file.md", "bin/x64/file.pdf", "bin/x64/file.png"] ),

@@ -24,11 +24,15 @@ public class FolderlessModInstaller : ALibraryArchiveInstaller
     
     private static readonly RelativePath Destination = "archive/pc/mod";
 
-    private static readonly HashSet<Extension> IgnoreExtensions = new() {
+    // Readmes and screenshots: the game never reads them (SimpleOverlayModInstaller skips them at the game root too)
+    internal static readonly HashSet<Extension> IgnoreExtensions = new() {
         KnownExtensions.Txt,
         KnownExtensions.Md,
         KnownExtensions.Pdf,
         KnownExtensions.Png,
+        new Extension(".jpg"),
+        new Extension(".jpeg"),
+        new Extension(".url"),
     };
     
     public override ValueTask<InstallerResult> ExecuteAsync(
