@@ -45,7 +45,7 @@
                            Text="Se limpia la carpeta del juego (backup en tModManager/Backups). Después conviene verificar los archivos en Steam." />
                 <CheckBox x:Name="DeleteProtonPrefixCheckBox">
                     <TextBlock TextWrapping="Wrap"
-                               Text="Borrar también el prefix de Proton (se pierden saves no sincronizados con la nube y la configuración del prefix)" />
+                               Text="Borrar también el prefix de Proton (se pierden saves no sincronizados con la nube y la configuración del prefix; cuando Steam lo recree, el panel &quot;Wine prefix&quot; de Mis juegos dice qué paquetes reinstalar)" />
                 </CheckBox>
             </StackPanel>
 

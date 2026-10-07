@@ -15,5 +15,6 @@ public interface IWinePrefixStatusViewModel : IViewModelInterface
     bool HasCorrectDllOverrides { get; }
     string? DllOverridesInstructions { get; }
     string? WinetricksInstructions { get; }
+    string? ProtontricksCommandText { get; }
     ReactiveCommand<Unit, Unit> RefreshCommand { get; }
 }

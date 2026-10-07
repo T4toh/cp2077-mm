@@ -20,11 +20,16 @@ public class WinePrefixStatusViewModel : AViewModel<IWinePrefixStatusViewModel>,
         new("version", [WineDllOverrideType.Native, WineDllOverrideType.BuiltIn]),
     ];
 
-    private static readonly ImmutableHashSet<string> RequiredWinetricksPackages = ["d3dcompiler_47", "vcrun2022"];
+    public static readonly ImmutableHashSet<string> RequiredWinetricksPackages = ["d3dcompiler_47", "vcrun2022"];
+
+    /// <summary>The exact command that installs <paramref name="packages"/> in the game's prefix.</summary>
+    public static string ProtontricksCommand(GameInstallation installation, IEnumerable<string> packages)
+        => $"protontricks {installation.LocatorResult.StoreIdentifier} -q {string.Join(' ', packages.Order(StringComparer.Ordinal))}";
 
     /// <summary>The requirements above (and the view's labels) are Cyberpunk's; other games get no panel yet.</summary>
     public static bool AppliesTo(IGameData game) => game.GameId == Cyberpunk2077Game.GameId;
 
+    private readonly GameInstallation _installation;
     private readonly ILinuxCompatabilityDataProvider? _linuxCompat;
     private readonly IRuntimeDependency? _protontricks;
 
@@ -37,6 +42,7 @@ public class WinePrefixStatusViewModel : AViewModel<IWinePrefixStatusViewModel>,
     [Reactive] public bool HasCorrectDllOverrides { get; set; }
     [Reactive] public string? DllOverridesInstructions { get; set; }
     [Reactive] public string? WinetricksInstructions { get; set; }
+    [Reactive] public string? ProtontricksCommandText { get; set; }
 
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
 
@@ -44,6 +50,7 @@ public class WinePrefixStatusViewModel : AViewModel<IWinePrefixStatusViewModel>,
         GameInstallation installation,
         IEnumerable<IRuntimeDependency> runtimeDependencies)
     {
+        _installation = installation;
         _linuxCompat = installation.LocatorResult.LinuxCompatabilityDataProvider;
         _protontricks = runtimeDependencies
             .FirstOrDefault(d => d.DisplayName == "Protontricks");
@@ -89,16 +96,13 @@ public class WinePrefixStatusViewModel : AViewModel<IWinePrefixStatusViewModel>,
         var missingPackages = RequiredWinetricksPackages.Except(installedPackages);
         if (missingPackages.Count > 0)
         {
-            var missingList = missingPackages.Select(x => $"* `{x}`").Aggregate((a, b) => $"{a}\n{b}");
-            WinetricksInstructions = $"""
-Usa [protontricks](https://github.com/Matoking/protontricks) para instalar los paquetes faltantes:
-
-{missingList}
-""";
+            WinetricksInstructions = "Faltan paquetes en el prefix. Con el juego cerrado, correr en una terminal:";
+            ProtontricksCommandText = ProtontricksCommand(_installation, missingPackages);
         }
         else
         {
             WinetricksInstructions = null;
+            ProtontricksCommandText = null;
         }
 
         // Check DLL overrides
