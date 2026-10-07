@@ -814,9 +814,9 @@ public class CollectionDownloader
 
             try 
             {
-                // Skip files that are too small or likely not mods
+                // Only empty files are skipped: some real mods are a few hundred bytes (Buzzsaw VFX Fix, 447 bytes)
                 var fileSize = file.FileInfo.Size;
-                if (fileSize < Size.From(1024)) continue;
+                if (fileSize == Size.Zero) continue;
 
                 var md5 = await GetRescanMd5(file, fileSize, file.RelativeTo(downloadsFolder), knownMd5, ct);
 
