@@ -42,7 +42,7 @@
                            TextAlignment="Center"
                            TextWrapping="Wrap"
                            Foreground="{StaticResource NeutralSubduedBrush}"
-                           Text="Gestor de mods para Cyberpunk 2077 en Steam (Linux). Iniciá sesión con tu cuenta de Nexus Mods para bajar mods y colecciones; sin cuenta podés instalar archivos que ya tengas." />
+                           Text="Gestor de mods para juegos de Steam en Linux. Por ahora soporta Cyberpunk 2077. Iniciá sesión con tu cuenta de Nexus Mods para bajar mods y colecciones; sin cuenta podés instalar archivos que ya tengas." />
             </StackPanel>
 
             <StackPanel Spacing="8" HorizontalAlignment="Center">
