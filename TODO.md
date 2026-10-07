@@ -205,7 +205,11 @@ Arquetipos para elegir juegos futuros (cada candidato lleva una ficha: app ID, l
 
 **Referencias:** Vortex `extensions/games/game-witcher3` (GPL-3: `installers.ts`, `edition.ts`, `menumod.ts`, `contentManager.ts`, `modSettingsPriority.ts`, `scriptStyle.ts`); `Systemcluster/The-Witcher-3-Mod-manager` (BSD-2, soporta Proton); Script Merger IDCs/SM-FAE (GPL-2, confirmar si es "o posterior"); `TheValiantOne/WitcherScriptMerger` (.NET 10, sin interfaz, DiffPlex); W3MM (MIT, merge N-way en `script_merge.rs`; su `mods.settings` está mal)
 
-**Sin verificar:** dónde guarda mod.io y cómo ordena contra los locales, orden de las carpetas DLC, si `--launcher-skip` sigue andando en 5.x, si el compilador de REDkit corre sin interfaz bajo Wine, impacto de *Songs of the Past*
+**Script Merger - Remastered** (Nexus 13076, relapse12, v1.4 del 2026-10-04): entiende los bundles nuevos, scopes, overrides de definiciones XML, `precompiled.rsblob` (detección de conflictos tomada de `Aelto/tw3-cahirb`) y mod.io. Necesita un `wcc_lite.exe` compatible con 5.x: el de REDkit (`bin/x64_RedKit/wcc_lite.exe`) o uno suelto según su `INSTALL.txt`. Sus pruebas: en un conflicto gana el mod de arriba de la lista sin importar el orden alfabético, y **los mods de mod.io quedan siempre arriba**. El autor de SM-FAE (Phaz42) también sacó versión para el Remastered. Doc de la comunidad: "What Does the Remaster Mean for Modding?" (Google Docs, enlazado en la página del mod)
+
+**W3MM de Systemcluster** (rama `Custom`, la default; Python, v0.10.5 del 2026-10-03, activo): soporta Original, Next-Gen y Remastered, y Proton. Ideas para copiar: la instalación de Steam se lanza siempre por Steam (lanzar el exe del Remastered directo crashea); Script Merger se corre en el prefix del juego con `protontricks-launch --appid 292030 <exe>`; si un parche saca el exe configurado, usa el otro renderer de la misma carpeta; los `.ini` de `bin/config/base` los copia enteros, sin merge ni backup (nosotros deberíamos hacerlo mejor)
+
+**Sin verificar:** dónde guarda mod.io (el orden ya está, ver arriba), orden de las carpetas DLC, si `--launcher-skip` sigue andando en 5.x, si el compilador de REDkit corre sin interfaz bajo Wine, impacto de *Songs of the Past*
 
 ## 🧬 Herencia de upstream a nivel repo
 
