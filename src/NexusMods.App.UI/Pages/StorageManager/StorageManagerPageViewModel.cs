@@ -174,9 +174,9 @@ internal class StorageManagerPageViewModel : APageViewModel<IStorageManagerPageV
                 installation = installations[picked];
             }
 
-            // The prefix comes back without the packages the game needs; the Wine prefix panel in My Games has the command to copy
+            // The prefix comes back without the packages the game needs; the Wine prefix panel in My Games installs them
             var reinstallNote = WinePrefixStatusViewModel.AppliesTo(installation.Game)
-                ? $"\n\nDespués, cuando Steam lo recree, hay que volver a instalar {string.Join(" y ", WinePrefixStatusViewModel.RequiredWinetricksPackages.Order(StringComparer.Ordinal))}: el panel \"Wine prefix\" de Mis juegos lo detecta y tiene el comando para copiar ({WinePrefixStatusViewModel.ProtontricksCommand(installation, WinePrefixStatusViewModel.RequiredWinetricksPackages)})."
+                ? $"\n\nDespués, cuando Steam lo recree, hay que volver a instalar {string.Join(" y ", WinePrefixStatusViewModel.RequiredWinetricksPackages.Order(StringComparer.Ordinal))}: el panel \"Wine prefix\" de Mis juegos lo detecta y los instala con un botón."
                 : "";
             var dialog = DialogFactory.CreateStandardDialog(
                 title: "Borrar prefix de Proton",

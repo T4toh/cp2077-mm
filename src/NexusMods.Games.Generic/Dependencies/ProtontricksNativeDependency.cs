@@ -87,4 +87,10 @@ public class ProtontricksNativeDependency : ExecutableRuntimeDependency, IProton
             command.WorkingDirPath, command.ResourcePolicy, command.Credentials, command.EnvironmentVariables, 
             command.Validation, command.StandardInputPipe, command.StandardOutputPipe, command.StandardErrorPipe));
     }
+
+    /// <inheritdoc />
+    public ValueTask<Command> MakeInstallCommand(long appId, IEnumerable<string> packages)
+    {
+        return ValueTask.FromResult(Cli.Wrap("protontricks").WithArguments([appId.ToString(), "-q", ..packages]));
+    }
 }

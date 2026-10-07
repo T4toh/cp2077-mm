@@ -58,4 +58,10 @@ public class ProtontricksFlatpakDependency : ExecutableRuntimeDependency, IProto
             command.StandardOutputPipe, 
             command.StandardErrorPipe));
     }
+
+    /// <inheritdoc />
+    public ValueTask<Command> MakeInstallCommand(long appId, IEnumerable<string> packages)
+    {
+        return ValueTask.FromResult(Cli.Wrap("flatpak").WithArguments(["run", FlatpakPackageId, appId.ToString(), "-q", ..packages]));
+    }
 }

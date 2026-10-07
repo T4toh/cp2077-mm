@@ -96,6 +96,18 @@ public partial class WinePrefixStatusView : ReactiveUserControl<IWinePrefixStatu
                 })
                 .DisposeWith(d);
 
+            this.WhenAnyValue(v => v.ViewModel!.IsInstallingPackages, v => v.ViewModel!.InstallError)
+                .Subscribe(tuple =>
+                {
+                    var (installing, error) = tuple;
+                    InstallStatusText.Text = installing ? "Instalando con protontricks… puede tardar unos minutos." : error ?? "";
+                    InstallStatusText.IsVisible = installing || error is not null;
+                })
+                .DisposeWith(d);
+
+            this.BindCommand(ViewModel!, vm => vm.InstallPackagesCommand, v => v.InstallPackagesButton)
+                .DisposeWith(d);
+
             CopyProtontricksCommandButton.Command = ReactiveCommand.CreateFromTask(async () =>
             {
                 await TopLevel.GetTopLevel(this)!.Clipboard!.SetTextAsync(ViewModel?.ProtontricksCommandText);
