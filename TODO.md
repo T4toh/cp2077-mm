@@ -30,8 +30,8 @@ Mergeado o en PR, compilado en Mac pero sin correr en la PC con el juego (en Mac
 
 - [ ] **Aviso al borrar el prefix e "Instalar" del panel:** Storage Manager → "Borrar prefix de Proton": el diálogo menciona `d3dcompiler_47 y vcrun2022`. Lanzar el juego para que Steam recree el prefix y cerrarlo. En Mis juegos, el panel "Wine prefix" muestra `protontricks 1091500 -q d3dcompiler_47 vcrun2022` con "Copiar" e "Instalar". "Instalar": dice "Instalando…", el botón queda deshabilitado, y al terminar queda todo en verde sin tocar "Verificar de nuevo". Anotar cuánto tarda y si protontricks abre alguna ventana. Salida completa en `~/.local/state/tModManager/Logs/ProcessLogs/protontricks-*`. Si hay forma, probar también con el flatpak (el comando tiene que empezar con `flatpak run com.github.Matoking.protontricks`) y un error (p. ej. el juego abierto) para ver el mensaje
 - [ ] **`..` rechazado al instalar:** suite (`Sdk.Tests` ya pasa en Mac; `FOMOD.Tests` y los de `Collections` en Linux). Sin mod de prueba con `..` a mano: alcanza con que la colección real se instale igual que antes (ningún mod legítimo trae `..`)
-- [ ] **Ícono nuevo:** el botón de inicio de la barra lateral muestra el logo de capas (no el de Nexus) y se ve bien a ese tamaño; la ventana y la barra de tareas del escritorio usan el ícono nuevo; el AppImage de `./dev.sh` opción 10 también
-- [ ] **Metadata genérica:** la bienvenida dice "Gestor de mods para juegos de Steam en Linux. Por ahora soporta Cyberpunk 2077…"; el AppImage (`./dev.sh` opción 10) muestra el resumen nuevo en el lanzador
+- [ ] **Ícono nuevo en el AppImage:** el de `./dev.sh` opción 10 usa el logo de capas (en la app ya probado 2026-10-07: barra lateral, ventana y barra de tareas)
+- [ ] **Metadata genérica en el AppImage:** el de `./dev.sh` opción 10 muestra el resumen nuevo en el lanzador (la bienvenida de la app ya probada 2026-10-07)
 
 ### Cómo probar con datos reales
 
