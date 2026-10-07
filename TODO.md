@@ -314,7 +314,7 @@ Arquetipos para elegir juegos futuros (cada candidato lleva una ficha: app ID, l
 
 **Etapas** (las piezas 2, 4, 5 y 6 tienen que estar)
 1. Skyrim SE: registrar (Steam, Proton), ubicaciones en el prefix (`AppData/Local/Skyrim Special Edition`, `My Games/Skyrim Special Edition`), instalador `Data/` + archivos del extender a la raíz (FOMOD ya existe; atender `enableallplugins`), `Plugins.txt` como intrinsic con implícitos y `.ccc`, run tool por el loader, diagnósticos (masters faltantes, extender/Address Library vs exe, Creations como External Changes protegidas)
-2. FO4 sobre lo mismo: invalidación en `Fallout4Custom.ini`, versión de BA2 vs rama del juego, F4SE, aviso de versión de colección vs instalada
+2. FO4 sobre lo mismo, old-gen y AE: tabla por rama, invalidación en `Fallout4Custom.ini`, versión de BA2 vs rama (BASS en old-gen), F4SE, aviso de versión de colección vs instalada, bloqueo de updates en old-gen
 3. Colecciones Bethesda: `plugins`/`pluginRules`, orden por reglas
 4. LOOT con masterlist (shim o Flatpak)
 5. Herramientas y salidas derivadas: Wrye Bash, xEdit, BodySlide, Pandora, DynDOLOD, PGPatcher; precombines de FO4 al final
@@ -327,7 +327,7 @@ Arquetipos para elegir juegos futuros (cada candidato lleva una ficha: app ID, l
 - [ ] FO4 1.11.240: ¿hace falta `bInvalidateOlderFiles` para que carguen los sueltos?
 - [ ] FO4: ¿Simple Fallout 4 Downgrader o los delta patches corren bajo Linux/Proton partiendo de 1.11.240?
 
-**Decidir (Tatoh):** FO4 en AE 1.11.x (lo que da Steam, menos colecciones) o en old-gen 1.10.163 (la mayoría de las colecciones, downgrade a mano y updates bloqueados)
+**FO4: las dos ramas** (decidido 2026-10-07, por popularidad: AE es lo que da Steam, old-gen lo que piden la mayoría de las colecciones). La rama es un dato de la instalación (FileVersion del exe), no un juego aparte: mismo `GameId`, y lo que cambia por rama sale de una tabla (DLL de F4SE esperada, `.bin` de Address Library, versiones de BA2 que carga, si hace falta BASS). Al instalar una colección, comparar su versión de juego con la rama instalada. El downgrade lo hace una herramienta de terceros, no la app; la app detecta la rama, avisa y, en old-gen, ofrece bloquear updates (requisito, pieza 6). Mismo criterio para Skyrim si aparecen colecciones para 1.5.97
 
 **Sin verificar:** si `bInvalidateOlderFiles` sigue haciendo falta en AE, si el juego reescribe `Plugins.txt` desde el menú Creations, `ContentCatalog.txt`, si los downgraders de FO4 andan desde 1.11.240, si la CLI de Wabbajack corre nativa en Linux, si Corkscrew aplica parches OctoDiff de listas nuevas, si Mutagen lee bien BA2 v7/v8 y headers 1.71, permisos de Address Library, si bajar SKSE/F4SE por la API de Nexus pide Premium, SKSE 2.2.8 vs 2.3.0 para 1.7.99 (las fuentes no coinciden)
 
