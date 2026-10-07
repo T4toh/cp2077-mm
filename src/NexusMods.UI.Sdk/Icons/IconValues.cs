@@ -670,6 +670,9 @@ public static class IconValues
     /// Brand pictogram for Health
     /// </summary>
     public static readonly IconValue NexusColor = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/nexus-logo.svg");
+
+    // tModManager's own logo (src/NexusMods.App/icon.svg), in color
+    public static readonly IconValue AppLogo = new AvaloniaSvg("avares://NexusMods.App.UI/Assets/tmodmanager-logo.svg");
     
     /// <summary>
     /// Brand pictogram for Health
