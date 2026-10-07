@@ -25,8 +25,8 @@
     </LinearGradientBrush>
 
     <!-- SurfaceLow 75% to SurfaceLow 100% -->
-    <Color x:Key="CollectionHeaderImageLinearGradientStartColor">#BF1D1D21</Color>
-    <Color x:Key="CollectionHeaderImageLinearGradientEndColor">#FA1D1D21</Color>
+    <Color x:Key="CollectionHeaderImageLinearGradientStartColor">#BF1C1D23</Color>
+    <Color x:Key="CollectionHeaderImageLinearGradientEndColor">#FA1C1D23</Color>
     
     <LinearGradientBrush x:Key="CollectionHeaderImageLinearGradientBrush" StartPoint="0%,0%" EndPoint="0%,100%">
         <GradientStop Offset="0" Color="{StaticResource CollectionHeaderImageLinearGradientStartColor}" />

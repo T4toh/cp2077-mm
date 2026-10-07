@@ -9,17 +9,17 @@
     <!-- Neutral -->
 
     <!-- Colors -->
-    <StaticResource x:Key="BrandNeutral950" ResourceKey="PrimitiveZinc950" />
-    <StaticResource x:Key="BrandNeutral900" ResourceKey="PrimitiveZinc900" />
-    <StaticResource x:Key="BrandNeutral800" ResourceKey="PrimitiveZinc800" />
-    <StaticResource x:Key="BrandNeutral700" ResourceKey="PrimitiveZinc700" />
-    <StaticResource x:Key="BrandNeutral600" ResourceKey="PrimitiveZinc600" />
-    <StaticResource x:Key="BrandNeutral500" ResourceKey="PrimitiveZinc500" />
-    <StaticResource x:Key="BrandNeutral400" ResourceKey="PrimitiveZinc400" />
-    <StaticResource x:Key="BrandNeutral300" ResourceKey="PrimitiveZinc300" />
-    <StaticResource x:Key="BrandNeutral200" ResourceKey="PrimitiveZinc200" />
-    <StaticResource x:Key="BrandNeutral100" ResourceKey="PrimitiveZinc100" />
-    <StaticResource x:Key="BrandNeutral50" ResourceKey="PrimitiveZinc50" />
+    <StaticResource x:Key="BrandNeutral950" ResourceKey="PrimitiveGraphite950" />
+    <StaticResource x:Key="BrandNeutral900" ResourceKey="PrimitiveGraphite900" />
+    <StaticResource x:Key="BrandNeutral800" ResourceKey="PrimitiveGraphite800" />
+    <StaticResource x:Key="BrandNeutral700" ResourceKey="PrimitiveGraphite700" />
+    <StaticResource x:Key="BrandNeutral600" ResourceKey="PrimitiveGraphite600" />
+    <StaticResource x:Key="BrandNeutral500" ResourceKey="PrimitiveGraphite500" />
+    <StaticResource x:Key="BrandNeutral400" ResourceKey="PrimitiveGraphite400" />
+    <StaticResource x:Key="BrandNeutral300" ResourceKey="PrimitiveGraphite300" />
+    <StaticResource x:Key="BrandNeutral200" ResourceKey="PrimitiveGraphite200" />
+    <StaticResource x:Key="BrandNeutral100" ResourceKey="PrimitiveGraphite100" />
+    <StaticResource x:Key="BrandNeutral50" ResourceKey="PrimitiveGraphite50" />
 
     <!-- SolidColorBrushes -->
     <SolidColorBrush x:Key="BrandNeutral950Brush" Color="{StaticResource BrandNeutral950}" />
@@ -67,17 +67,17 @@
     <!-- Primary -->
 
     <!-- Colors -->
-    <StaticResource x:Key="BrandPrimary950" ResourceKey="PrimitiveOrange950" />
-    <StaticResource x:Key="BrandPrimary900" ResourceKey="PrimitiveOrange900" />
-    <StaticResource x:Key="BrandPrimary800" ResourceKey="PrimitiveOrange800" />
-    <StaticResource x:Key="BrandPrimary700" ResourceKey="PrimitiveOrange700" />
-    <StaticResource x:Key="BrandPrimary600" ResourceKey="PrimitiveOrange600" />
-    <StaticResource x:Key="BrandPrimary500" ResourceKey="PrimitiveOrange500" />
-    <StaticResource x:Key="BrandPrimary400" ResourceKey="PrimitiveOrange400" />
-    <StaticResource x:Key="BrandPrimary300" ResourceKey="PrimitiveOrange300" />
-    <StaticResource x:Key="BrandPrimary200" ResourceKey="PrimitiveOrange200" />
-    <StaticResource x:Key="BrandPrimary100" ResourceKey="PrimitiveOrange100" />
-    <StaticResource x:Key="BrandPrimary50" ResourceKey="PrimitiveOrange50" />
+    <StaticResource x:Key="BrandPrimary950" ResourceKey="PrimitiveIndigo950" />
+    <StaticResource x:Key="BrandPrimary900" ResourceKey="PrimitiveIndigo900" />
+    <StaticResource x:Key="BrandPrimary800" ResourceKey="PrimitiveIndigo800" />
+    <StaticResource x:Key="BrandPrimary700" ResourceKey="PrimitiveIndigo700" />
+    <StaticResource x:Key="BrandPrimary600" ResourceKey="PrimitiveIndigo600" />
+    <StaticResource x:Key="BrandPrimary500" ResourceKey="PrimitiveIndigo500" />
+    <StaticResource x:Key="BrandPrimary400" ResourceKey="PrimitiveIndigo400" />
+    <StaticResource x:Key="BrandPrimary300" ResourceKey="PrimitiveIndigo300" />
+    <StaticResource x:Key="BrandPrimary200" ResourceKey="PrimitiveIndigo200" />
+    <StaticResource x:Key="BrandPrimary100" ResourceKey="PrimitiveIndigo100" />
+    <StaticResource x:Key="BrandPrimary50" ResourceKey="PrimitiveIndigo50" />
 
     <!-- SolidColorBrushes -->
     <SolidColorBrush x:Key="BrandPrimary950Brush" Color="{StaticResource BrandPrimary950}" />

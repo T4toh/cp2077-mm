@@ -102,6 +102,33 @@
     <Color x:Key="PrimitiveBlue100">#DBEAFE</Color>
     <Color x:Key="PrimitiveBlue50">#EFF6FF</Color>
     
+    <!-- Cueva: la paleta de la-cueva-de-tatoh (grafito con texto cálido y acento índigo apagado) -->
+    <!-- Graphite -->
+    <Color x:Key="PrimitiveGraphite950">#14151A</Color>
+    <Color x:Key="PrimitiveGraphite900">#1C1D23</Color>
+    <Color x:Key="PrimitiveGraphite800">#24262E</Color>
+    <Color x:Key="PrimitiveGraphite700">#2F313A</Color>
+    <Color x:Key="PrimitiveGraphite600">#4A4B52</Color>
+    <Color x:Key="PrimitiveGraphite500">#77756E</Color>
+    <Color x:Key="PrimitiveGraphite400">#8A887F</Color>
+    <Color x:Key="PrimitiveGraphite300">#C4C2BB</Color>
+    <Color x:Key="PrimitiveGraphite200">#D9D7D0</Color>
+    <Color x:Key="PrimitiveGraphite100">#ECEBE7</Color>
+    <Color x:Key="PrimitiveGraphite50">#FAF9F5</Color>
+
+    <!-- Indigo -->
+    <Color x:Key="PrimitiveIndigo950">#1F1F3D</Color>
+    <Color x:Key="PrimitiveIndigo900">#2F2F5E</Color>
+    <Color x:Key="PrimitiveIndigo800">#3F3F80</Color>
+    <Color x:Key="PrimitiveIndigo700">#4A4A94</Color>
+    <Color x:Key="PrimitiveIndigo600">#5B5BAB</Color>
+    <Color x:Key="PrimitiveIndigo500">#6F6FBF</Color>
+    <Color x:Key="PrimitiveIndigo400">#8B8BD6</Color>
+    <Color x:Key="PrimitiveIndigo300">#A0A0E0</Color>
+    <Color x:Key="PrimitiveIndigo200">#C4C4EE</Color>
+    <Color x:Key="PrimitiveIndigo100">#E2E2F7</Color>
+    <Color x:Key="PrimitiveIndigo50">#F1F1FB</Color>
+
     <!-- Violet -->
     <Color x:Key="PrimitiveViolet950">#2E1065</Color>
     <Color x:Key="PrimitiveViolet900">#4C1D95</Color>

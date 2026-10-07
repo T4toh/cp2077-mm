@@ -183,7 +183,7 @@
     <!-- Focus -->
 
     <!-- Colors -->
-    <StaticResource x:Key="FocusSubdued" ResourceKey="PrimitiveBlue500" />
+    <StaticResource x:Key="FocusSubdued" ResourceKey="BrandPrimary400" />
 
     <!-- SolidColorBrushes -->
     <SolidColorBrush x:Key="FocusSubduedBrush" Color="{StaticResource FocusSubdued}" />
