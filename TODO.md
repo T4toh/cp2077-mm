@@ -133,12 +133,7 @@ Intento anterior falló por acoplamiento a Cyberpunk filtrado fuera de `Games.Re
 - [ ] **Juegos a agregar, en orden** (pedido 2026-09-24; la fase 1 del desacople está hecha: Witcher 3 arranca cuando estén las piezas genéricas que necesita):
   1. **The Witcher 3 Remastered (5.x)** (salió 2026-09-29; expansión *Songs of the Past* en 2027). Investigado 2026-10-03, detalle en "Witcher 3: lo investigado" abajo. El merge de scripts/bundles va último: la edición es muy nueva y las herramientas de la comunidad cambian día a día
   2. **Skyrim, la versión más nueva en Steam** (puede esperar, decidido 2026-10-03: primero los juegos que se van a jugar. Referencia: [Corkscrew](https://corkscrewmodmanager.com/), GPL-3, Rust/Tauri, ya cubre Skyrim SE/AE + Fallout 4 en Linux/macOS con colecciones, Wabbajack, LOOT y FOMOD; beta v0.9.x) (Special/Anniversary Edition): SKSE, `plugins.txt`/load order, FOMOD (ya existe), Proton. Fallout 4 comparte motor y queda casi gratis después
-  3. **KOTOR 1 y 2**: juegos viejos que hoy se modean a mano sí o sí (overrides en `Override/`, TSLPatcher/HoloPatcher con instrucciones por mod, orden de instalación estricto). El valor está en automatizar eso. Investigado 2026-10-03:
-     - Steam 32370 / 208580. TSL nativo tiene dos `override` y los parches de exe de la comunidad son solo Windows: TSL por Proton. En Linux todo a minúsculas; Workshop de TSL vacío
-     - 25-45% de los mods son patchers que editan `.2da`/`dialog.tlk`/`.mod` según lo instalado antes, sin desinstalación: necesita las piezas 3 y 8 de abajo completas
-     - HoloPatcher (PyKotor, LGPL) corre sin interfaz en Linux y es case-aware: invocarlo como proceso. KOTORModSync es BSL (no reutilizable) y su repo da 404. Referencia GPL: `ChristopherVR/kotor-mod-manager` (convierte los mod builds de `kotor.neocities.org` a JSON)
-     - Fuente principal Deadly Stream: sin API, login + CSRF, 55 descargas/día; los términos no dicen nada de bots (preguntar)
-     - Esfuerzo XL (MVP M sin reordenar)
+  3. **KOTOR 1 y 2**: juegos viejos que hoy se modean a mano sí o sí (overrides en `Override/`, TSLPatcher/HoloPatcher con instrucciones por mod, orden de instalación estricto). El valor está en automatizar eso. Primero K1 siguiendo el build completo de `kotor.neocities.org` (pedido 2026-10-07: el K1 moddeado a mano que hay en casa es viejo; se rehace en Steam). Investigado 2026-10-03 y 2026-10-07, detalle en "KOTOR 1: lo investigado" abajo. Esfuerzo XL
 - [ ] **Requisitos de cada juego como datos, no como wiki** (pedido 2026-10-03): lo que hoy hay que ir a leer a la wiki de cada juego (paquetes de protontricks como `vcrun2022`/`d3dcompiler_47`, DLL overrides, opciones de lanzamiento de Steam, archivos de config a tocar, pasos tras recrear el prefix) declarado por juego, y que la app lo muestre como checklist con estado real y, donde se pueda, un botón que lo haga (`protontricks <appid> -q ...`). Hoy está hardcodeado en `WinePrefixRequirementsEmitter` de CP2077; generalizarlo es parte del desacople (que cada `IGame` declare sus requisitos y el health check sea genérico)
 - **No recuperar `Games.CreationEngine` de upstream**: se sacó a propósito porque no gustaba cómo estaba hecho. Escribir cada juego desde cero sobre el core desacoplado; el código viejo (history de NexusMods.App) sirve como mucho de referencia
 - [ ] **Referencia Vortex:** `Nexus-Mods/vortex-games` (GPL-3) tiene una carpeta `game-*` por juego (100+) con las reglas de layout/instalación de cada uno; la de Cyberpunk es `E1337Kat/cyberpunk2077_ext_redux` (~25 tipos de layout vs nuestros 4 instaladores). No es código portable (TypeScript/Electron/Windows), son reglas a leer. Para CP2077 sirven: layouts "arreglables" (`.archive` suelto → `archive/pc/mod/`, Redscript sin subcarpeta → `r6/scripts/<mod>/`, DLL suelta → `red4ext/plugins/<mod>/`, REDmod sin `mods/`), mods envueltos en carpeta extra, archivos protegidos (`inputContexts.xml`, `inputUserMappings.xml`, `options.json`) con confirmación, core mods por versión (RED4ext `winmm.dll` vs `d3d11.dll`), CET exige `init.lua`
@@ -226,6 +221,53 @@ Arquetipos para elegir juegos futuros (cada candidato lleva una ficha: app ID, l
 **W3MM de Systemcluster** (rama `Custom`, la default; Python, v0.10.5 del 2026-10-03, activo): soporta Original, Next-Gen y Remastered, y Proton. Ideas para copiar: la instalación de Steam se lanza siempre por Steam (lanzar el exe del Remastered directo crashea); Script Merger se corre en el prefix del juego con `protontricks-launch --appid 292030 <exe>`; si un parche saca el exe configurado, usa el otro renderer de la misma carpeta; los `.ini` de `bin/config/base` los copia enteros, sin merge ni backup (nosotros deberíamos hacerlo mejor)
 
 **Sin verificar:** dónde guarda mod.io (el orden ya está, ver arriba), orden de las carpetas DLC, si `--launcher-skip` sigue andando en 5.x, si el compilador de REDkit corre sin interfaz bajo Wine, impacto de *Songs of the Past*
+
+### KOTOR 1: lo investigado (2026-10-07)
+
+**Enfoque: la guía como receta.** Lo difícil de KOTOR (conflictos entre patchers que editan `dialog.tlk`/`.2da`/`.mod` y no se desinstalan) ya lo resolvieron los autores del build fijando orden y opción por mod. La app no decide nada: ejecuta una receta lineal. La guía exige partir de un juego limpio, así que reconstruir desde vanilla es lo que ya manda. Aplicar = desde la lista vanilla (pieza 1), correr los pasos en orden **en un staging**, minúsculas, diff contra el paso anterior y guardar lo que cambió como archivos derivados (pieza 8) con clave hash(estado previo + mod). Sacar o mover el mod N recalcula desde N; lo de antes sale del cache. El synchronizer despliega el resultado. Nadie hace esto: los mantenedores del build dicen que un manager de verdad es "virtually impossible" y que no se use Vortex
+
+**Juego**
+- Steam 32370, solo Windows: Proton. `steamapps/common/swkotor`; saves (`Saves/`) y `swkotor.ini` dentro de la carpeta del juego, no en el prefix: excluirlos de la lista vanilla. `override/` no existe hasta el primer mod; sin subcarpetas en `override/` ni `modules/`; gana el último escrito; un `.mod` pisa a su `.rim`
+- Minúsculas: bajo Proton Wine ignora mayúsculas, el riesgo son duplicados que difieren solo en eso. Pasar todo a minúsculas al desplegar y detectar duplicados sin distinguir mayúsculas
+- **El exe de Steam está cifrado:** el parche de 4GB lo rompe salvo que antes se aplique widescreen; después del widescreen hay que lanzar el exe directo (se rompe el handshake con Steam); HR Menus solo anda en GOG, 4 discos, Mac o Steam parcheado con UniWS. El exe de GOG es la misma 1.03 sin DRM (Tatoh tiene las dos copias). Hipótesis a probar: exe de GOG sobre la instalación de Steam
+- GOG (Windows, por Heroic/Wine) no hace falta soportarlo para esto: alcanza con su exe
+
+**El build** (`github.com/KOTOR-Community-Portal/mod-builds`, Markdown en `content/k1/full.md`, **sin LICENSE**; deploy a Neocities)
+- Revision 12 (2025-11-01) y parches cada 2-4 semanas (v12.3.15 del 2026-09-16). Mantienen Snigaroo, JCarter426 y LS1
+- K1 full: 197 entradas con campos fijos (`**Name:**`, `**Author:**`, `**Category & Tier:**`, `**Installation Method:**`, `**Masters:**` = dependencias) y notas en bloques `:::note`/`:::warning`. El orden de instalación es el del documento. 112 archivos sueltos, 58 TSLPatcher, 13 HoloPatcher, 3 multi-corrida, ~11 mixtos. 82 traen instrucciones en prosa ("borrá X antes de copiar", "elegí la opción 2", "este va al directorio del juego, no a override")
+- Descargas: Deadly Stream ~82%, Nexus ~11%, Mega ~5% (más en el spoiler-free), sueltos en GitHub/Drive
+- `content/linux.md` (guía de Linux del mismo sitio): Proton-GE 10.34 (no Experimental), lanzamiento `MANGOHUD_CONFIG="fps_limit=72,no_display" mangohud %command%` (60 si el monitor es de 60 Hz), minúsculas en los mods y en `override/` al pasar de un patcher a archivos sueltos, patchers con `protontricks-launch --appid 32370 ./*.exe`, al final borrar `.tpc` con `.tga`/`.dds` del mismo nombre y las borraduras de Character Textures & Model Fixes. Cuelgues en cinemáticas: renombrar `movies/`
+- Setup fijo, igual para todos: instalación limpia (también `compatdata/32370`), una sola instalación de K1, widescreen (UniWS) + HR Menus + Widescreen Fade/Main Menu fixes, recién después 4GB. Va a la pieza 6 (requisitos como datos)
+- Lo que cambia entre parches del build sale del diff de git: solo se recuran esas entradas
+
+**La curación de los 197 pasos es el trabajo de verdad, no el código.** Atajo: **KOTORganizer** (plugin de MO2, `J0-o/kotorganizer`, sin licencia; [hilo](https://deadlystream.com/topic/12202-toolkotorganizer-mo2-plugin/)) ya tiene el K1 full curado en `J0-o/kson_modlist`: formato `kotor-builder-instructions` v1, 200 mods, ~13.5k acciones mover/borrar/renombrar por archivo con hashes xxh3, nombre de archivo, versión, URL y `tslpatch_order`; actualizado junto con el build (último 2026-10-05). Sin licencia: pedirle permiso al autor antes de usarlo
+
+**Patchers en C#, sin Python en la app**
+- **KPatcher** (`KotORPublicDomain/KPatcher`, LGPL-3): port de HoloPatcher a C#. Mismos parámetros que HoloPatcher (`--game-dir --tslpatchdata --namespace-option-index --install`), la interfaz de línea está dentro del exe de la UI (`src/KPatcher.UI/KPatcherCLI.cs`). Riesgos: ~98k líneas en `KPatcher.Core` escritas casi todas por Copilot, `LangVersion 7.3`, sin nullable, net9, deps Newtonsoft/YamlDotNet/sly/SharpCompress, sin releases, submódulo `vendor/TSLPatcher` sin licencia (no traerlo). Su ledger dice paridad "PARTIAL": compila NSS con un compilador propio, no `nwnnsscomp`
+- Plan: **KPatcher como proceso aparte**, compilado por nosotros desde un commit fijo (self-contained linux-x64). No meterlo en el core. Paridad medida, no creída: un test de desarrollo corre KPatcher y `uvx holopatcher==1.5.3` sobre los mismos mods y compara hashes. Python solo ahí
+- HoloPatcher (`OpenKotOR/PyKotor`, LGPL; `NickHugi/PyKotor` abandonado): backup por mod y desinstalación solo de la última instalación (LIFO): no sirve para desinstalar, la cadena reproducible lo reemplaza
+- Plan B para mods donde KPatcher falle: el TSLPatcher original en el prefix con `protontricks-launch` (pieza 7), con clics
+- Parches de exe nativos: 4GB = bit `IMAGE_FILE_LARGE_ADDRESS_AWARE` del header PE; widescreen/HR Menus cambian constantes de resolución (falta ver qué bytes toca UniWS). El exe pasa a ser derivado (original + parches), nunca se edita en el lugar
+- Formatos si hacen falta: `NickHugi/Kotor.NET` (GPL-3, C#, sin patcher). `xoreos-tools` (GPL-3) para inspeccionar
+- No usables: KOTORModSync v2+ (BSL 1.1; el fork `CrispyW0nton/KotorModSync` trae P2P oculto con UPnP y telemetría; el original da 404), BioWare.NET (BSL hasta 2029). Vortex `game-sw-kotor` (GPL-3, archivado) rechaza todo mod con `tslpatchdata`: sirve solo para la detección del juego. `ChristopherVR/kotor-mod-manager` (GPL-3, Python/Tauri, muy activo) hace el flujo del build pero no lo recomiendan en el Discord; sus directivas (`installer/build_directives.py`) son referencia
+
+**Deadly Stream** (Invision Community): baja **sin login** (la página da cookie de sesión y un link `?do=download&csrfKey=…`; con varios archivos hay un selector). Sin API pública (claves solo del admin), RSS de novedades en `files.xml`, `robots.txt` solo bloquea dotbot, los términos no hablan de bots. Bajar un mod por clic del usuario es lo que hace un navegador; antes de bajar en lote, preguntar a los administradores. Nexus (`kotor`, 686 mods) cubre solo ~11% del build
+
+**Etapas** (las 1 y 2 no escriben en la carpeta del juego)
+1. Deadly Stream como fuente: pegar un link, se baja a la biblioteca con nombre/autor/versión/URL; updates por RSS o la página. Es la segunda fuente real: recién ahí diseñar la abstracción de fuentes
+2. El build como lista de compras: leer `full.md` de un tag fijo, mostrar qué está bajado, qué falta y qué cambió; bajar lo que falta
+3. Registrar K1 (Steam, Proton) + instalador de archivos sueltos a `override/` en minúsculas sin readmes ni previews + mods locales (pieza 3)
+4. Cadena reproducible con KPatcher (piezas 5 y 8), setup fijo y parches de exe (pieza 6)
+5. Después: K2 (build de Windows por Proton; el nativo de 2015 no anda bien con mods)
+
+**Pruebas en la PC con Linux antes de escribir código**
+- [ ] Exe de GOG sobre el K1 de Steam: ¿arranca desde Steam con Proton-GE?
+- [ ] Ese exe con 4GB + widescreen: ¿sigue arrancando desde Steam?
+- [ ] KPatcher sin interfaz con K1CP y 2-3 mods TSLPatcher con opciones sobre una copia de K1; lo mismo con HoloPatcher en otra copia; comparar hashes de `override/`, `dialog.tlk`, `modules/`
+
+**Preguntar (los manda Tatoh):** al autor de KOTORganizer, permiso para usar los KSON; a los administradores de Deadly Stream, si se puede bajar en lote
+
+**Sin verificar:** qué bytes cambia UniWS en el exe de Steam (los pasos están en un video), si `--uninstall` de KPatcher/HoloPatcher pide confirmación, mayúsculas exactas que trae la instalación de Steam, si Deadly Stream limita descargas
 
 ## 🧬 Herencia de upstream a nivel repo
 
