@@ -869,6 +869,13 @@ After asking design, we're choosing to simply open the mod page for now.
             var logger = _serviceProvider.GetRequiredService<ILogger<LibraryViewModel>>();
             logger.LogInformation("Installation of {LibraryItem} was cancelled by user", libraryItem.Name);
         }
+        catch (Exception ex)
+        {
+            // Without this the failure ends up as an unhandled R3 exception and the button looks like it does nothing
+            var logger = _serviceProvider.GetRequiredService<ILogger<LibraryViewModel>>();
+            logger.LogError(ex, "Installation of {LibraryItem} failed", libraryItem.Name);
+            _notificationService.ShowToast($"No se instaló '{libraryItem.Name}': {ex.Message}", ToastNotificationVariant.Failure);
+        }
     }
 
     private async ValueTask RemoveSelectedItems(CancellationToken cancellationToken)
