@@ -7,19 +7,19 @@
     <project_license>GPL-3.0-only</project_license>
 
     <name>tModManager</name>
-    <summary>Mod manager for Cyberpunk 2077 on Linux (Steam/Proton)</summary>
+    <summary>Mod manager for Linux games on Steam/Proton</summary>
 
     <developer id="io.github.t4toh">
         <name>Tatoh</name>
     </developer>
 
     <description>
-        <p>Mod manager for Cyberpunk 2077 on Linux, running the game through Steam/Proton. Based on the discontinued Nexus Mods App (GPL-3.0).</p>
+        <p>Mod manager for Linux games running through Steam/Proton: it installs mods and collections, keeps the game folder clean and checks what each game needs in its Proton prefix. Cyberpunk 2077 is supported today; more games are on the way. Based on the discontinued Nexus Mods App (GPL-3.0).</p>
     </description>
 
     <branding>
-        <color type="primary" scheme_preference="light">#fafafa</color>
-        <color type="primary" scheme_preference="dark">#1d1d21</color>
+        <color type="primary" scheme_preference="light">#faf9f5</color>
+        <color type="primary" scheme_preference="dark">#14151a</color>
     </branding>
 
     <launchable type="desktop-id">io.github.t4toh.tmodmanager.desktop</launchable>

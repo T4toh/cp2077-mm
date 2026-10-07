@@ -2,7 +2,7 @@
 Type=Application
 Name=tModManager
 GenericName=Mod Manager
-Comment=Mod manager for Cyberpunk 2077 on Linux (Steam/Proton)
+Comment=Mod manager for Linux games on Steam/Proton
 Categories=Game
 Terminal=false
 StartupWMClass=tModManager
