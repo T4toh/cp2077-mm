@@ -32,6 +32,7 @@ Mergeado o en PR, compilado en Mac pero sin correr en la PC con el juego (en Mac
 - [ ] **Cookie por stdin a curl:** bajar un mod o una colección con la cuenta free (usa `GenerateDownloadUrl` con las cookies de Firefox): tiene que andar igual que antes. Mientras baja, `ps -ef | grep curl` no muestra `Cookie:`
 - [ ] **Readmes fuera de la raíz del juego:** suite (`NexusMods.Games.RedEngine.Tests`, caso nuevo "Readmes At The Root" de `PathBasedInstallerTests`). Reinstalar *Flatlined Exit*, *Item Records Fixes* o *Slaughtomatic* y aplicar: en la raíz del juego no aparece su `*_readme.txt` (los de antes los saca Deep Clean)
 - [ ] **`..` rechazado al instalar:** suite (`Sdk.Tests` ya pasa en Mac; `FOMOD.Tests` y los de `Collections` en Linux). Sin mod de prueba con `..` a mano: alcanza con que la colección real se instale igual que antes (ningún mod legítimo trae `..`)
+- [ ] **Menores de la fase 2:** suite completa (toca `FileHashesService`, el stub de tests y las firmas de archivo). Instalar un preset de apariencia (`.preset`) sigue andando
 - [ ] **FOMOD `enableallplugins`:** suite local (`./dev.sh` opción 4, al menos `NexusMods.Games.FOMOD.Tests`) y reinstalar `WTNC Config`: el WARN `Unknown FOMOD instruction type: enableallplugins` ya no aparece y el mod queda igual que antes
 
 ### Cómo probar con datos reales
@@ -167,7 +168,7 @@ El core heredado de upstream ya es multi-juego (`IGame`, `SteamLocator`, API de 
 - [ ] **Downloads por juego:** una sola carpeta; el rescan de colecciones fuerza el vínculo cuando coinciden el nombre y el tamaño (`CollectionDownloader.RescanDownloads`; si Nexus no dio tamaño, solo el nombre). Subcarpeta por juego o filtrar candidatos. Lo correcto: guardar el MD5 que trae `collection.json` también para las descargas de Nexus (hoy solo se guarda el de las externas, `HandleExternalDownload`) y vincular por MD5
 - [ ] **Storage Manager por juego:** `StorageStats.CyberpunkBackupsSize` → tamaños por juego
 - [ ] **GOG/Heroic** (sacado en `723cb0a11`): Witcher 3 y KOTOR se juegan mucho por GOG. Decidir si vuelve o si alcanza con agregar a mano
-- [ ] **Menores:** `LegacyDataDetector.LegacyBackupsFolder` (código muerto), referencias duplicadas en `App.csproj` (líneas 23/25 y 24/26), `FileType.Cyberpunk2077AppearancePreset` en `Sdk/FileExtractor/Signatures.cs` (mover a RedEngine), `FileHashesService.cs:434` busca versiones por nombre sin filtrar por juego, textos (Welcome, `.desktop`, metainfo, pupnet), PNG de diseño `cyberpunk_game.png`
+- [ ] **Menores:** `LegacyDataDetector.LegacyBackupsFolder` (sin uso; mejor usarlo para "Backups viejos de NexusMods.App", arriba), textos (Welcome, `.desktop`, metainfo, pupnet: van cuando entre el segundo juego), PNG de diseño `cyberpunk_game.png` (va con el ícono genérico). Hechos el 2026-10-07: referencias duplicadas en `App.csproj`, `FileType.Cyberpunk2077AppearancePreset` borrado (nadie lo usaba: `AppearancePresetInstaller` va por extensión), `TryGetLocatorIdsForVanityVersion` filtra por el app ID de Steam de la instalación
 
 Ya genérico, no tocar: `SteamLocator`, Protontricks, API de Nexus y cookies, nxm, mapeo dominio→juego, migración `_0010`, semáforo del `SynchronizerService` (serializa entre juegos: más lento, correcto). Library ya separa `LocalFile` de `NexusModsLibraryItem`: una fuente nueva es otro tipo de item + su descargador.
 

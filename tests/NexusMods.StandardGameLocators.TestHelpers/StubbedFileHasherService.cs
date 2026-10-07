@@ -203,7 +203,7 @@ public class StubbedFileHasherService : IFileHashesService
 
     public LocatorId[] GetLocatorIdsForVersionDefinition(GameStore gameStore, VersionDefinition.ReadOnly versionDefinition) => [];
 
-    public bool TryGetLocatorIdsForVanityVersion(GameStore gameStore, VanityVersion version, out LocatorId[] commonIds)
+    public bool TryGetLocatorIdsForVanityVersion(GameInstallation installation, VanityVersion version, out LocatorId[] commonIds)
     {
         switch (version.Value)
         {
