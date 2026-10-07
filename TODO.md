@@ -19,8 +19,15 @@ Todo lo mergeado hasta #55 está probado con el juego real. Última prueba compl
 
 - [ ] **El rescan MD5 no es automático** (solo el botón "Rescan downloads"): con el reset se bajó todo de nuevo aunque las descargas estaban. Correrlo solo antes de bajar una colección
 - [ ] **Avisar al borrar el prefix de Proton** que después hacen falta `vcrun2022` y `d3dcompiler_47` (o instalarlos con protontricks desde la app); ahora el health check lo detecta, pero hay que ir a buscarlo
-- [ ] **FOMOD: instrucción `enableallplugins` desconocida** (visto 2026-10-06, WARN de `FomodXmlInstaller` al instalar `WTNC Config` y un mod más de la colección): se ignora, así que si el mod esperaba todos sus plugins activos alguno puede quedar afuera. Ver qué hace en la especificación FOMOD y soportarla. El juego anduvo igual
+- [x] **FOMOD: instrucción `enableallplugins` desconocida** (visto 2026-10-06, WARN de `FomodXmlInstaller` al instalar `WTNC Config` y un mod más de la colección; resuelto 2026-10-07): no era un bug. La librería FOMOD la emite al final de **toda** instalación XML que sale bien (`XmlScriptInstaller.cs` de `Nexus-Mods/fomod-installer`) y significa "activar los plugins `.esp`/`.esm` del mod": load order de Bethesda, nada que hacer en CP2077. Ahora se reconoce sin warning. Hace falta de verdad cuando llegue Skyrim/Fallout 4 (`plugins.txt`, pieza 5)
 - [ ] **Super Clean con varios loadouts:** hoy se niega (guarda del 2026-09-25). Arreglo real: conservar todos los snapshots de una corrida (cada pasada con sync crea uno y `PruneOldBackups` se lleva el primero, el único con archivos no gestionados). El orden de snapshots es por nombre (hora local): un cambio de horario o una carpeta ajena en `Backups/` puede elegir mal
+
+### Para probar en Linux
+
+Mergeado o en PR, compilado en Mac pero sin correr en la PC con el juego (en Mac la app no arranca y casi toda la suite falla por `LinuxInterop`). Borrar cada línea cuando quede probada.
+
+- [ ] **#57, toast al fallar la instalación desde la biblioteca:** "Borrar descargas", borrar `DataModel/Archives/` con la app cerrada, instalar desde la biblioteca un mod que no esté en ninguna colección instalada. Tiene que salir un toast de error con el nombre del mod y "Volvé a bajar el mod", y un `ERR` "Installation of … failed" en el log
+- [ ] **FOMOD `enableallplugins`:** suite local (`./dev.sh` opción 4, al menos `NexusMods.Games.FOMOD.Tests`) y reinstalar `WTNC Config`: el WARN `Unknown FOMOD instruction type: enableallplugins` ya no aparece y el mod queda igual que antes
 
 ### Cómo probar con datos reales
 

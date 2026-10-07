@@ -212,8 +212,12 @@ public class FomodXmlInstaller : ALibraryArchiveInstaller
             {
                 ConvertInstructionCopy(transaction, instruction, loadoutGroup, loadoutId, fomodArchiveFiles, gamePath);
             }
+            else if (instruction.type == "enableallplugins")
+            {
+                // Emitted at the end of every successful XML install: "activate the mod's .esp/.esm plugins".
+                // No game we manage has a plugin load order yet; Skyrim/Fallout 4 will need it (plugins.txt)
+            }
             // TODO: "mkdir" - not sure if we need/want this
-            // TODO: "enableallplugins"
             // "iniedit" - only supported by c# script and modscript installers atm
             // "generatefile" - only supported by c# script installers
             // "enableplugin" - supported in the fomod-installer module but doesn't seem to be emitted anywhere
