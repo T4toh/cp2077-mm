@@ -108,22 +108,10 @@ public class InstallCollectionJob : IJobDefinitionWithStart<InstallCollectionJob
             && LibraryFile.DownloadPath.TryGetValue(SourceCollection.AsLibraryFile(), out var packageRel)
             && downloads.Combine(packageRel).FileExists;
 
+        // The package itself is on disk, but its extracted entries may still be missing from the file
+        // store after a manual clean. If collection.json can't be restored, re-download like a missing package.
         if (packageOnDisk)
-        {
-            // The package itself is on disk, but its extracted entries (collection.json, bundled and
-            // patch files) may still be missing from the file store after a manual clean — restore
-            // them from the package before anything tries to read them from the store.
-            var children = LibraryArchiveFileEntry.FindByParent(Connection.Db, SourceCollection.AsLibraryFile().Id)
-                .Select(entry => entry.AsLibraryFile().Hash);
-            await ServiceProvider.GetRequiredService<IDownloadReExtractor>()
-                .RestoreMissingAsync(FileStore, children, context.CancellationToken);
-
-            // If collection.json is still missing after restoring, the package can't be parsed;
-            // fall through to a fresh re-download like a fully-missing package.
-            var jsonEntry = NexusModsLibrary.GetCollectionJsonFile(SourceCollection);
-            if (!jsonEntry.IsValid() || !await FileStore.HaveFile(jsonEntry.AsLibraryFile().Hash))
-                packageOnDisk = false;
-        }
+            packageOnDisk = await NexusModsLibrary.RestoreCollectionPackageAsync(SourceCollection, context.CancellationToken);
 
         NexusModsCollectionLibraryFile.ReadOnly sourceCollection = SourceCollection;
         if (!SourceCollection.IsValid() || !packageOnDisk)

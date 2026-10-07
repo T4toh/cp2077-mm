@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using DynamicData.Kernel;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NexusMods.Abstractions.Collections.Json;
 using NexusMods.Abstractions.NexusModsLibrary;
@@ -15,6 +16,7 @@ using NexusMods.Networking.NexusWebApi.Errors;
 using NexusMods.Networking.NexusWebApi.Extensions;
 using NexusMods.Paths;
 using NexusMods.Sdk;
+using NexusMods.Sdk.FileStore;
 using NexusMods.Sdk.Hashes;
 using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Library;
@@ -764,6 +766,24 @@ public partial class NexusModsLibrary
 
         var jsonFileEntity = archive.Children.FirstOrDefault(f => f.Path == "collection.json");
         return jsonFileEntity;
+    }
+
+    /// <summary>
+    /// Puts the package's entries (collection.json, bundled and patch files) back into the file store
+    /// from the package in Downloads when the store lost them. False when collection.json is still
+    /// missing (the package is gone too): the collection has to be downloaded again.
+    /// </summary>
+    public async Task<bool> RestoreCollectionPackageAsync(
+        NexusModsCollectionLibraryFile.ReadOnly collectionLibraryFile,
+        CancellationToken cancellationToken)
+    {
+        var children = LibraryArchiveFileEntry.FindByParent(_connection.Db, collectionLibraryFile.AsLibraryFile().Id)
+            .Select(entry => entry.AsLibraryFile().Hash);
+        await _serviceProvider.GetRequiredService<IDownloadReExtractor>()
+            .RestoreMissingAsync(_fileStore, children, cancellationToken);
+
+        var jsonEntry = GetCollectionJsonFile(collectionLibraryFile);
+        return jsonEntry.IsValid() && await _fileStore.HaveFile(jsonEntry.AsLibraryFile().Hash);
     }
 
     public static string? GenerateChangelog(ICollectionRevision current, Optional<ICollectionRevision> previous)
