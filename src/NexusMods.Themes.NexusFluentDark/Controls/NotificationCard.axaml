@@ -101,14 +101,18 @@
     <Style Selector="^:information /template/ Panel#PART_HeaderBar">
       <Setter Property="Background" Value="{DynamicResource NotificationCardInformationBackgroundBrush}"/>
     </Style>
+    <!-- Neutral toasts have no bar; success, warning and failure show one in the theme's colors -->
     <Style Selector="^:success /template/ Panel#PART_HeaderBar">
-      <Setter Property="Background" Value="{DynamicResource NotificationCardSuccessBackgroundBrush}"/>
+      <Setter Property="IsVisible" Value="True"/>
+      <Setter Property="Background" Value="{StaticResource SuccessStrongBrush}"/>
     </Style>
     <Style Selector="^:warning /template/ Panel#PART_HeaderBar">
-      <Setter Property="Background" Value="{DynamicResource NotificationCardWarningBackgroundBrush}"/>
+      <Setter Property="IsVisible" Value="True"/>
+      <Setter Property="Background" Value="{StaticResource WarningStrongBrush}"/>
     </Style>
     <Style Selector="^:error /template/ Panel#PART_HeaderBar">
-      <Setter Property="Background" Value="{DynamicResource NotificationCardErrorBackgroundBrush}"/>
+      <Setter Property="IsVisible" Value="True"/>
+      <Setter Property="Background" Value="{StaticResource DangerStrongBrush}"/>
     </Style>
   </ControlTheme>
 

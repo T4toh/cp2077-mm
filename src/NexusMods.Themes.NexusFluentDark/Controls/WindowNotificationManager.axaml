@@ -23,7 +23,8 @@
                 <TextBlock
                     Text="{Binding Message}"
                     Foreground="{StaticResource NeutralStrongBrush}"
-                    TextWrapping="NoWrap"
+                    TextWrapping="Wrap"
+                    MaxLines="4"
                     TextTrimming="CharacterEllipsis"/>
               </StackPanel>
             </DataTemplate>
