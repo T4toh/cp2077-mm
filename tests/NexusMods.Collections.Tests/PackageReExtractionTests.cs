@@ -73,4 +73,52 @@ public class PackageReExtractionTests(ITestOutputHelper helper) : ACyberpunkIsol
         var root = await NexusModsLibrary.ParseCollectionJsonFile(sourceCollection, CancellationToken.None);
         root.Info.Name.Should().Be("Test Collection");
     }
+
+    // Adding a collection from an nxm:// link reuses a library entry whose collection.json may be gone
+    // from the store (2026-10-06: Archives deleted by hand, then "Borrar descargas").
+    [Fact]
+    public async Task RestoreCollectionPackage_RestoresJson_WhenPackageIsInDownloads()
+    {
+        var (sourceCollection, _) = await AddPackageWithoutStoreJson();
+
+        (await NexusModsLibrary.RestoreCollectionPackageAsync(sourceCollection, CancellationToken.None)).Should().BeTrue();
+        var root = await NexusModsLibrary.ParseCollectionJsonFile(sourceCollection, CancellationToken.None);
+        root.Info.Name.Should().Be("Test Collection");
+    }
+
+    [Fact]
+    public async Task RestoreCollectionPackage_ReturnsFalse_WhenPackageIsGoneToo()
+    {
+        var (sourceCollection, zip) = await AddPackageWithoutStoreJson();
+        zip.Delete();
+
+        (await NexusModsLibrary.RestoreCollectionPackageAsync(sourceCollection, CancellationToken.None)).Should().BeFalse();
+    }
+
+    private async Task<(NexusModsCollectionLibraryFile.ReadOnly Collection, AbsolutePath Zip)> AddPackageWithoutStoreJson()
+    {
+        var downloads = ServiceProvider.GetRequiredService<ISettingsManager>().Get<DownloadsSettings>().Folder.ToPath(FileSystem);
+        downloads.CreateDirectory();
+        var zip = downloads.Combine("collection.zip");
+        await using (var fs = zip.Create())
+        using (var archive = new ZipArchive(fs, ZipArchiveMode.Create))
+        {
+            await using var w = new StreamWriter(archive.CreateEntry("collection.json").Open());
+            await w.WriteAsync("""{"info":{"name":"Test Collection","domainName":"cyberpunk2077"},"mods":[]}""");
+        }
+
+        var local = await LibraryService.AddLocalFile(zip);
+        using (var tx = Connection.BeginTransaction())
+        {
+            tx.Add(local.AsLibraryFile().Id, NexusModsCollectionLibraryFile.CollectionSlug, CollectionSlug.From("test-slug"));
+            tx.Add(local.AsLibraryFile().Id, NexusModsCollectionLibraryFile.CollectionRevisionNumber, RevisionNumber.From(1));
+            await tx.Commit();
+        }
+
+        var sourceCollection = NexusModsCollectionLibraryFile.Load(Connection.Db, local.AsLibraryFile().Id);
+        var jsonHash = NexusModsLibrary.GetCollectionJsonFile(sourceCollection).AsLibraryFile().Hash;
+        ((LooseFileStore)FileStore).PathFor(jsonHash).Delete();
+        (await FileStore.HaveFile(jsonHash)).Should().BeFalse();
+        return (sourceCollection, zip);
+    }
 }

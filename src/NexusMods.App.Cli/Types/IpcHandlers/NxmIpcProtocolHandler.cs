@@ -7,6 +7,7 @@ using NexusMods.Abstractions.NexusWebApi;
 using NexusMods.Abstractions.NexusWebApi.Types;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.MnemonicDB.Abstractions.IndexSegments;
+using NexusMods.MnemonicDB.Abstractions.TxFunctions;
 using NexusMods.Networking.NexusWebApi;
 using NexusMods.Networking.NexusWebApi.Auth;
 using NexusMods.Paths;
@@ -108,7 +109,20 @@ public class NxmIpcProtocolHandler : IIpcProtocolHandler
                 (NexusModsCollectionLibraryFile.CollectionRevisionNumber, revision)
             );
 
-            if (!list.Select(id => NexusModsCollectionLibraryFile.Load(db, id)).TryGetFirst(x => x.IsValid(), out var collectionFile))
+            var found = list.Select(id => NexusModsCollectionLibraryFile.Load(db, id)).TryGetFirst(x => x.IsValid(), out var collectionFile);
+
+            // The library can keep the package entry after its collection.json left the store and the
+            // package left Downloads: drop the stale entry and download it again, like InstallCollectionJob.
+            if (found && !await nexusModsLibrary.RestoreCollectionPackageAsync(collectionFile, CancellationToken.None))
+            {
+                _logger.LogWarning("Falta el collection.json de {Slug} rev {Revision} y el paquete ya no está en Descargas; se vuelve a bajar", slug, revision);
+                using var cleanupTx = connection.BeginTransaction();
+                cleanupTx.Delete(collectionFile.Id, recursive: true);
+                await cleanupTx.Commit();
+                found = false;
+            }
+
+            if (!found)
             {
                 var downloadJob = nexusModsLibrary.CreateCollectionDownloadJob(destination, collectionUrl.Collection.Slug, collectionUrl.Revision, CancellationToken.None);
                 var libraryFile = await library.AddDownload(downloadJob);
