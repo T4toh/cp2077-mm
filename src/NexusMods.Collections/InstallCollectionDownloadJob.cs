@@ -416,6 +416,8 @@ public class InstallCollectionDownloadJob : IJobDefinitionWithStart<InstallColle
         var pathFallbackCount = 0;
         foreach (var pair in CollectionMod.Hashes)
         {
+            // The destination comes straight from collection.json
+            SafePath.ThrowIfParentSegment(pair.Path, CollectionMod.Name);
             // Try and find the hash we are looking for
             if (!hashes.TryGetValue(pair.MD5, out var libraryItem))
             {

@@ -6,6 +6,7 @@ using NexusMods.Abstractions.Loadouts;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Library;
 using NexusMods.Sdk.Games;
+using NexusMods.Sdk.IO;
 using NexusMods.Sdk.Loadouts;
 
 namespace NexusMods.Collections;
@@ -39,6 +40,7 @@ internal class FallbackCollectionDownloadInstaller : ALibraryArchiveInstaller
         foreach (var fileEntry in libraryArchive.Children)
         {
             var to = new GamePath(_defaultPath.LocationId, _defaultPath.Path.Join(fileEntry.Path));
+            SafePath.ThrowIfParentSegment(to.Path, libraryArchive.AsLibraryFile().AsLibraryItem().Name);
 
             _ = new LoadoutFile.New(transaction, out var entityId)
             {
