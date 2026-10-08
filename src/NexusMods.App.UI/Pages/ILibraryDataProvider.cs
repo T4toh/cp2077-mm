@@ -109,15 +109,7 @@ public static class LibraryDataProviderHelper
             .RemoveKey()
             .StartWithEmpty();
         
-        var installedCollectionsObservable = linkedLoadoutItemsObservable
-            .Transform(item => item.Parent.AsLoadoutItem())
-            .ChangeKey(coll => coll.Id)
-            .Distinct()
-            .Filter(collection => collection.IsValid())
-            .Transform(collection => collection.Name)
-            .SortBy(static name => name)
-            .RemoveKey()
-            .StartWithEmpty();
+        var installedCollectionsObservable = ObserveInstalledCollectionNames(linkedLoadoutItemsObservable);
 
         // Only take downloaded entries that are not already installed
         var filteredDownloadedCollectionsObservable = downloadedNamesObservable.Except(installedCollectionsObservable);
@@ -135,6 +127,19 @@ public static class LibraryDataProviderHelper
                 filteredDownloadedCollectionsObservable
             )
         );
+    }
+
+    // Several linked items can share a collection (two files of one mod page, or one file installed twice):
+    // keying by the collection id would add the same key twice
+    public static IObservable<IChangeSet<string>> ObserveInstalledCollectionNames(IObservable<IChangeSet<LoadoutItem.ReadOnly, EntityId>> linkedLoadoutItemsObservable)
+    {
+        return linkedLoadoutItemsObservable
+            .Filter(static item => item.Parent.AsLoadoutItem().IsValid())
+            .DistinctValues(static item => (item.ParentId, item.Parent.AsLoadoutItem().Name))
+            .Transform(static collection => collection.Name)
+            .SortBy(static name => name)
+            .RemoveKey()
+            .StartWithEmpty();
     }
 
     public static void AddInstallActionComponent(

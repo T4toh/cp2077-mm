@@ -7,7 +7,8 @@
 #   ./sandbox-run.sh           launch the Release build inside the jail
 #   ./sandbox-run.sh --check   prove the jail: kept paths writable, everything else not (exit 1 otherwise)
 #
-# Steam stays outside: launching the game from the app does not work in here.
+# Steam stays outside: launching the game from the app does not work in here, and neither does "Instalar" in the
+# Wine prefix panel (protontricks writes ~/.cache and Steam Linux Runtime lock files; run that step outside).
 set -euo pipefail
 command -v bwrap >/dev/null || { echo "Falta bubblewrap: sudo pacman -S bubblewrap"; exit 1; }
 

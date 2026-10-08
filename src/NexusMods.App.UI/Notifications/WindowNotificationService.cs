@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
+using Avalonia.Threading;
 using NexusMods.UI.Sdk;
 using NexusMods.UI.Sdk.Dialog;
 
@@ -45,21 +46,27 @@ public class WindowNotificationService : IWindowNotificationService
     {
         DispatcherHelper.EnsureOnUIThread(() =>
             {
+                var isNew = _notificationManager is null;
                 var manager = GetNotificationManager();
                 if (manager == null) return;
-                
-                // TODO: Use ToastNotificationVariant
+
                 // TODO: Use buttons and handler
-        
+
                 var notification = new Notification(
                     null,
                     message,
-                    NotificationType.Information,
-                    expiration ?? TimeSpan.FromSeconds(5));
-                
-                // Must be on UI thread to show the notification
-                manager.Show(notification);
-                return;
+                    type switch
+                    {
+                        ToastNotificationVariant.Neutral => NotificationType.Information,
+                        ToastNotificationVariant.Success => NotificationType.Success,
+                        ToastNotificationVariant.Failure => NotificationType.Error,
+                    },
+                    expiration ?? TimeSpan.FromSeconds(type == ToastNotificationVariant.Failure ? 10 : 5));
+
+                // Must be on UI thread to show the notification. A manager created just now has no template yet
+                // (it gets one on the next layout pass) and drops whatever it is shown, so the first toast waits
+                if (isNew) Dispatcher.UIThread.Post(() => manager.Show(notification), DispatcherPriority.Background);
+                else manager.Show(notification);
             }
         );
     }
