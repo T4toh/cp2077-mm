@@ -14,6 +14,7 @@ using NexusMods.App.UI.Pages.LoadoutPage;
 using NexusMods.App.UI.Resources;
 using NexusMods.App.UI.Windows;
 using NexusMods.App.UI.WorkspaceSystem;
+using NexusMods.Collections;
 using NexusMods.MnemonicDB.Abstractions;
 using NexusMods.Sdk.Games;
 using NexusMods.Sdk.Jobs;
@@ -107,6 +108,12 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
                     return metadata.GameInstallMetadataId == _gameMetadataId;
                 }).Prepend(false);
 
+                // While a mod or a collection installs, the loadout still looks Current (nothing committed yet):
+                // launching or applying then runs against half an install
+                var isInstallingObservable = _jobMonitor.HasActiveJob<IInstallLoadoutItemJob>(job => job.LoadoutId == loadoutId).Prepend(false)
+                    .CombineLatest(_jobMonitor.HasActiveJob<InstallCollectionJob>(job => job.TargetLoadout == loadoutId).Prepend(false),
+                        static (item, collection) => item || collection);
+
                 // Note(sewer):
                 // Fire an initial value with StartWith because CombineLatest requires all stuff to have latest values.
                 // In any case, we should prevent Apply from being available while a file is in use.
@@ -116,19 +123,21 @@ public class ApplyControlViewModel : AViewModel<IApplyControlViewModel>, IApplyC
                 //     - This is done in 'Synchronize' method.
                 // - They're running a tool from within the App.
                 //     - Check running jobs.
-                loadoutStatuses.CombineLatest(isProcessingObservable, gameStatuses, gameRunningTracker.GetWithCurrentStateAsStarting(), hasUnmanagingJob)
+                loadoutStatuses.CombineLatest(isProcessingObservable, gameStatuses, gameRunningTracker.GetWithCurrentStateAsStarting(), hasUnmanagingJob, isInstallingObservable)
                     .OnUI()
                     .Subscribe(status =>
                     {
-                        var (ldStatus, isProcessing,  gameStatus, running, isUnmanaging) = status;
+                        var (ldStatus, isProcessing,  gameStatus, running, isUnmanaging, isInstalling) = status;
                         IsProcessing = isProcessing;
                         CanApply = !isProcessing
+                                   && !isInstalling
                                    && !running
                                    && gameStatus != GameSynchronizerState.Busy
                                    && ldStatus != LoadoutSynchronizerState.Pending
                                    && ldStatus != LoadoutSynchronizerState.Current
                                    && !isUnmanaging;
-                        IsLaunchButtonEnabled = !isProcessing 
+                        IsLaunchButtonEnabled = !isProcessing
+                                                && !isInstalling
                                                 && !running
                                                 && gameStatus != GameSynchronizerState.Busy
                                                 && ldStatus == LoadoutSynchronizerState.Current
