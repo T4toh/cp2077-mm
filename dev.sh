@@ -42,7 +42,7 @@ show_menu() {
     echo " 11) Ejecutar app en jaula (prueba real, disco protegido)"
     echo "  0) Salir"
     echo ""
-    read -p "Opcion: " option
+    read -p "Opcion: " option || exit 0   # EOF (Ctrl-D or a closed pipe): without this the menu loops forever
     echo ""
 }
 
