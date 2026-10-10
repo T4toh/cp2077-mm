@@ -114,6 +114,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     private void CleanDirectories(IEnumerable<GamePath> directoriesWithDeletions, DiskState newDiskState, GameInstallation installation)
     {
+        // Folders inside a whitelisted location (the Wine prefix) are the game's or Wine's, never ours to remove
+        directoriesWithDeletions = directoriesWithDeletions.Where(dir => installation.Locations[dir.LocationId].ManagedFiles is null);
         var processedDirectories = new HashSet<GamePath>();
         var directoriesToDelete = new HashSet<GamePath>();
         var directoriesInUse = new HashSet<GamePath>();
@@ -575,7 +577,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     /// <summary>
     /// Throws before anything touches the disk when a write or delete would land outside its location: a <c>..</c>
-    /// segment (<see cref="GameLocations.ToAbsolutePath"/> throws) or a folder in between that is a symlink.
+    /// segment (<see cref="GameLocations.ToAbsolutePath"/> throws), a folder in between that is a symlink, or, in a
+    /// location with a whitelist (the Wine prefix), a path that is not on the list or is itself a symlink.
     /// </summary>
     private static void EnsureDiskChangesStayInside(Dictionary<GamePath, SyncNode> syncTree, GameLocations locations)
     {
@@ -583,9 +586,13 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         foreach (var (path, node) in syncTree)
         {
             if ((node.Actions & diskChanges) == 0) continue;
+            if (!locations.IsManaged(path))
+                throw new InvalidOperationException($"`{path}` no está entre los archivos que tModManager gestiona en esa ubicación; no se escribe ni se borra nada ahí");
             var resolved = locations.ToAbsolutePath(path);
             if (SafePath.IsUnderSymlink(locations[path.LocationId].Path.ToString(), resolved.ToString()))
                 throw new InvalidOperationException($"`{path}` está dentro de una carpeta que es un symlink; tModManager no escribe ni borra a través de links");
+            if (locations[path.LocationId].ManagedFiles is not null && SafePath.IsSymlink(resolved))
+                throw new InvalidOperationException($"`{path}` es un symlink; tModManager no escribe ni borra a través de links");
         }
     }
 

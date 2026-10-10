@@ -83,4 +83,117 @@ public class WinePrefixLocationTests(ITestOutputHelper helper) : ACyberpunkIsola
         IndexedPrefixPaths().Should().BeEmpty();
         loadout.IsValid().Should().BeTrue();
     }
+
+    private async Task<Loadout.ReadOnly> WithSettingsMod(Loadout.ReadOnly loadout)
+    {
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, [SettingsPath], loadout, "SettingsMod");
+            await tx.Commit();
+        }
+        Refresh(ref loadout);
+        return loadout;
+    }
+
+    /// <summary>Canary folder outside the prefix with the settings chain inside it, and a symlink at <paramref name="linkRelative"/> pointing to it.</summary>
+    private async Task<(AbsolutePath Outside, AbsolutePath Settings, AbsolutePath Canary)> LinkedOutside(string linkRelative, string insideSettings)
+    {
+        var outside = TemporaryFileManager.CreateFolder().Path;
+        var settings = outside.Combine(insideSettings);
+        settings.Parent.CreateDirectory();
+        await settings.WriteAllTextAsync("user data");
+        var canary = outside.Combine("precious.txt");
+        await canary.WriteAllTextAsync("precious");
+
+        var link = PrefixFile(linkRelative);
+        link.Parent.CreateDirectory();
+        File.CreateSymbolicLink(link.ToString(), outside.ToString());
+        return (outside, settings, canary);
+    }
+
+    [Fact]
+    public async Task ResetRestoresTheSettingsAndLeavesTheRest()
+    {
+        await WritePrefixFile(Settings, "original");
+        await WritePrefixFile(SettingsFolder + "/CrashInfo.json", "crash");
+        var loadout = await ManagedLoadout();
+        loadout = await WithSettingsMod(loadout);
+
+        loadout = await Synchronizer.Synchronize(loadout);
+        (await PrefixFile(Settings).ReadAllTextAsync()).Should().Be(Settings, "AddModAsync writes the relative path as content");
+
+        // The game edits its settings between syncs
+        await PrefixFile(Settings).WriteAllTextAsync("edited by the game");
+
+        await LoadoutManager.UnManage(GameInstallation);
+
+        (await PrefixFile(Settings).ReadAllTextAsync()).Should().Be("original");
+        (await PrefixFile(SettingsFolder + "/CrashInfo.json").ReadAllTextAsync()).Should().Be("crash");
+        PrefixFile(SettingsFolder).DirectoryExists().Should().BeTrue("the app never removes folders inside the prefix");
+    }
+
+    [Fact]
+    public async Task ModFileOutsideTheWhitelist_FailsTheSyncWithoutWriting()
+    {
+        var loadout = await ManagedLoadout();
+        var outsideWhitelist = new GamePath(LocationId.WinePrefix, "drive_c/users/steamuser/Desktop/x.txt");
+        using (var tx = Connection.BeginTransaction())
+        {
+            await AddModAsync(tx, [outsideWhitelist], loadout, "DesktopMod");
+            await tx.Commit();
+        }
+        Refresh(ref loadout);
+
+        var act = () => Synchronizer.Synchronize(loadout);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*no está entre los archivos*");
+        PrefixFile("drive_c/users/steamuser/Desktop/x.txt").FileExists.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SymlinkedSettingsFolder_IsNeverWrittenThroughNorIndexed()
+    {
+        var (_, outsideSettings, canary) = await LinkedOutside(SettingsFolder, "UserSettings.json");
+        var loadout = await ManagedLoadout();
+        IndexedPrefixPaths().Should().BeEmpty();
+
+        loadout = await WithSettingsMod(loadout);
+        var act = () => Synchronizer.Synchronize(loadout);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*symlink*");
+        (await outsideSettings.ReadAllTextAsync()).Should().Be("user data");
+        canary.FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SymlinkedUserFolder_IsNeverIndexedNorDeleted()
+    {
+        // A Wine prefix can link the whole user folder, or Documents/Desktop, to the real $HOME
+        var (_, outsideSettings, canary) = await LinkedOutside("drive_c/users/steamuser", "AppData/Local/CD Projekt Red/Cyberpunk 2077/UserSettings.json");
+
+        await ManagedLoadout();
+        IndexedPrefixPaths().Should().BeEmpty();
+
+        await LoadoutManager.UnManage(GameInstallation);
+        (await outsideSettings.ReadAllTextAsync()).Should().Be("user data");
+        canary.FileExists.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task WhitelistedFileThatIsASymlink_IsNeverIndexedNorWritten()
+    {
+        var outside = TemporaryFileManager.CreateFolder().Path.Combine("UserSettings.json");
+        await outside.WriteAllTextAsync("user data");
+        PrefixFile(Settings).Parent.CreateDirectory();
+        File.CreateSymbolicLink(PrefixFile(Settings).ToString(), outside.ToString());
+
+        var loadout = await ManagedLoadout();
+        IndexedPrefixPaths().Should().BeEmpty();
+
+        loadout = await WithSettingsMod(loadout);
+        var act = () => Synchronizer.Synchronize(loadout);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*symlink*");
+        (await outside.ReadAllTextAsync()).Should().Be("user data");
+    }
 }
