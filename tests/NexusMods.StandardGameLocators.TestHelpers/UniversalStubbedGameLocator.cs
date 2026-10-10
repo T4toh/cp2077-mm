@@ -9,12 +9,13 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
     where TGame : IGame
 {
     private readonly TemporaryPath _path;
+    private readonly TemporaryPath? _prefix;
     private readonly TGame _game;
     private readonly GameStore[] _stores;
 
     public LocatorId[] LocatorIds { get; set; } = [LocatorId.From("StubbedGameState.zip")];
 
-    /// <summary>The stub Wine prefix (<c>&lt;temp&gt;/pfx</c>), or null when the locator was created without one.</summary>
+    /// <summary>The stub Wine prefix (a sibling temp folder ending in <c>/pfx</c>, never inside the game folder), or null when the locator was created without one.</summary>
     public AbsolutePath? WinePrefix { get; }
 
     public UniversalStubbedGameLocator(
@@ -31,7 +32,9 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
 
         if (withWinePrefix)
         {
-            WinePrefix = _path.Path.Combine("pfx");
+            // A real prefix lives under steamapps/compatdata, never inside the game folder
+            _prefix = fileManager.CreateFolder($"{typeof(TGame).Name}-compatdata");
+            WinePrefix = _prefix.Value.Path.Combine("pfx");
             WinePrefix.Value.CreateDirectory();
         }
 
@@ -65,5 +68,6 @@ public class UniversalStubbedGameLocator<TGame> : IGameLocator, IDisposable
     public void Dispose()
     {
         _path.Dispose();
+        _prefix?.Dispose();
     }
 }

@@ -35,10 +35,9 @@ internal class GameLocationsService : IGameLocationsService
         IGamePathFilter filter,
         CancellationToken outerToken = default)
     {
-        var topLevelLocations = installation.Locations.GetTopLevelLocations();
-        // Never enter symlinked folders: files behind a link live elsewhere, and once indexed the synchronizer
-        // would back them up and delete them on clean/unmanage/loadout switch
-        var enumerable = topLevelLocations.Where(kv => kv.Value.DirectoryExists()).SelectMany(kv => SafePath.EnumerateFilesNoFollow(kv.Value).Where(file => SafePath.IsStrictlyInside(kv.Value, file)));
+        var enumerable = installation.Locations.GetTopLevelLocations()
+            .Where(kv => kv.Value.DirectoryExists())
+            .SelectMany(kv => FilesToIndex(installation.Locations[kv.Key]));
 
         var seenPaths = new ConcurrentDictionary<GamePath, bool>();
         var newFiles = new ConcurrentDictionary<GamePath, IndexFileResult>();
@@ -80,6 +79,25 @@ internal class GameLocationsService : IGameLocationsService
         );
 
         return result;
+    }
+
+    /// <summary>
+    /// Never enter symlinked folders: files behind a link live elsewhere, and once indexed the synchronizer would
+    /// back them up and delete them on clean/unmanage/loadout switch. A location with a whitelist (the Wine prefix)
+    /// is not enumerated at all: only the listed files are looked at, and none of them through a symlink.
+    /// </summary>
+    private static IEnumerable<AbsolutePath> FilesToIndex(GameLocationDescriptor location)
+    {
+        var root = location.Path;
+        if (location.ManagedFiles is { } managed)
+        {
+            return managed
+                .Select(relative => root.Combine(relative))
+                .Where(file => file.FileExists
+                               && !SafePath.IsUnderSymlink(root.ToString(), file.ToString())
+                               && !SafePath.IsSymlink(file));
+        }
+        return SafePath.EnumerateFilesNoFollow(root).Where(file => SafePath.IsStrictlyInside(root, file));
     }
 
     private static bool HasFileChanged(AbsolutePath file, DiskStateEntry.ReadOnly previousState)
