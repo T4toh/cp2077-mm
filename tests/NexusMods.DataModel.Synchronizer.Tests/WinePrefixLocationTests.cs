@@ -196,4 +196,49 @@ public class WinePrefixLocationTests(ITestOutputHelper helper) : ACyberpunkIsola
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*symlink*");
         (await outside.ReadAllTextAsync()).Should().Be("user data");
     }
+
+    private GamePath[] BaselinePrefixPaths()
+    {
+        var metadata = GameRegistry.ForceGetMetadata(GameInstallation);
+        return GameBaselineFile.FindByGame(metadata.Db, metadata)
+            .Select(e => (GamePath)e.Path)
+            .Where(p => p.LocationId == LocationId.WinePrefix)
+            .ToArray();
+    }
+
+    private int ExternalChangesCount(Loadout.ReadOnly loadout) =>
+        LoadoutOverridesGroup.FindByOverridesFor(Connection.Db, loadout.Id)
+            .SelectMany(g => g.AsLoadoutItemGroup().Children.OfTypeLoadoutItemWithTargetPath())
+            .Count(i => ((GamePath)i.TargetPath).LocationId == LocationId.WinePrefix);
+
+    [Fact]
+    public async Task FileTheGameCreatesAfterManaging_IsAnOriginal_AndSurvivesUnManage()
+    {
+        // Same shape as an install managed before the prefix location existed: the file is already there, the
+        // list is already built, and the app sees the file for the first time
+        var loadout = await ManagedLoadout();
+        await WritePrefixFile(Settings, "created by the game");
+
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+
+        BaselinePrefixPaths().Should().Equal(SettingsPath);
+        ExternalChangesCount(loadout).Should().Be(0, "a file nobody but the game writes is an original, not an External Change");
+        await LoadoutManager.UnManage(GameInstallation);
+        (await PrefixFile(Settings).ReadAllTextAsync()).Should().Be("created by the game");
+    }
+
+    [Fact]
+    public async Task GameEditWithoutAMod_ResetRestoresTheOriginal()
+    {
+        await WritePrefixFile(Settings, "original");
+        var loadout = await ManagedLoadout();
+
+        await PrefixFile(Settings).WriteAllTextAsync("edited by the game");
+        loadout = await Synchronizer.Synchronize(loadout.Rebase());
+        ExternalChangesCount(loadout).Should().Be(1);
+
+        await LoadoutManager.UnManage(GameInstallation);
+
+        (await PrefixFile(Settings).ReadAllTextAsync()).Should().Be("original", "originals in the prefix are backed up when first seen");
+    }
 }

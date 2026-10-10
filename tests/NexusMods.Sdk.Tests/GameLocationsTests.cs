@@ -66,4 +66,11 @@ public class GameLocationsTests
         var mapped = locations.ToGamePath(Prefix.Combine("drive_c/Games/Cyberpunk 2077/bin/x64/Cyberpunk2077.exe"));
         await Assert.That(mapped.LocationId).IsEqualTo(LocationId.Game);
     }
+
+    [Test]
+    public async Task IsManaged_UndeclaredLocation_IsFalse()
+    {
+        // The DB can hold paths of a location the locator no longer declares (prefix deleted, app restarted)
+        await Assert.That(Locations.IsManaged(new GamePath(LocationId.WinePrefix, Settings))).IsFalse();
+    }
 }

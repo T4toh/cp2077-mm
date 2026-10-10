@@ -96,13 +96,13 @@ public readonly struct GameLocations : IReadOnlyDictionary<LocationId, GameLocat
     /// <c>Combine</c> keeps it, so this is the one check every synchronizer write and delete goes through.
     /// </summary>
     /// <summary>
-    /// False when the path's location has a whitelist and the path is not in it: the app must not read, write,
-    /// back up or delete it.
+    /// False when the path's location has a whitelist and the path is not in it, or when the location is not declared
+    /// at all (a prefix that no longer exists): the app must not read, write, back up or delete it.
     /// </summary>
     public bool IsManaged(GamePath gamePath)
     {
-        var managed = _locations[gamePath.LocationId].ManagedFiles;
-        return managed is null || managed.Contains(gamePath.Path);
+        if (!_locations.TryGetValue(gamePath.LocationId, out var location)) return false;
+        return location.ManagedFiles is null || location.ManagedFiles.Contains(gamePath.Path);
     }
 
     public AbsolutePath ToAbsolutePath(GamePath gamePath)

@@ -18,7 +18,7 @@ Todo lo mergeado hasta #55 está probado con el juego real. Última prueba compl
 
 ### Pendiente de las pruebas
 
-- [ ] **Pieza 2 en el juego real** (2026-10-09): gestionar con el prefix presente, cambiar un setting en el juego, ver el External Change de `UserSettings.json`, reset, confirmar que el setting volvió y que `cache/` y `CrashInfo.json` siguen. En la jaula (`./dev.sh` opción 11)
+- [ ] **Pieza 2 en el juego real** (2026-10-09): con la instalación ya gestionada, abrir la app y sincronizar (el `UserSettings.json` existente pasa a original y se respalda, sin External Change), cambiar un setting en el juego, ver el External Change, reset, confirmar que el setting volvió y que `cache/` y `CrashInfo.json` siguen. Después: borrar el prefix desde el Storage Manager, reiniciar la app, sincronizar sin error. En la jaula (`./dev.sh` opción 11)
 - [x] **El rescan MD5 no es automático** (solo el botón "Rescan downloads"): con el reset se bajó todo de nuevo aunque las descargas estaban. Desde 2026-10-07 corre solo antes de "bajar requeridos/opcionales". No rehashea lo que la biblioteca ya registró (usa su MD5) y lo que no conoce lo hashea una vez por sesión; vincular por nombre ahora exige también el tamaño cuando Nexus lo da
 - [x] **Avisar al borrar el prefix de Proton** que después hacen falta `vcrun2022` y `d3dcompiler_47` (2026-10-07): el diálogo del Storage Manager y el checkbox del asistente de limpieza lo dicen, y el panel "Wine prefix" de Mis juegos los instala con un botón "Instalar" (protontricks nativo o flatpak, el que haya; `IProtontricksDependency.MakeInstallCommand`) y muestra el mismo comando con "Copiar". Antes era prosa con backticks sin copiar
 - [x] **FOMOD: instrucción `enableallplugins` desconocida** (visto 2026-10-06, WARN de `FomodXmlInstaller` al instalar `WTNC Config` y un mod más de la colección; resuelto 2026-10-07): no era un bug. La librería FOMOD la emite al final de **toda** instalación XML que sale bien (`XmlScriptInstaller.cs` de `Nexus-Mods/fomod-installer`) y significa "activar los plugins `.esp`/`.esm` del mod": load order de Bethesda, nada que hacer en CP2077. Ahora se reconoce sin warning. Hace falta de verdad cuando llegue Skyrim/Fallout 4 (`plugins.txt`, pieza 5)
@@ -397,7 +397,7 @@ Encontrado el 2026-09-24 en la eliminación de `.nx` (revisiones de implementaci
 
 ### Otros TODO relevantes en código
 
-- [ ] **Symlinks de archivo en la carpeta del juego:** el scan los lista y un mod que los reemplace escribe a través del link. El prefix ya lo rechaza (`EnsureDiskChangesStayInside`, solo ubicaciones con whitelist); extender a `Game` cuando se decida qué hacer con links legítimos
+- [ ] **Symlinks de archivo en la carpeta del juego:** el scan los lista y los hashea a través del link; un mod que los reemplace deshace el link (`LooseFileStore.ExtractFiles` lo borra antes de escribir) y el reset borra el archivo. El prefix ya lo rechaza (`EnsureDiskChangesStayInside`, solo ubicaciones con whitelist); extender a `Game` cuando se decida qué hacer con links legítimos
 - `NexusMods.Library/DownloadsService.cs:46` — restaurar descargas completadas desde storage al arrancar
 - `NexusMods.Networking.NexusWebApi/NexusModsLibrary.Collections.cs:237-259` — metadata de colección hardcodeada (`AdultContent`, `Summary`, `Author`)
 - `NexusMods.Networking.NexusWebApi/LoginManager.cs:303` — diálogo de "necesitás login" para operaciones

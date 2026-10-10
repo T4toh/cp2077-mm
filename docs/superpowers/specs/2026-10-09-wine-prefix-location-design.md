@@ -97,8 +97,18 @@ Tres puntos, todos en el core, para que ningún juego pueda olvidarse:
   distinta de `Game` se aplica siempre `BaselineRule` (foto del disco), también cuando Nexus conoce
   la versión. El marcador `BaselineFromDisk` sigue reflejando solo la ubicación `Game`.
 - Efecto: `UserSettings.json` presente al gestionar es original; el reset lo restaura del backup.
-- Caso borde aceptado: prefix recién creado sin `UserSettings.json` al gestionar. El que genere el
-  juego entra como External Change y el reset lo borra (el juego lo regenera con defaults).
+- **Originales que aparecen después** (ajuste de la revisión final, 2026-10-10): un archivo que
+  aparece en una ubicación con whitelist sin que lo haya puesto un mod (prefix creado después de
+  gestionar, o una instalación gestionada antes de que existiera la ubicación) se toma como original
+  en el momento en que el scan lo ve por primera vez (`ReindexState` → `AdoptWhitelistedOriginals`),
+  nunca como External Change. Sin esto el reset o dejar de gestionar lo borraban.
+- **Respaldo de originales:** los originales de ubicaciones con whitelist se respaldan al adoptarlos.
+  Los del juego no se respaldan (Steam o la base de hashes los reponen); los del prefix nadie los
+  repone, y sin respaldo el reset no podía restaurar un `UserSettings.json` editado por el juego.
+- **Prefix borrado:** `SteamLocator` declara el prefix por su ruta fija
+  (`<biblioteca>/steamapps/compatdata/<appid>/pfx`) exista o no, así la base nunca queda con paths de
+  una ubicación que la instalación no declara. `GameLocations.IsManaged` devuelve false para una
+  ubicación no declarada y el guard de escritura lo dice con un mensaje claro.
 - `ReprocessOverrides` y `AdoptableExternalChanges` no cambian (solo paths que la base de Nexus
   lista, o fuera de mods e intrínsecos).
 
