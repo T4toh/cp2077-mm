@@ -21,13 +21,16 @@ public class ACyberpunkIsolatedGameTest<TTest>(ITestOutputHelper helper) : AIsol
     /// </summary>
     public static Dictionary<RelativePath, byte[]> PrimaryFile => new() { [(RelativePath)"bin/x64/Cyberpunk2077.exe"] = "Cyberpunk2077.exe"u8.ToArray() };
 
+    /// <summary>True gives the stub installation a Wine prefix (<c>pfx/</c>), and with it the <c>WinePrefix</c> location.</summary>
+    protected virtual bool WithWinePrefix => false;
+
     protected override IServiceCollection AddServices(IServiceCollection services)
     {
         return base.AddServices(services)
             .AddOSInterop()
             .AddRuntimeDependencies()
             .AddGenericGameSupport()
-            .AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"), PrimaryFile)
+            .AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"), PrimaryFile, withWinePrefix: WithWinePrefix)
             .AddRedEngineGames();
     }
 }
