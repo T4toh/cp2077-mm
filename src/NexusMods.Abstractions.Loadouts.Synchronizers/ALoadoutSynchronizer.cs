@@ -1398,6 +1398,16 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                     nexus[path] = entry;
             }
 
+            // The hash DB only describes the game folder: every other location (the Wine prefix) follows the disk,
+            // like a disk-made list does. Entries kept above win, so an edit since the last sync stays an External Change
+            var outsideGame = disk.Where(d => d.Item1.LocationId != LocationId.Game).ToList();
+            if (outsideGame.Count > 0)
+            {
+                var previousOutside = previous.Where(kv => kv.Key.LocationId != LocationId.Game).ToDictionary();
+                foreach (var (path, entry) in BaselineRule.Apply(previousOutside, outsideGame, owned))
+                    nexus.TryAdd(path, entry);
+            }
+
             files = nexus.Select(kv => (kv.Key, kv.Value.Hash, kv.Value.Size));
         }
         else
