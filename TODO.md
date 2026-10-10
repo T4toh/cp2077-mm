@@ -6,7 +6,7 @@ Todo lo mergeado hasta #55 está probado con el juego real. Última prueba compl
 
 **Próximo:**
 1. Bugs chicos que salieron de las pruebas (lista de abajo).
-2. Pieza 2 de "Piezas genéricas para el segundo juego" (ubicaciones dentro del prefix). Witcher 3 arranca cuando estén las piezas que necesita.
+2. Pieza 3 (mods locales de primera clase) o pieza 4 (`IIntrinsicFile`, primer uso: `UserSettings.json`) de "Piezas genéricas para el segundo juego". La pieza 2 (prefix) está hecha y espera prueba real. Witcher 3 arranca cuando estén las piezas que necesita.
 
 ### Pruebas reales
 
@@ -18,6 +18,7 @@ Todo lo mergeado hasta #55 está probado con el juego real. Última prueba compl
 
 ### Pendiente de las pruebas
 
+- [ ] **Pieza 2 en el juego real** (2026-10-09): gestionar con el prefix presente, cambiar un setting en el juego, ver el External Change de `UserSettings.json`, reset, confirmar que el setting volvió y que `cache/` y `CrashInfo.json` siguen. En la jaula (`./dev.sh` opción 11)
 - [x] **El rescan MD5 no es automático** (solo el botón "Rescan downloads"): con el reset se bajó todo de nuevo aunque las descargas estaban. Desde 2026-10-07 corre solo antes de "bajar requeridos/opcionales". No rehashea lo que la biblioteca ya registró (usa su MD5) y lo que no conoce lo hashea una vez por sesión; vincular por nombre ahora exige también el tamaño cuando Nexus lo da
 - [x] **Avisar al borrar el prefix de Proton** que después hacen falta `vcrun2022` y `d3dcompiler_47` (2026-10-07): el diálogo del Storage Manager y el checkbox del asistente de limpieza lo dicen, y el panel "Wine prefix" de Mis juegos los instala con un botón "Instalar" (protontricks nativo o flatpak, el que haya; `IProtontricksDependency.MakeInstallCommand`) y muestra el mismo comando con "Copiar". Antes era prosa con backticks sin copiar
 - [x] **FOMOD: instrucción `enableallplugins` desconocida** (visto 2026-10-06, WARN de `FomodXmlInstaller` al instalar `WTNC Config` y un mod más de la colección; resuelto 2026-10-07): no era un bug. La librería FOMOD la emite al final de **toda** instalación XML que sale bien (`XmlScriptInstaller.cs` de `Nexus-Mods/fomod-installer`) y significa "activar los plugins `.esp`/`.esm` del mod": load order de Bethesda, nada que hacer en CP2077. Ahora se reconoce sin warning. Hace falta de verdad cuando llegue Skyrim/Fallout 4 (`plugins.txt`, pieza 5)
@@ -170,7 +171,7 @@ No se escribe código de Witcher 3 ni de KOTOR hasta que estas piezas existan. C
 | # | Pieza | Prueba con CP2077 | Uso en W3 | Después |
 |---|---|---|---|---|
 | 1 | Lista vanilla sin la base de Nexus (hecha, PR #53, probada 2026-10-06) (= "Lista de archivos originales" de la fase 2; la base local **no trae W3**) | después de cada parche la app no aplica | poder sacar mods | cualquier juego |
-| 2 | Ubicaciones dentro del prefix, con whitelist de archivos gestionados (hoy el reset borra todo lo no vanilla de cualquier ubicación) + test con symlink | saves, `AppData/Local/.../UserSettings.json`; vuelve AppData | `Documents/The Witcher 3` | saves/config de cualquier juego |
+| 2 | Ubicaciones dentro del prefix, con whitelist de archivos gestionados (hecha 2026-10-09, `LocationId.WinePrefix` + `IGameData.GetManagedFiles`; spec en `docs/superpowers/specs/2026-10-09-wine-prefix-location-design.md`; pendiente de prueba real) | `UserSettings.json` (saves y `modlist.txt` de REDmod cuando haga falta) | saves, `Documents/The Witcher 3/user.settings`, `mods.settings` | cualquier juego con prefix |
 | 3 | Mods locales de primera clase (= "Archivos locales fuera de Descargas") + metadata opcional de fuente/URL/versión | archivos agregados a mano | mods de mod.io/GitHub/foros | KOTOR |
 | 4 | Primer uso real de `IIntrinsicFile` (archivo base + bloques por mod; `Ingest` de lo que cambia el juego) | `inputUserMappings.xml`, `options.json` | `mods.settings`, `dx12user.settings`/`input.settings`, XML de menús | `plugins.txt` |
 | 5 | Load order que se escribe a archivo (variedad de sort order + writer) | `modlist` de REDmod | `Priority` de `mods.settings` | Skyrim, orden de patchers KOTOR |
@@ -396,6 +397,7 @@ Encontrado el 2026-09-24 en la eliminación de `.nx` (revisiones de implementaci
 
 ### Otros TODO relevantes en código
 
+- [ ] **Symlinks de archivo en la carpeta del juego:** el scan los lista y un mod que los reemplace escribe a través del link. El prefix ya lo rechaza (`EnsureDiskChangesStayInside`, solo ubicaciones con whitelist); extender a `Game` cuando se decida qué hacer con links legítimos
 - `NexusMods.Library/DownloadsService.cs:46` — restaurar descargas completadas desde storage al arrancar
 - `NexusMods.Networking.NexusWebApi/NexusModsLibrary.Collections.cs:237-259` — metadata de colección hardcodeada (`AdultContent`, `Summary`, `Author`)
 - `NexusMods.Networking.NexusWebApi/LoginManager.cs:303` — diálogo de "necesitás login" para operaciones
