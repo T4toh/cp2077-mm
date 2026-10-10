@@ -86,8 +86,11 @@ internal class SteamLocator : IGameLocator
                 .Select(x => LocatorId.From(x.Value.ManifestId.Value.ToString()))
                 .ToImmutableArray();
 
-            var winePrefixDirectoryPath = gameFinderGame.GetProtonPrefix()?.ProtonDirectory.Combine("pfx");
-            var linuxCompatibilityDataProvider = winePrefixDirectoryPath is not null ? new LinuxCompatibilityDataProvider(gameFinderGame, winePrefixDirectoryPath.Value) : null;
+            // GameFinder only reports the prefix while compatdata/<appid> exists. Its path is fixed, so it stays declared
+            // after "Borrar prefix" or before the first launch: the DB keeps WinePrefix paths and every sync needs the location
+            var winePrefixDirectoryPath = (gameFinderGame.GetProtonPrefix()?.ProtonDirectory
+                ?? gameFinderGame.LibraryFolder.Path.Combine($"steamapps/compatdata/{gameFinderGame.AppId.Value}")).Combine("pfx");
+            var linuxCompatibilityDataProvider = new LinuxCompatibilityDataProvider(gameFinderGame, winePrefixDirectoryPath);
 
             var platform = linuxCompatibilityDataProvider is null ? OSInformation.Shared.Platform : OSPlatform.Windows;
 

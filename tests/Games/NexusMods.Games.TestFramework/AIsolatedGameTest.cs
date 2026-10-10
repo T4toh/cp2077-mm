@@ -294,9 +294,21 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
     ///     Specifying this parameter will add DB entries to simulate this being the original archive which
     ///     the files have come from.
     /// </param>
-    public async Task<List<Hash>> AddModAsync(
+    public Task<List<Hash>> AddModAsync(
         ITransaction tx,
         IEnumerable<RelativePath> paths,
+        LoadoutId loadoutId,
+        string modName,
+        LibraryArchive.ReadOnly? libraryArchive = null,
+        LoadoutItemGroupId? parentGroup = null)
+        => AddModAsync(tx, paths.Select(path => new GamePath(LocationId.Game, path)), loadoutId, modName, libraryArchive, parentGroup);
+
+    /// <summary>
+    /// Same as above for any location: the file content is the UTF-8 of the relative path (without the location).
+    /// </summary>
+    public async Task<List<Hash>> AddModAsync(
+        ITransaction tx,
+        IEnumerable<GamePath> paths,
         LoadoutId loadoutId,
         string modName,
         LibraryArchive.ReadOnly? libraryArchive = null,
@@ -305,14 +317,15 @@ public abstract class AIsolatedGameTest<TTest, TGame> : IAsyncLifetime where TGa
         var records = new List<ArchivedFileEntry>();
         var hashes = new List<Hash>();
         var modGroup = AddEmptyGroup(tx, loadoutId, modName, parentGroup);
-        foreach (var path in paths)
+        foreach (var gamePath in paths)
         {
+            var path = gamePath.Path;
             var data = Encoding.UTF8.GetBytes(path);
             var hash = data.xxHash3();
             var size = Size.FromLong(path.Path.Length);
             
             // Create the LoadoutFile in DB
-            AddFileInternal(tx, loadoutId, modGroup, new GamePath(LocationId.Game, path), hash, size);
+            AddFileInternal(tx, loadoutId, modGroup, gamePath, hash, size);
             
             // Create the file to backup.
             hashes.Add(hash);

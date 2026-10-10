@@ -48,4 +48,10 @@ public readonly partial struct LocationId
     /// Path for game files located under Appdata/Roaming or equivalent.
     /// </summary>
     public static readonly LocationId AppDataRoaming = From("AppDataRoaming");
+
+    /// <summary>
+    /// Root of the Wine/Proton prefix the game runs in (<c>.../compatdata/&lt;appid&gt;/pfx</c>). Always declared with a
+    /// whitelist (<see cref="IGameData.GetManagedFiles"/>): the app only ever touches the listed files inside it.
+    /// </summary>
+    public static readonly LocationId WinePrefix = From("WinePrefix");
 }

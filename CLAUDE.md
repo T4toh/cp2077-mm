@@ -144,6 +144,7 @@ Games implement `IGame` and `IGameData<T>` and register via `AddGame<T>()`. Each
 - `DiagnosticEmitters` — health checks and warnings
 - `Synchronizer` — game-specific `ILoadoutSynchronizer`
 - `GetLocations()` — maps `LocationId` → `AbsolutePath` for game directories
+- `GetManagedFiles()` — optional per-location whitelist (`GameLocationDescriptor.ManagedFiles`). A whitelisted location (`LocationId.WinePrefix`, the Proton prefix root) is never enumerated: the scan stats only the listed files, `EnsureDiskChangesStayInside` refuses any write or delete outside the list or through a symlink, `CleanDirectories` leaves its folders alone, its baseline always comes from the disk, and a file that appears there without a mod putting it is adopted as an original and backed up at once (`ReindexState` → `AdoptWhitelistedOriginals`), so no reset or unmanage deletes it. `SteamLocator` declares the prefix by its fixed path whether or not it exists yet. CP2077 lists only `drive_c/users/<steamuser or $USER>/AppData/Local/CD Projekt Red/Cyberpunk 2077/UserSettings.json`
 
 `GamePath` combines a `LocationId` (Game, SaveData, Config, etc.) with a relative path for portable file references. Always use `GamePath` for game file references, never raw absolute paths.
 

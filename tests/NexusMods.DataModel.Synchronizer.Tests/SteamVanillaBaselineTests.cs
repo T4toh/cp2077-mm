@@ -25,7 +25,7 @@ public class SteamVanillaBaselineTests(ITestOutputHelper helper) : AIsolatedGame
         .AddOSInterop()
         .AddRuntimeDependencies()
         .AddGenericGameSupport()
-        .AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"), stores: [GameStore.Steam])
+        .AddUniversalGameLocator<Cyberpunk2077Game>(new Version("1.61"), stores: [GameStore.Steam], withWinePrefix: true)
         .AddRedEngineGames();
 
     [Fact]
@@ -45,6 +45,25 @@ public class SteamVanillaBaselineTests(ITestOutputHelper helper) : AIsolatedGame
             .GetGameFiles((GameStore.Steam, [LocatorId.From("StubbedGameState.zip")])).Select(f => f.Path);
         files.Select(f => (GamePath)f.Path).Should().BeEquivalentTo(nexus);
         files.Select(f => (GamePath)f.Path).Should().NotContain(new GamePath(LocationId.Game, "bin/x64/preexisting-mod.dll"));
+    }
+
+    [Fact]
+    public async Task KnownVersion_PrefixFileComesFromTheDisk()
+    {
+        // The Nexus list only describes the game folder: whitelisted prefix files are originals when they are there
+        var settings = new GamePath(LocationId.WinePrefix, "drive_c/users/steamuser/AppData/Local/CD Projekt Red/Cyberpunk 2077/UserSettings.json");
+        var onDisk = GameInstallation.Locations.ToAbsolutePath(settings);
+        onDisk.Parent.CreateDirectory();
+        await onDisk.WriteAllTextAsync("{}");
+
+        await LoadoutManager.ManageInstallation(GameInstallation);
+        await Synchronizer.Synchronize(await CreateLoadout());
+
+        var metadata = GameRegistry.ForceGetMetadata(GameInstallation);
+        GameInstallMetadata.BaselineFromDisk.Get(metadata).Should().BeFalse();
+        GameBaselineFile.TryGetVanillaFiles(metadata, out var files).Should().BeTrue();
+        files.Select(f => (GamePath)f.Path).Should().Contain(settings);
+        files.Select(f => (GamePath)f.Path).Where(p => p.LocationId == LocationId.Game).Should().BeEquivalentTo(NexusPaths("StubbedGameState.zip"));
     }
 
     private UniversalStubbedGameLocator<Cyberpunk2077Game> Locator =>

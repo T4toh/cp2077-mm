@@ -114,6 +114,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     private void CleanDirectories(IEnumerable<GamePath> directoriesWithDeletions, DiskState newDiskState, GameInstallation installation)
     {
+        // Folders inside a whitelisted location (the Wine prefix) are the game's or Wine's, never ours to remove
+        directoriesWithDeletions = directoriesWithDeletions.Where(dir => installation.Locations[dir.LocationId].ManagedFiles is null);
         var processedDirectories = new HashSet<GamePath>();
         var directoriesToDelete = new HashSet<GamePath>();
         var directoriesInUse = new HashSet<GamePath>();
@@ -575,7 +577,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
 
     /// <summary>
     /// Throws before anything touches the disk when a write or delete would land outside its location: a <c>..</c>
-    /// segment (<see cref="GameLocations.ToAbsolutePath"/> throws) or a folder in between that is a symlink.
+    /// segment (<see cref="GameLocations.ToAbsolutePath"/> throws), a folder in between that is a symlink, or, in a
+    /// location with a whitelist (the Wine prefix), a path that is not on the list or is itself a symlink.
     /// </summary>
     private static void EnsureDiskChangesStayInside(Dictionary<GamePath, SyncNode> syncTree, GameLocations locations)
     {
@@ -583,9 +586,15 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         foreach (var (path, node) in syncTree)
         {
             if ((node.Actions & diskChanges) == 0) continue;
+            if (!locations.ContainsKey(path.LocationId))
+                throw new InvalidOperationException($"La ubicación de `{path}` no está disponible en esta instalación (¿prefix borrado?); no se escribe ni se borra nada ahí hasta que vuelva");
+            if (!locations.IsManaged(path))
+                throw new InvalidOperationException($"`{path}` no está entre los archivos que tModManager gestiona en esa ubicación; no se escribe ni se borra nada ahí");
             var resolved = locations.ToAbsolutePath(path);
             if (SafePath.IsUnderSymlink(locations[path.LocationId].Path.ToString(), resolved.ToString()))
                 throw new InvalidOperationException($"`{path}` está dentro de una carpeta que es un symlink; tModManager no escribe ni borra a través de links");
+            if (locations[path.LocationId].ManagedFiles is not null && SafePath.IsSymlink(resolved))
+                throw new InvalidOperationException($"`{path}` es un symlink; tModManager no escribe ni borra a través de links");
         }
     }
 
@@ -1391,6 +1400,16 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
                     nexus[path] = entry;
             }
 
+            // The hash DB only describes the game folder: every other location (the Wine prefix) follows the disk,
+            // like a disk-made list does. Entries kept above win, so an edit since the last sync stays an External Change
+            var outsideGame = disk.Where(d => d.Item1.LocationId != LocationId.Game).ToList();
+            if (outsideGame.Count > 0)
+            {
+                var previousOutside = previous.Where(kv => kv.Key.LocationId != LocationId.Game).ToDictionary();
+                foreach (var (path, entry) in BaselineRule.Apply(previousOutside, outsideGame, owned))
+                    nexus.TryAdd(path, entry);
+            }
+
             files = nexus.Select(kv => (kv.Key, kv.Value.Hash, kv.Value.Size));
         }
         else
@@ -1555,6 +1574,56 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
         return GameInstallMetadata.Load(Connection.Db, metadata);
     }
 
+    /// <summary>
+    /// A file that appears in a whitelisted location (the Wine prefix) without the app having put it there is the game's:
+    /// nothing but the game writes there, and before this location existed the app never touched it (an install managed
+    /// earlier, or a prefix created after managing, sees its settings for the first time here). It becomes an original
+    /// right away, so no reset or unmanage deletes it, and it is backed up right away: unlike the game folder, no store
+    /// or hash database can bring it back. Files a mod extracted are never new here: extraction records them.
+    /// </summary>
+    private async Task AdoptWhitelistedOriginals(GameInstallMetadata.ReadOnly metadata, GameInstallation installation, FrozenDictionary<GamePath, IndexFileResult> newFiles, ITransaction tx)
+    {
+        var candidates = newFiles
+            .Where(kv => installation.Locations.TryGetValue(kv.Key.LocationId, out var location) && location.ManagedFiles is not null)
+            .ToList();
+        if (candidates.Count == 0) return;
+
+        var baseline = GameBaselineFile.FindByGame(metadata.Db, metadata).Select(e => (GamePath)e.Path).ToHashSet();
+        var adopted = candidates.Where(kv => !baseline.Contains(kv.Key)).ToList();
+        if (adopted.Count == 0) return;
+
+        var toBackup = new List<ArchivedFileEntry>();
+        foreach (var (gamePath, result) in adopted)
+        {
+            if (await _fileStore.HaveFile(result.Hash)) continue;
+            toBackup.Add(new ArchivedFileEntry
+            {
+                Hash = result.Hash,
+                Size = result.Size,
+                StreamFactory = new NativeFileStreamFactory(installation.Locations.ToAbsolutePath(gamePath)),
+            });
+        }
+        if (toBackup.Count > 0)
+            await _fileStore.BackupFiles(toBackup, deduplicate: false);
+
+        foreach (var (gamePath, result) in adopted)
+        {
+            _ = new GameBaselineFile.New(tx)
+            {
+                Path = gamePath.ToGamePathParentTuple(metadata.Id),
+                Hash = result.Hash,
+                Size = result.Size,
+                GameId = metadata.Id,
+            };
+            _ = new GameBackedUpFile.New(tx)
+            {
+                GameInstallId = metadata.Id,
+                Hash = result.Hash,
+            };
+            Logger.LogInformation("`{Path}` apareció en una ubicación con whitelist sin que lo pusiera un mod: se toma como original y se respalda", gamePath);
+        }
+    }
+
     private FrozenDictionary<GamePath, DiskStateEntry.ReadOnly> GetDiskState(GameInstallMetadata.ReadOnly gameInstallMetadata)
     {
         var entities = DiskStateEntry.FindByGame(gameInstallMetadata.Db, gameInstallMetadata);
@@ -1588,6 +1657,8 @@ public partial class ALoadoutSynchronizer : ILoadoutSynchronizer
             filter: GamePathFilter,
             cancellationToken: CancellationToken.None
         );
+
+        await AdoptWhitelistedOriginals(metadata, installation, indexGameResult.NewFiles, tx);
 
         foreach (var (gamePath, result) in indexGameResult.NewFiles)
         {

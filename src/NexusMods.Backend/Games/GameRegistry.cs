@@ -53,7 +53,8 @@ internal class GameRegistry : IGameRegistry
                         try
                         {
                             var resolvedLocations = locatorResult.Game.GetLocations(locatorResult.Path.FileSystem, locatorResult);
-                            var gameLocations = GameLocations.Create(resolvedLocations);
+                            var managedFiles = locatorResult.Game.GetManagedFiles(locatorResult.Path.FileSystem, locatorResult);
+                            var gameLocations = GameLocations.Create(resolvedLocations, managedFiles);
 
                             var installation = new GameInstallation(locatorResult, gameLocations);
                             results.Add(installation);
