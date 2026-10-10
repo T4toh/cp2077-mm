@@ -25,8 +25,11 @@ public readonly struct GameLocations : IReadOnlyDictionary<LocationId, GameLocat
     /// <summary>
     /// Parses the resolved locations into <see cref="GameLocationDescriptor"/>.
     /// </summary>
-    public static GameLocations Create(ImmutableDictionary<LocationId, AbsolutePath> resolvedLocations)
+    public static GameLocations Create(
+        ImmutableDictionary<LocationId, AbsolutePath> resolvedLocations,
+        ImmutableDictionary<LocationId, ImmutableHashSet<RelativePath>>? managedFiles = null)
     {
+        managedFiles ??= ImmutableDictionary<LocationId, ImmutableHashSet<RelativePath>>.Empty;
         var results = new Dictionary<LocationId, GameLocationDescriptor>(capacity: resolvedLocations.Count);
 
         var nestedLocations = new List<LocationId>(capacity: resolvedLocations.Count);
@@ -39,10 +42,12 @@ public readonly struct GameLocations : IReadOnlyDictionary<LocationId, GameLocat
             {
                 if (otherLocation == currentLocation) continue;
 
-                if (otherPath.InFolder(currentPath))
+                // A whitelisted location (the Wine prefix) never swallows another: a game installed inside the
+                // prefix stays top level and keeps being scanned
+                if (otherPath.InFolder(currentPath) && !managedFiles.ContainsKey(currentLocation))
                 {
                     nestedLocations.Add(otherLocation);
-                } else if (currentPath.InFolder(otherPath))
+                } else if (currentPath.InFolder(otherPath) && !managedFiles.ContainsKey(otherLocation))
                 {
                     if (!topLevelParent.HasValue) topLevelParent = (otherLocation, otherPath);
                     else
@@ -56,7 +61,8 @@ public readonly struct GameLocations : IReadOnlyDictionary<LocationId, GameLocat
                 currentLocation,
                 currentPath,
                 nestedLocations: [..nestedLocations],
-                topLevelParent: topLevelParent.Convert(tuple => tuple.Item1)
+                topLevelParent: topLevelParent.Convert(tuple => tuple.Item1),
+                managedFiles: managedFiles.GetValueOrDefault(currentLocation)
             );
 
             results.Add(currentLocation, descriptor);
@@ -89,6 +95,16 @@ public readonly struct GameLocations : IReadOnlyDictionary<LocationId, GameLocat
     /// segment: paths from mods and collections (FOMOD destinations, collection.json) can carry one and
     /// <c>Combine</c> keeps it, so this is the one check every synchronizer write and delete goes through.
     /// </summary>
+    /// <summary>
+    /// False when the path's location has a whitelist and the path is not in it: the app must not read, write,
+    /// back up or delete it.
+    /// </summary>
+    public bool IsManaged(GamePath gamePath)
+    {
+        var managed = _locations[gamePath.LocationId].ManagedFiles;
+        return managed is null || managed.Contains(gamePath.Path);
+    }
+
     public AbsolutePath ToAbsolutePath(GamePath gamePath)
     {
         if (SafePath.HasParentSegment(gamePath.Path))

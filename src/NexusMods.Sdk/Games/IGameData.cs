@@ -42,6 +42,13 @@ public interface IGameData
     ImmutableDictionary<LocationId, AbsolutePath> GetLocations(IFileSystem fileSystem, GameLocatorResult gameLocatorResult);
 
     /// <summary>
+    /// Per-location whitelist of the files the app manages. A location missing here is managed whole (the game
+    /// folder); a location listed here (the Wine prefix) is only ever touched at the listed paths.
+    /// </summary>
+    ImmutableDictionary<LocationId, ImmutableHashSet<RelativePath>> GetManagedFiles(IFileSystem fileSystem, GameLocatorResult gameLocatorResult)
+        => ImmutableDictionary<LocationId, ImmutableHashSet<RelativePath>>.Empty;
+
+    /// <summary>
     /// Returns the primary (executable) file for the game.
     /// </summary>
     GamePath GetPrimaryFile(GameInstallation installation);
