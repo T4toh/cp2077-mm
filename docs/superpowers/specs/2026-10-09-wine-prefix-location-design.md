@@ -1,6 +1,6 @@
 # Ubicaciones dentro del prefix con whitelist de archivos gestionados (pieza 2)
 
-Fecha: 2026-10-09 · Estado: implementado en la rama feat/wine-prefix-location (PR pendiente), prueba real pendiente
+Fecha: 2026-10-09 · Estado: implementado en la rama feat/wine-prefix-location (PR #73), probado con el juego el 2026-10-10
 
 ## Objetivo
 
